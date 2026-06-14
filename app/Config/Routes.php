@@ -151,3 +151,7 @@ $routes->group('pos', ['filter' => 'auth:cashier,waiter,branch_manager,restauran
     $routes->post('kitchen/update-status',  'Staff\KitchenController::updateStatus');
     $routes->get('shift/summary',           'Staff\ShiftController::summary');
 });
+
+// Additional POS routes
+$routes->get('pos/active-orders',           'Staff\PosController::activeOrders',   ['filter'=>'auth:cashier,waiter,branch_manager,restaurant_admin,super_admin']);
+$routes->get('pos/table-orders/(:num)',     'Staff\PosController::tableOrders/$1', ['filter'=>'auth:cashier,waiter,branch_manager,restaurant_admin,super_admin']);

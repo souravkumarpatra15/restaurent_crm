@@ -8,20 +8,18 @@ use App\Models\TableModel;
 use App\Models\CustomerModel;
 use App\Models\RestaurantModel;
 use App\Libraries\ThermalPrinter;
-use CodeIgniter\Database\ConnectionInterface;
-use CodeIgniter\Session\SessionInterface;
 use Config\Database;
 
 class PosController extends BaseController
 {
-    protected OrderModel $orderModel;
-    protected MenuModel $menuModel;
-    protected TableModel $tableModel;
-    protected RestaurantModel $restaurantModel;
-    protected ConnectionInterface $db;
-    protected SessionInterface $session;
-    protected ?array $restaurant = null;
-    protected ?array $branch = null;
+    protected $orderModel;
+    protected $menuModel;
+    protected $tableModel;
+    protected $restaurantModel;
+    protected $db;
+    protected $session;
+    protected $restaurant;
+    protected $branch;
 
     public function __construct()
     {
@@ -388,5 +386,80 @@ class PosController extends BaseController
             ->where('branch_id', $this->session->get('branch_id'))
             ->whereIn('status', ['pending','confirmed','preparing','ready','served'])
             ->countAllResults();
+    }
+
+    public function orderDetail($id)
+    {
+        $order = $this->orderModel->getOrderWithDetails($id);
+        if (!$order) {
+            return redirect()->to(base_url('pos'))->with('error', 'Order not found');
+        }
+        return view('staff/pos/order_detail', [
+            'title'      => 'Order ' . $order['order_number'],
+            'order'      => $order,
+            'restaurant' => $this->restaurant,
+            'branch'     => $this->branch,
+        ]);
+    }
+
+    public function activeOrders()
+    {
+        $orders = $this->db->table('orders o')
+            ->select('o.id, o.order_number, o.order_type, o.status, o.total_amount, o.created_at, t.table_number,
+                      (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as items_count')
+            ->join('tables t', 't.id = o.table_id', 'left')
+            ->where('o.branch_id', $this->session->get('branch_id'))
+            ->whereIn('o.status', ['pending','confirmed','preparing','ready','served'])
+            ->orderBy('o.created_at', 'ASC')
+            ->get()->getResultArray();
+
+        foreach ($orders as &$o) {
+            $mins = (time() - strtotime($o['created_at'])) / 60;
+            $o['time_ago'] = $mins < 1 ? 'Just now' : (floor($mins) . 'm ago');
+        }
+        return $this->response->setJSON($orders);
+    }
+
+    public function tableOrders($tableId)
+    {
+        $orders = $this->db->table('orders')
+            ->select('id, order_number, order_type, status, total_amount,
+                      (SELECT COUNT(*) FROM order_items WHERE order_id = orders.id) as items_count')
+            ->where('table_id', $tableId)
+            ->whereIn('status', ['pending','confirmed','preparing','ready','served'])
+            ->get()->getResultArray();
+        return $this->response->setJSON($orders);
+    }
+
+    public function cancelOrder($id)
+    {
+        $order = $this->orderModel->find($id);
+        if (!$order) return $this->response->setJSON(['success'=>false]);
+        $this->orderModel->update($id, [
+            'status'           => 'cancelled',
+            'cancelled_reason' => $this->request->getPost('reason') ?? 'Cancelled at POS',
+            'cancelled_by'     => $this->session->get('user_id'),
+        ]);
+        if ($order['table_id']) {
+            $this->db->table('tables')->where('id', $order['table_id'])->update(['status'=>'available']);
+        }
+        return $this->response->setJSON(['success' => true]);
+    }
+
+    public function applyCoupon()
+    {
+        $code     = $this->request->getPost('coupon_code');
+        $subtotal = (float)$this->request->getPost('subtotal');
+        $coupon   = $this->db->table('coupons')
+            ->where('code', $code)
+            ->where('restaurant_id', $this->session->get('restaurant_id'))
+            ->where('is_active', 1)
+            ->get()->getRowArray();
+
+        if (!$coupon) return $this->response->setJSON(['success'=>false,'message'=>'Invalid coupon']);
+        $discount = $coupon['discount_type'] === 'percent'
+            ? min($subtotal * $coupon['discount_value'] / 100, $coupon['max_discount_amount'] ?: PHP_INT_MAX)
+            : $coupon['discount_value'];
+        return $this->response->setJSON(['success'=>true,'discount'=>round($discount,2)]);
     }
 }
