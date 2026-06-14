@@ -64,7 +64,7 @@ class DashboardController extends BaseController
             ->get()->getResultArray();
 
         $topItems = $db->table('order_items oi')
-            ->select('oi.name, SUM(oi.quantity) as total_qty, SUM(oi.total_price) as total_revenue')
+            ->select('oi.menu_item_id, ANY_VALUE(oi.name) as name, SUM(oi.quantity) as total_qty, SUM(oi.total_price) as total_revenue')
             ->join('orders o', 'o.id = oi.order_id')
             ->where('o.restaurant_id', $restaurantId)
             ->where('DATE(o.created_at)', date('Y-m-d'))

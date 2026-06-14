@@ -8,18 +8,20 @@ use App\Models\TableModel;
 use App\Models\CustomerModel;
 use App\Models\RestaurantModel;
 use App\Libraries\ThermalPrinter;
+use CodeIgniter\Database\ConnectionInterface;
+use CodeIgniter\Session\SessionInterface;
 use Config\Database;
 
 class PosController extends BaseController
 {
-    protected $orderModel;
-    protected $menuModel;
-    protected $tableModel;
-    protected $restaurantModel;
-    protected $db;
-    protected $session;
-    protected $restaurant;
-    protected $branch;
+    protected OrderModel $orderModel;
+    protected MenuModel $menuModel;
+    protected TableModel $tableModel;
+    protected RestaurantModel $restaurantModel;
+    protected ConnectionInterface $db;
+    protected SessionInterface $session;
+    protected ?array $restaurant = null;
+    protected ?array $branch = null;
 
     public function __construct()
     {

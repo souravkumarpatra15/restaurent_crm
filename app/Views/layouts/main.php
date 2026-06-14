@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title><?= $title ?? 'RestoCRM' ?> — <?= $restaurantName ?? 'SaaS Restaurant Management' ?></title>
+<meta name="csrf-token" data-name="<?= csrf_token() ?>" content="<?= csrf_hash() ?>">
 <meta name="theme-color" content="<?= $themeColor ?? '#FF6B35' ?>">
 
 <!-- Fonts -->
