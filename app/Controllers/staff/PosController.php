@@ -8,6 +8,7 @@ use App\Models\TableModel;
 use App\Models\CustomerModel;
 use App\Models\RestaurantModel;
 use App\Libraries\ThermalPrinter;
+use Config\Database;
 
 class PosController extends BaseController
 {
@@ -15,6 +16,7 @@ class PosController extends BaseController
     protected $menuModel;
     protected $tableModel;
     protected $restaurantModel;
+    protected $db;
     protected $session;
     protected $restaurant;
     protected $branch;
@@ -25,10 +27,11 @@ class PosController extends BaseController
         $this->menuModel       = new MenuModel();
         $this->tableModel      = new TableModel();
         $this->restaurantModel = new RestaurantModel();
+        $this->db             = Database::connect();
         $this->session         = session();
 
         $this->restaurant = $this->restaurantModel->find($this->session->get('restaurant_id'));
-        $this->branch     = $this->db->table('branches')
+        $this->branch = $this->db->table('branches')
             ->where('id', $this->session->get('branch_id'))
             ->get()->getRowArray();
     }

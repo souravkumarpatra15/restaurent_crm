@@ -12,10 +12,11 @@
 <!-- Icons -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <!-- Main CSS -->
-<link rel="stylesheet" href="<?= base_url('public/css/main.css') ?>">
+<link rel="stylesheet" href="<?= base_url('css/main.css') ?>">
 <?= $styles ?? '' ?>
 </head>
 <body class="<?= $bodyClass ?? '' ?>">
+<?php $userRole = $userRole ?? 'guest'; ?>
 
 <!-- Mobile Header -->
 <header class="mobile-header" id="mobileHeader">
@@ -208,7 +209,7 @@
 
 <!-- Scripts -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-<script src="<?= base_url('public/js/main.js') ?>"></script>
+<script src="<?= base_url('js/main.js') ?>"></script>
 <?= $scripts ?? '' ?>
 </body>
 </html>
