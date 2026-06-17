@@ -184,7 +184,7 @@ class ThermalPrinter
             }
         } else {
             $data .= $this->centerText('Thank you! Visit again!') . self::LF;
-            $data .= $this->centerText('Powered by RestoCRM') . self::LF;
+            $data .= $this->centerText('Powered by RestOne') . self::LF;
         }
 
         // QR code placeholder for UPI payment
@@ -263,10 +263,17 @@ class ThermalPrinter
     private function sendTo($ip, $port, $data)
     {
         if (empty($ip)) {
-            // Save to file for web-based printing (fallback)
-            $path = WRITEPATH . 'uploads/receipts/receipt_' . time() . '.bin';
+            $dir = WRITEPATH . 'uploads/receipts/';
+            if (!is_dir($dir)) {
+                mkdir($dir, 0777, true);
+            }
+            $path = $dir . 'receipt_' . time() . '.bin';
             file_put_contents($path, $data);
-            return ['success' => true, 'method' => 'file', 'path' => $path];
+            return [
+                'success' => true,
+                'method'  => 'file',
+                'path'    => $path
+            ];
         }
 
         $socket = @fsockopen($ip, $port, $errno, $errstr, 3);

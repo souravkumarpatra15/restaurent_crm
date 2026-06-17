@@ -498,3 +498,44 @@ input, select, textarea { font-family: inherit; }
   body { font-size: 12pt; background: #fff; }
   .print-receipt { max-width: 80mm; margin: 0 auto; font-family: monospace; font-size: 10pt; }
 }
+
+
+/* Mobile Header Logo */
+.mobile-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+}
+
+.mobile-logo-img {
+    width: 100%;
+    height: 45px;
+    object-fit: contain;
+}
+
+/* Sidebar Brand */
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.brand-logo {
+    width: 45px;
+    height: 45px;
+    object-fit: contain;
+    border-radius: 10px;
+    background: #fff;
+    padding: 4px;
+}
+
+.brand-text strong {
+    display: block;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.brand-text small {
+    opacity: .7;
+}

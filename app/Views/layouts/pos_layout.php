@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title><?= $title ?? 'POS' ?> — RestoCRM</title>
+<title><?= $title ?? 'POS' ?> — RestOne</title>
 <meta name="csrf-token" data-name="<?= csrf_token() ?>" content="<?= csrf_hash() ?>">
 <meta name="theme-color" content="#FF6B35">
 <link rel="preconnect" href="https://fonts.googleapis.com">

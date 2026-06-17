@@ -1,4 +1,5 @@
-<?php $this->extend('layouts/pos_layout'); $this->section('content'); ?>
+<?php $this->extend('layouts/pos_layout');
+$this->section('content'); ?>
 
 <div class="pos-wrap" id="posWrap">
 
@@ -17,10 +18,10 @@
       <button class="cat-tab active" data-cat="all">All</button>
       <?php foreach ($categories as $cat): ?>
         <?php if (!empty($cat['items'])): ?>
-        <button class="cat-tab" data-cat="<?= $cat['id'] ?>">
-          <?= esc($cat['name']) ?>
-          <span style="font-size:.7rem;opacity:.6">(<?= count($cat['items']) ?>)</span>
-        </button>
+          <button class="cat-tab" data-cat="<?= $cat['id'] ?>">
+            <?= esc($cat['name']) ?>
+            <span style="font-size:.7rem;opacity:.6">(<?= count($cat['items']) ?>)</span>
+          </button>
         <?php endif; ?>
       <?php endforeach; ?>
     </div>
@@ -28,11 +29,11 @@
     <!-- Order Type Banner -->
     <div style="padding:.5rem .75rem; display:flex; gap:.5rem; align-items:center; background:var(--primary-light); border-bottom:1px solid var(--border);">
       <?php
-        $icons = ['dine_in'=>'fa-chair','takeaway'=>'fa-bag-shopping','delivery'=>'fa-motorcycle'];
-        $colors = ['dine_in'=>'var(--primary)','takeaway'=>'var(--info)','delivery'=>'var(--success)'];
+      $icons = ['dine_in' => 'fa-chair', 'takeaway' => 'fa-bag-shopping', 'delivery' => 'fa-motorcycle'];
+      $colors = ['dine_in' => 'var(--primary)', 'takeaway' => 'var(--info)', 'delivery' => 'var(--success)'];
       ?>
       <i class="fa <?= $icons[$order_type] ?? 'fa-utensils' ?>" style="color:<?= $colors[$order_type] ?? 'var(--primary)' ?>"></i>
-      <strong style="font-size:.82rem"><?= strtoupper(str_replace('_',' ',$order_type)) ?></strong>
+      <strong style="font-size:.82rem"><?= strtoupper(str_replace('_', ' ', $order_type)) ?></strong>
       <?php if ($table): ?>
         <span style="font-size:.8rem;color:var(--text-muted)">— Table <?= esc($table['table_number']) ?></span>
       <?php endif; ?>
@@ -43,32 +44,32 @@
     <div class="menu-items-grid" id="menuItemsGrid">
       <?php foreach ($categories as $cat): ?>
         <?php foreach ($cat['items'] as $item): ?>
-        <div class="menu-item-card <?= $item['is_active'] ? '' : 'unavailable' ?>"
-             data-id="<?= $item['id'] ?>"
-             data-name="<?= esc($item['name']) ?>"
-             data-price="<?= $item['base_price'] ?>"
-             data-tax="<?= $item['tax_percent'] ?>"
-             data-type="<?= $item['item_type'] ?>"
-             data-cat="<?= $cat['id'] ?>"
-             data-variants='<?= json_encode($item['variants'] ?? []) ?>'
-             data-addons='<?= json_encode($item['addon_groups'] ?? []) ?>'
-             onclick="addToCart(this)">
-          <div class="menu-item-img">
-            <?php if ($item['image']): ?>
-              <img src="<?= base_url('public/images/uploads/' . $item['image']) ?>" alt="<?= esc($item['name']) ?>" loading="lazy">
-            <?php else: ?>
-              <div class="no-img">🍽</div>
-            <?php endif; ?>
-            <div class="veg-dot <?= in_array($item['item_type'],['veg','vegan']) ? 'veg' : 'nonveg' ?>"></div>
-            <?php if ($item['is_bestseller']): ?>
-              <span style="position:absolute;top:5px;right:5px;background:var(--warning);color:#fff;font-size:.6rem;font-weight:700;padding:2px 5px;border-radius:4px;">BEST</span>
-            <?php endif; ?>
+          <div class="menu-item-card <?= $item['is_active'] ? '' : 'unavailable' ?>"
+            data-id="<?= $item['id'] ?>"
+            data-name="<?= esc($item['name']) ?>"
+            data-price="<?= $item['base_price'] ?>"
+            data-tax="<?= $item['tax_percent'] ?>"
+            data-type="<?= $item['item_type'] ?>"
+            data-cat="<?= $cat['id'] ?>"
+            data-variants='<?= json_encode($item['variants'] ?? []) ?>'
+            data-addons='<?= json_encode($item['addon_groups'] ?? []) ?>'
+            onclick="addToCart(this)">
+            <div class="menu-item-img">
+              <?php if ($item['image']): ?>
+                <img src="<?= base_url('public/images/uploads/' . $item['image']) ?>" alt="<?= esc($item['name']) ?>" loading="lazy">
+              <?php else: ?>
+                <div class="no-img">🍽</div>
+              <?php endif; ?>
+              <div class="veg-dot <?= in_array($item['item_type'], ['veg', 'vegan']) ? 'veg' : 'nonveg' ?>"></div>
+              <?php if ($item['is_bestseller']): ?>
+                <span style="position:absolute;top:5px;right:5px;background:var(--warning);color:#fff;font-size:.6rem;font-weight:700;padding:2px 5px;border-radius:4px;">BEST</span>
+              <?php endif; ?>
+            </div>
+            <div class="menu-item-body">
+              <div class="menu-item-name"><?= esc($item['name']) ?></div>
+              <div class="menu-item-price"><?= $restaurant['currency_symbol'] ?><?= number_format($item['base_price'], 2) ?></div>
+            </div>
           </div>
-          <div class="menu-item-body">
-            <div class="menu-item-name"><?= esc($item['name']) ?></div>
-            <div class="menu-item-price"><?= $restaurant['currency_symbol'] ?><?= number_format($item['base_price'],2) ?></div>
-          </div>
-        </div>
         <?php endforeach; ?>
       <?php endforeach; ?>
     </div>
@@ -88,7 +89,7 @@
     <div class="cart-order-info" id="cartOrderInfo">
       <button class="btn btn-sm btn-outline" onclick="openCustomerModal()"><i class="fa fa-user-plus"></i> Customer</button>
       <?php if ($order_type === 'dine_in'): ?>
-      <button class="btn btn-sm btn-outline" onclick="openGuestsModal()"><i class="fa fa-users"></i> Guests</button>
+        <button class="btn btn-sm btn-outline" onclick="openGuestsModal()"><i class="fa fa-users"></i> Guests</button>
       <?php endif; ?>
       <button class="btn btn-sm btn-outline" onclick="openNotesModal()"><i class="fa fa-note-sticky"></i> Note</button>
     </div>
@@ -172,10 +173,10 @@
       <div class="form-group">
         <label class="form-label">Payment Method</label>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem" id="paymentMethods">
-          <?php foreach (['cash'=>'💵 Cash','card'=>'💳 Card','upi'=>'📱 UPI','wallet'=>'👛 Wallet','online'=>'🌐 Online','credit'=>'📋 Credit'] as $k => $v): ?>
-          <button class="btn btn-outline payment-method-btn" data-method="<?= $k ?>" onclick="selectPayment(this)">
-            <?= $v ?>
-          </button>
+          <?php foreach (['cash' => '💵 Cash', 'card' => '💳 Card', 'upi' => '📱 UPI', 'wallet' => '👛 Wallet', 'online' => '🌐 Online', 'credit' => '📋 Credit'] as $k => $v): ?>
+            <button class="btn btn-outline payment-method-btn" data-method="<?= $k ?>" onclick="selectPayment(this)">
+              <?= $v ?>
+            </button>
           <?php endforeach; ?>
         </div>
       </div>
@@ -246,170 +247,211 @@
 </div>
 
 <script>
-// ============================================================
-// POS JavaScript Engine
-// ============================================================
-const CURRENCY = '<?= $restaurant['currency_symbol'] ?>';
-const TAX_TYPE = '<?= $restaurant['tax_type'] ?>';
-const SERVICE_PCT = <?= (float)($restaurant['service_charge_percent'] ?? 0) ?>;
-const ORDER_TYPE = '<?= $order_type ?>';
-const TABLE_ID   = '<?= $table_id ?? '' ?>';
-const CSRF_TOKEN = '<?= csrf_hash() ?>';
+  // ============================================================
+  // POS JavaScript Engine
+  // ============================================================
+  const CURRENCY = '<?= $restaurant['currency_symbol'] ?>';
+  const TAX_TYPE = '<?= $restaurant['tax_type'] ?>';
+  const SERVICE_PCT = <?= (float)($restaurant['service_charge_percent'] ?? 0) ?>;
+  const ORDER_TYPE = '<?= $order_type ?>';
+  const TABLE_ID = '<?= $table_id ?? '' ?>';
+  const CSRF_NAME = '<?= csrf_token() ?>';
+  const CSRF_TOKEN = '<?= csrf_hash() ?>';
 
-let cart = [];
-let cartCustomer = { id: null, name: '', phone: '' };
-let pendingItem = null;
-let discountData = { type: '', value: 0, amount: 0 };
-let selectedPaymentMethod = 'cash';
-let orderId = null;
-
-// ── Add to Cart ──────────────────────────────────────────────
-function addToCart(el) {
-  const item = {
-    menu_item_id: el.dataset.id,
-    name:  el.dataset.name,
-    price: parseFloat(el.dataset.price),
-    tax:   parseFloat(el.dataset.tax),
-    type:  el.dataset.type,
-    variants: JSON.parse(el.dataset.variants || '[]'),
-    addons:   JSON.parse(el.dataset.addons || '[]'),
+  let cart = [];
+  let cartCustomer = {
+    id: null,
+    name: '',
+    phone: ''
   };
+  let pendingItem = null;
+  let discountData = {
+    type: '',
+    value: 0,
+    amount: 0
+  };
+  let selectedPaymentMethod = 'cash';
+  let orderId = null;
 
-  if (item.variants.length > 0 || item.addons.length > 0) {
-    pendingItem = item;
-    openVariantModal(item);
-    return;
+  // ── Add to Cart ──────────────────────────────────────────────
+  function addToCart(el) {
+    const item = {
+      menu_item_id: el.dataset.id,
+      name: el.dataset.name,
+      price: parseFloat(el.dataset.price),
+      tax: parseFloat(el.dataset.tax),
+      type: el.dataset.type,
+      variants: JSON.parse(el.dataset.variants || '[]'),
+      addons: JSON.parse(el.dataset.addons || '[]'),
+    };
+
+    if (item.variants.length > 0 || item.addons.length > 0) {
+      pendingItem = item;
+      openVariantModal(item);
+      return;
+    }
+
+    pushToCart({
+      ...item,
+      variant_id: null,
+      variant_name: null,
+      selectedAddons: [],
+      qty: 1
+    });
   }
 
-  pushToCart({ ...item, variant_id: null, variant_name: null, selectedAddons: [], qty: 1 });
-}
-
-function pushToCart(item) {
-  const key = `${item.menu_item_id}_${item.variant_id || ''}_${JSON.stringify(item.selectedAddons)}`;
-  const existing = cart.find(c => c._key === key);
-  if (existing) {
-    existing.qty++;
-  } else {
-    cart.push({ ...item, _key: key, qty: 1, notes: '' });
+  function pushToCart(item) {
+    const key = `${item.menu_item_id}_${item.variant_id || ''}_${JSON.stringify(item.selectedAddons)}`;
+    const existing = cart.find(c => c._key === key);
+    if (existing) {
+      existing.qty++;
+    } else {
+      cart.push({
+        ...item,
+        _key: key,
+        qty: 1,
+        notes: ''
+      });
+    }
+    renderCart();
+    // Visual feedback
+    document.querySelector(`[data-id="${item.menu_item_id}"]`)?.classList.add('added');
+    setTimeout(() => document.querySelector(`[data-id="${item.menu_item_id}"]`)?.classList.remove('added'), 300);
   }
-  renderCart();
-  // Visual feedback
-  document.querySelector(`[data-id="${item.menu_item_id}"]`)?.classList.add('added');
-  setTimeout(() => document.querySelector(`[data-id="${item.menu_item_id}"]`)?.classList.remove('added'), 300);
-}
 
-// ── Variant Modal ──────────────────────────────────────────
-function openVariantModal(item) {
-  document.getElementById('variantModalTitle').textContent = item.name;
-  let html = '';
+  // ── Variant Modal ──────────────────────────────────────────
+  function openVariantModal(item) {
+    document.getElementById('variantModalTitle').textContent = item.name;
+    let html = '';
 
-  if (item.variants.length > 0) {
-    html += `<div class="form-group">
+    if (item.variants.length > 0) {
+      html += `<div class="form-group">
       <label class="form-label">Size / Variant <span class="req">*</span></label>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:.5rem">`;
-    item.variants.forEach(v => {
-      html += `<label style="border:1.5px solid var(--border);border-radius:8px;padding:.5rem;cursor:pointer;text-align:center;transition:all .2s" 
+      item.variants.forEach(v => {
+        html += `<label style="border:1.5px solid var(--border);border-radius:8px;padding:.5rem;cursor:pointer;text-align:center;transition:all .2s" 
                 class="variant-opt" data-vid="${v.id}" data-vprice="${v.price}" data-vname="${v.name}">
         <input type="radio" name="variant" value="${v.id}" style="display:none">
         <div style="font-weight:700;font-size:.82rem">${v.name}</div>
         <div style="font-size:.8rem;color:var(--primary);font-weight:800">${CURRENCY}${parseFloat(v.price).toFixed(2)}</div>
       </label>`;
-    });
-    html += `</div></div>`;
-  }
+      });
+      html += `</div></div>`;
+    }
 
-  if (item.addons.length > 0) {
-    item.addons.forEach(group => {
-      html += `<div class="form-group">
+    if (item.addons.length > 0) {
+      item.addons.forEach(group => {
+        html += `<div class="form-group">
         <label class="form-label">${group.name} ${group.is_required ? '<span class="req">*</span>' : ''}</label>
         <div style="display:grid;gap:.4rem">`;
-      group.addons.forEach(addon => {
-        const inputType = group.selection_type === 'single' ? 'radio' : 'checkbox';
-        html += `<label style="display:flex;align-items:center;gap:.5rem;padding:.4rem;border:1px solid var(--border);border-radius:6px;cursor:pointer">
+        group.addons.forEach(addon => {
+          const inputType = group.selection_type === 'single' ? 'radio' : 'checkbox';
+          html += `<label style="display:flex;align-items:center;gap:.5rem;padding:.4rem;border:1px solid var(--border);border-radius:6px;cursor:pointer">
           <input type="${inputType}" name="addon_${group.id}" value="${addon.id}" data-aname="${addon.name}" data-aprice="${addon.price}">
           <span style="flex:1;font-size:.85rem">${addon.name}</span>
           ${addon.price > 0 ? `<span style="font-size:.82rem;color:var(--primary);font-weight:700">+${CURRENCY}${parseFloat(addon.price).toFixed(2)}</span>` : ''}
         </label>`;
+        });
+        html += `</div></div>`;
       });
-      html += `</div></div>`;
-    });
-  }
+    }
 
-  html += `<div class="form-group">
+    html += `<div class="form-group">
     <label class="form-label">Special Instructions</label>
     <input type="text" class="form-control" id="itemNotes" placeholder="e.g. No onion, extra spicy">
   </div>`;
 
-  document.getElementById('variantModalBody').innerHTML = html;
-  
-  // Handle variant selection styling
-  document.querySelectorAll('.variant-opt').forEach(opt => {
-    opt.addEventListener('click', () => {
-      document.querySelectorAll('.variant-opt').forEach(o => o.style.borderColor = 'var(--border)');
-      opt.style.borderColor = 'var(--primary)';
-      opt.style.background = 'var(--primary-light)';
-      opt.querySelector('input').checked = true;
+    document.getElementById('variantModalBody').innerHTML = html;
+
+    // Handle variant selection styling
+    document.querySelectorAll('.variant-opt').forEach(opt => {
+      opt.addEventListener('click', () => {
+        document.querySelectorAll('.variant-opt').forEach(o => o.style.borderColor = 'var(--border)');
+        opt.style.borderColor = 'var(--primary)';
+        opt.style.background = 'var(--primary-light)';
+        opt.querySelector('input').checked = true;
+      });
     });
-  });
 
-  openModal('variantModal');
-}
-
-function confirmVariant() {
-  if (!pendingItem) return;
-  const item = pendingItem;
-
-  let variantId = null, variantName = null, price = item.price;
-  if (item.variants.length > 0) {
-    const sel = document.querySelector('input[name="variant"]:checked');
-    if (!sel) { alert('Please select a variant'); return; }
-    variantId   = sel.value;
-    const opt   = sel.closest('.variant-opt');
-    variantName = opt.dataset.vname;
-    price       = parseFloat(opt.dataset.vprice);
+    openModal('variantModal');
   }
 
-  const selectedAddons = [];
-  document.querySelectorAll('[name^="addon_"]:checked').forEach(inp => {
-    selectedAddons.push({ id: inp.value, name: inp.dataset.aname, price: parseFloat(inp.dataset.aprice) });
-  });
+  function confirmVariant() {
+    if (!pendingItem) return;
+    const item = pendingItem;
 
-  const notes = document.getElementById('itemNotes')?.value || '';
-  pushToCart({ ...item, variant_id: variantId, variant_name: variantName, price, selectedAddons, qty: 1, notes });
-  closeModal('variantModal');
-  pendingItem = null;
-}
+    let variantId = null,
+      variantName = null,
+      price = item.price;
+    if (item.variants.length > 0) {
+      const sel = document.querySelector('input[name="variant"]:checked');
+      if (!sel) {
+        alert('Please select a variant');
+        return;
+      }
+      variantId = sel.value;
+      const opt = sel.closest('.variant-opt');
+      variantName = opt.dataset.vname;
+      price = parseFloat(opt.dataset.vprice);
+    }
 
-// ── Render Cart ──────────────────────────────────────────────
-function renderCart() {
-  const list = document.getElementById('cartItems');
-  const empty = document.getElementById('cartEmpty');
-  const totals = document.getElementById('cartTotals');
+    const selectedAddons = [];
+    document.querySelectorAll('[name^="addon_"]:checked').forEach(inp => {
+      selectedAddons.push({
+        id: inp.value,
+        name: inp.dataset.aname,
+        price: parseFloat(inp.dataset.aprice)
+      });
+    });
 
-  if (cart.length === 0) {
-    empty.style.display = '';
-    totals.style.display = 'none';
-    document.getElementById('btnCheckout').disabled = true;
-    document.getElementById('btnKot').disabled = true;
-    document.getElementById('cartCount').textContent = '0 items';
-    document.getElementById('cartFloatCount').textContent = '0';
-    return;
+    const notes = document.getElementById('itemNotes')?.value || '';
+    pushToCart({
+      ...item,
+      variant_id: variantId,
+      variant_name: variantName,
+      price,
+      selectedAddons,
+      qty: 1,
+      notes
+    });
+    closeModal('variantModal');
+    pendingItem = null;
   }
 
-  empty.style.display = 'none';
-  totals.style.display = '';
-  document.getElementById('btnCheckout').disabled = false;
-  document.getElementById('btnKot').disabled = false;
+  // ── Render Cart ──────────────────────────────────────────────
+  function renderCart() {
+    const list = document.getElementById('cartItems');
+    const totals = document.getElementById('cartTotals');
 
-  let html = '';
-  cart.forEach((item, idx) => {
-    const addonTotal = item.selectedAddons.reduce((s,a) => s + a.price, 0);
-    const unitPrice = item.price + addonTotal;
-    const lineTotal = unitPrice * item.qty;
-    const itemType = item.type;
-    const dot = ['veg','vegan'].includes(itemType) ? 'veg' : 'nonveg';
+    if (cart.length === 0) {
+      list.innerHTML = `
+      <div class="empty-state" id="cartEmpty" style="padding:2rem 1rem">
+        <i class="fa fa-cart-shopping"></i>
+        <p>No items added yet.<br>Tap a menu item to add.</p>
+      </div>
+    `;
 
-    html += `<div class="cart-item">
+      if (totals) totals.style.display = 'none';
+      document.getElementById('btnCheckout').disabled = true;
+      document.getElementById('btnKot').disabled = true;
+      document.getElementById('cartCount').textContent = '0 items';
+      document.getElementById('cartFloatCount').textContent = '0';
+      return;
+    }
+
+    if (totals) totals.style.display = '';
+    document.getElementById('btnCheckout').disabled = false;
+    document.getElementById('btnKot').disabled = false;
+
+    let html = '';
+
+    cart.forEach((item, idx) => {
+      const addonTotal = item.selectedAddons.reduce((s, a) => s + a.price, 0);
+      const unitPrice = item.price + addonTotal;
+      const lineTotal = unitPrice * item.qty;
+      const dot = ['veg', 'vegan'].includes(item.type) ? 'veg' : 'nonveg';
+
+      html += `<div class="cart-item">
       <div>
         <div class="cart-item-name">
           <span class="veg-dot ${dot}" style="display:inline-flex;width:10px;height:10px;border-width:1.5px;margin-right:4px;vertical-align:middle"></span>
@@ -429,303 +471,413 @@ function renderCart() {
         </div>
       </div>
     </div>`;
-  });
+    });
 
-  list.innerHTML = html;
+    list.innerHTML = html;
 
-  const count = cart.reduce((s,i) => s + i.qty, 0);
-  document.getElementById('cartCount').textContent = count + ' item' + (count !== 1 ? 's' : '');
-  document.getElementById('cartFloatCount').textContent = count;
-  calculateTotals();
-}
+    const count = cart.reduce((s, i) => s + i.qty, 0);
+    document.getElementById('cartCount').textContent = count + ' item' + (count !== 1 ? 's' : '');
+    document.getElementById('cartFloatCount').textContent = count;
 
-function changeQty(idx, delta) {
-  cart[idx].qty = Math.max(0, cart[idx].qty + delta);
-  if (cart[idx].qty === 0) cart.splice(idx, 1);
-  renderCart();
-}
-function removeItem(idx) { cart.splice(idx, 1); renderCart(); }
-function clearCart() { if (confirm('Clear all items?')) { cart = []; discountData = {type:'',value:0,amount:0}; renderCart(); } }
+    calculateTotals();
+  }
 
-// ── Calculate Totals ─────────────────────────────────────────
-function calculateTotals() {
-  let subtotal = 0, taxTotal = 0;
+  function changeQty(idx, delta) {
+    cart[idx].qty = Math.max(0, cart[idx].qty + delta);
+    if (cart[idx].qty === 0) cart.splice(idx, 1);
+    renderCart();
+  }
 
-  cart.forEach(item => {
-    const addonTotal = item.selectedAddons.reduce((s,a) => s + a.price, 0);
-    const unitPrice  = item.price + addonTotal;
-    const lineTotal  = unitPrice * item.qty;
+  function removeItem(idx) {
+    cart.splice(idx, 1);
+    renderCart();
+  }
 
-    if (TAX_TYPE === 'exclusive') {
-      taxTotal += lineTotal * (item.tax / 100);
-    } else {
-      taxTotal += lineTotal - (lineTotal / (1 + item.tax / 100));
-    }
-    subtotal += lineTotal;
-  });
-
-  const serviceCharge = SERVICE_PCT > 0 ? (subtotal - discountData.amount) * SERVICE_PCT / 100 : 0;
-  const netBeforeRound = subtotal - discountData.amount + taxTotal + serviceCharge;
-  const roundOff = Math.round(netBeforeRound) - netBeforeRound;
-  const total = Math.round(netBeforeRound);
-
-  const sym = CURRENCY;
-  document.getElementById('tSubtotal').textContent = sym + subtotal.toFixed(2);
-  document.getElementById('tTax').textContent      = sym + taxTotal.toFixed(2);
-
-  const rowDiscount = document.getElementById('rowDiscount');
-  if (discountData.amount > 0) {
-    rowDiscount.style.display = '';
-    document.getElementById('tDiscount').textContent = '-' + sym + discountData.amount.toFixed(2);
-  } else { rowDiscount.style.display = 'none'; }
-
-  const rowService = document.getElementById('rowService');
-  if (serviceCharge > 0) {
-    rowService.style.display = '';
-    document.getElementById('tService').textContent = sym + serviceCharge.toFixed(2);
-  } else { rowService.style.display = 'none'; }
-
-  const rowRound = document.getElementById('rowRound');
-  if (Math.abs(roundOff) > 0.001) {
-    rowRound.style.display = '';
-    document.getElementById('tRoundOff').textContent = (roundOff > 0 ? '+' : '') + sym + roundOff.toFixed(2);
-  } else { rowRound.style.display = 'none'; }
-
-  document.getElementById('tTotal').textContent = sym + total.toFixed(2);
-  return total;
-}
-
-// ── Discount ─────────────────────────────────────────────────
-function applyDiscount() {
-  const type = document.getElementById('discountType').value;
-  const val  = parseFloat(document.getElementById('discountValue').value) || 0;
-  if (!type || val <= 0) { discountData = {type:'',value:0,amount:0}; renderCart(); return; }
-
-  const subtotal = cart.reduce((s,i) => s + (i.price + i.selectedAddons.reduce((sa,a)=>sa+a.price,0)) * i.qty, 0);
-  let amount = type === 'percent' ? subtotal * val / 100 : Math.min(val, subtotal);
-  discountData = { type, value: val, amount: parseFloat(amount.toFixed(2)) };
-  renderCart();
-}
-
-function applyCoupon() {
-  const code = prompt('Enter coupon code:');
-  if (!code) return;
-  fetch('<?= base_url('pos/order/apply-coupon') ?>', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': CSRF_TOKEN },
-    body: `coupon_code=${code}&subtotal=${getSubtotal()}`
-  }).then(r => r.json()).then(data => {
-    if (data.success) {
-      discountData = { type: 'coupon', value: data.discount, amount: data.discount };
-      renderCart();
-      showToast('Coupon applied: -' + CURRENCY + data.discount.toFixed(2), 'success');
-    } else {
-      showToast(data.message || 'Invalid coupon', 'error');
-    }
-  });
-}
-
-function getSubtotal() {
-  return cart.reduce((s,i) => s + (i.price + i.selectedAddons.reduce((sa,a)=>sa+a.price,0)) * i.qty, 0);
-}
-
-// ── Checkout ─────────────────────────────────────────────────
-function openCheckout() {
-  const total = calculateTotals();
-  document.getElementById('checkoutTotal').textContent = CURRENCY + total.toFixed(2);
-  document.getElementById('paymentAmount').value = total.toFixed(2);
-  openModal('checkoutModal');
-}
-
-function selectPayment(btn) {
-  document.querySelectorAll('.payment-method-btn').forEach(b => {
-    b.classList.remove('btn-primary');
-    b.classList.add('btn-outline');
-  });
-  btn.classList.remove('btn-outline');
-  btn.classList.add('btn-primary');
-  selectedPaymentMethod = btn.dataset.method;
-
-  const isCard = ['card','upi','online'].includes(selectedPaymentMethod);
-  document.getElementById('paymentRefGroup').style.display = isCard ? '' : 'none';
-  document.getElementById('quickCash').style.display = selectedPaymentMethod === 'cash' ? '' : 'none';
-}
-
-function setAmount(amt) { document.getElementById('paymentAmount').value = amt; updateChange(); }
-function setExactAmount() {
-  const total = calculateTotals();
-  document.getElementById('paymentAmount').value = total.toFixed(2);
-  updateChange();
-}
-
-function updateChange() {
-  const paid  = parseFloat(document.getElementById('paymentAmount').value) || 0;
-  const total = calculateTotals();
-  const change = paid - total;
-  const display = document.getElementById('changeDisplay');
-  if (change > 0 && selectedPaymentMethod === 'cash') {
-    display.style.display = '';
-    document.getElementById('changeAmount').textContent = CURRENCY + change.toFixed(2);
-  } else { display.style.display = 'none'; }
-}
-document.getElementById('paymentAmount')?.addEventListener('input', updateChange);
-
-function processPayment() {
-  const paid  = parseFloat(document.getElementById('paymentAmount').value) || 0;
-  const total = calculateTotals();
-  if (paid < total) { showToast('Amount is less than total!', 'error'); return; }
-
-  const btn = document.getElementById('btnPay');
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Processing...';
-
-  // First create order, then checkout
-  const payload = {
-    order_type:      ORDER_TYPE,
-    table_id:        TABLE_ID,
-    customer_id:     cartCustomer.id || '',
-    customer_name:   cartCustomer.name || '',
-    customer_phone:  cartCustomer.phone || '',
-    discount_type:   discountData.type || 'flat',
-    discount_value:  discountData.amount || 0,
-    items:           JSON.stringify(cart.map(i => ({
-      menu_item_id: i.menu_item_id,
-      variant_id:   i.variant_id,
-      variant_name: i.variant_name,
-      quantity:     i.qty,
-      notes:        i.notes,
-      addons:       i.selectedAddons
-    }))),
-    payments: JSON.stringify([{
-      method:    selectedPaymentMethod,
-      amount:    paid,
-      reference: document.getElementById('paymentRef')?.value || ''
-    }])
-  };
-
-  fetch('<?= base_url('pos/order/create') ?>', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': CSRF_TOKEN },
-    body: new URLSearchParams(payload)
-  }).then(r => r.json()).then(data => {
-    if (data.success) {
-      orderId = data.order_id;
-      // Now checkout
-      return fetch('<?= base_url('pos/order/checkout') ?>', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': CSRF_TOKEN },
-        body: `order_id=${orderId}&payments=${JSON.stringify([{method:selectedPaymentMethod,amount:paid,reference:document.getElementById('paymentRef')?.value||''}])}`
-      });
-    } else { throw new Error(data.message || 'Order creation failed'); }
-  }).then(r => r.json()).then(data => {
-    if (data.success) {
-      closeModal('checkoutModal');
-      showBillSuccess(data);
+  function clearCart() {
+    if (confirm('Clear all items?')) {
       cart = [];
-      discountData = {type:'',value:0,amount:0};
+      discountData = {
+        type: '',
+        value: 0,
+        amount: 0
+      };
       renderCart();
-    } else { throw new Error(data.message || 'Payment failed'); }
-  }).catch(err => {
-    showToast(err.message, 'error');
-  }).finally(() => {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fa fa-check"></i> Confirm Payment';
-  });
-}
+    }
+  }
 
-function showBillSuccess(data) {
-  const msg = document.createElement('div');
-  msg.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;';
-  msg.innerHTML = `<div style="background:#fff;border-radius:16px;padding:2rem;text-align:center;max-width:320px;width:90%">
+  // ── Calculate Totals ─────────────────────────────────────────
+  function calculateTotals() {
+    let subtotal = 0,
+      taxTotal = 0;
+
+    cart.forEach(item => {
+      const addonTotal = item.selectedAddons.reduce((s, a) => s + a.price, 0);
+      const unitPrice = item.price + addonTotal;
+      const lineTotal = unitPrice * item.qty;
+
+      if (TAX_TYPE === 'exclusive') {
+        taxTotal += lineTotal * (item.tax / 100);
+      } else {
+        taxTotal += lineTotal - (lineTotal / (1 + item.tax / 100));
+      }
+      subtotal += lineTotal;
+    });
+
+    const serviceCharge = SERVICE_PCT > 0 ? (subtotal - discountData.amount) * SERVICE_PCT / 100 : 0;
+    const netBeforeRound = subtotal - discountData.amount + taxTotal + serviceCharge;
+    const roundOff = Math.round(netBeforeRound) - netBeforeRound;
+    const total = Math.round(netBeforeRound);
+
+    const sym = CURRENCY;
+    document.getElementById('tSubtotal').textContent = sym + subtotal.toFixed(2);
+    document.getElementById('tTax').textContent = sym + taxTotal.toFixed(2);
+
+    const rowDiscount = document.getElementById('rowDiscount');
+    if (discountData.amount > 0) {
+      rowDiscount.style.display = '';
+      document.getElementById('tDiscount').textContent = '-' + sym + discountData.amount.toFixed(2);
+    } else {
+      rowDiscount.style.display = 'none';
+    }
+
+    const rowService = document.getElementById('rowService');
+    if (serviceCharge > 0) {
+      rowService.style.display = '';
+      document.getElementById('tService').textContent = sym + serviceCharge.toFixed(2);
+    } else {
+      rowService.style.display = 'none';
+    }
+
+    const rowRound = document.getElementById('rowRound');
+    if (Math.abs(roundOff) > 0.001) {
+      rowRound.style.display = '';
+      document.getElementById('tRoundOff').textContent = (roundOff > 0 ? '+' : '') + sym + roundOff.toFixed(2);
+    } else {
+      rowRound.style.display = 'none';
+    }
+
+    document.getElementById('tTotal').textContent = sym + total.toFixed(2);
+    return total;
+  }
+
+  // ── Discount ─────────────────────────────────────────────────
+  function applyDiscount() {
+    const type = document.getElementById('discountType').value;
+    const val = parseFloat(document.getElementById('discountValue').value) || 0;
+    if (!type || val <= 0) {
+      discountData = {
+        type: '',
+        value: 0,
+        amount: 0
+      };
+      renderCart();
+      return;
+    }
+
+    const subtotal = cart.reduce((s, i) => s + (i.price + i.selectedAddons.reduce((sa, a) => sa + a.price, 0)) * i.qty, 0);
+    let amount = type === 'percent' ? subtotal * val / 100 : Math.min(val, subtotal);
+    discountData = {
+      type,
+      value: val,
+      amount: parseFloat(amount.toFixed(2))
+    };
+    renderCart();
+  }
+
+  function applyCoupon() {
+    const code = prompt('Enter coupon code:');
+    if (!code) return;
+    fetch('<?= base_url('pos/order/apply-coupon') ?>', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRF-TOKEN': CSRF_TOKEN
+      },
+      body: `coupon_code=${code}&subtotal=${getSubtotal()}`
+    }).then(r => r.json()).then(data => {
+      if (data.success) {
+        discountData = {
+          type: 'coupon',
+          value: data.discount,
+          amount: data.discount
+        };
+        renderCart();
+        showToast('Coupon applied: -' + CURRENCY + data.discount.toFixed(2), 'success');
+      } else {
+        showToast(data.message || 'Invalid coupon', 'error');
+      }
+    });
+  }
+
+  function getSubtotal() {
+    return cart.reduce((s, i) => s + (i.price + i.selectedAddons.reduce((sa, a) => sa + a.price, 0)) * i.qty, 0);
+  }
+
+  // ── Checkout ─────────────────────────────────────────────────
+  function openCheckout() {
+    const total = calculateTotals();
+    document.getElementById('checkoutTotal').textContent = CURRENCY + total.toFixed(2);
+    document.getElementById('paymentAmount').value = total.toFixed(2);
+    openModal('checkoutModal');
+  }
+
+  function selectPayment(btn) {
+    document.querySelectorAll('.payment-method-btn').forEach(b => {
+      b.classList.remove('btn-primary');
+      b.classList.add('btn-outline');
+    });
+    btn.classList.remove('btn-outline');
+    btn.classList.add('btn-primary');
+    selectedPaymentMethod = btn.dataset.method;
+
+    const isCard = ['card', 'upi', 'online'].includes(selectedPaymentMethod);
+    document.getElementById('paymentRefGroup').style.display = isCard ? '' : 'none';
+    document.getElementById('quickCash').style.display = selectedPaymentMethod === 'cash' ? '' : 'none';
+  }
+
+  function setAmount(amt) {
+    document.getElementById('paymentAmount').value = amt;
+    updateChange();
+  }
+
+  function setExactAmount() {
+    const total = calculateTotals();
+    document.getElementById('paymentAmount').value = total.toFixed(2);
+    updateChange();
+  }
+
+  function updateChange() {
+    const paid = parseFloat(document.getElementById('paymentAmount').value) || 0;
+    const total = calculateTotals();
+    const change = paid - total;
+    const display = document.getElementById('changeDisplay');
+    if (change > 0 && selectedPaymentMethod === 'cash') {
+      display.style.display = '';
+      document.getElementById('changeAmount').textContent = CURRENCY + change.toFixed(2);
+    } else {
+      display.style.display = 'none';
+    }
+  }
+  document.getElementById('paymentAmount')?.addEventListener('input', updateChange);
+
+  function processPayment() {
+    const paid = parseFloat(document.getElementById('paymentAmount').value) || 0;
+    const total = calculateTotals();
+    if (paid < total) {
+      showToast('Amount is less than total!', 'error');
+      return;
+    }
+
+    const btn = document.getElementById('btnPay');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Processing...';
+
+    // First create order, then checkout
+    const payload = {
+      order_type: ORDER_TYPE,
+      table_id: TABLE_ID,
+      customer_id: cartCustomer.id || '',
+      customer_name: cartCustomer.name || '',
+      customer_phone: cartCustomer.phone || '',
+      discount_type: discountData.type || 'flat',
+      discount_value: discountData.amount || 0,
+      items: JSON.stringify(cart.map(i => ({
+        menu_item_id: i.menu_item_id,
+        variant_id: i.variant_id,
+        variant_name: i.variant_name,
+        quantity: i.qty,
+        notes: i.notes,
+        addons: i.selectedAddons
+      }))),
+      payments: JSON.stringify([{
+        method: selectedPaymentMethod,
+        amount: paid,
+        reference: document.getElementById('paymentRef')?.value || ''
+      }])
+    };
+
+    payload[CSRF_NAME] = CSRF_TOKEN;
+
+    fetch('<?= base_url('pos/order/create') ?>', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: new URLSearchParams(payload)
+    }).then(r => r.json()).then(data => {
+      if (data.success) {
+        orderId = data.order_id;
+        return fetch('<?= base_url('pos/order/checkout') ?>', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: new URLSearchParams({
+            [CSRF_NAME]: CSRF_TOKEN,
+            order_id: orderId,
+            payments: JSON.stringify([{
+              method: selectedPaymentMethod,
+              amount: paid,
+              reference: document.getElementById('paymentRef')?.value || ''
+            }])
+          })
+        });
+      } else {
+        throw new Error(data.message || 'Order creation failed');
+      }
+    }).then(r => r.json()).then(data => {
+      if (data.success) {
+        closeModal('checkoutModal');
+        showBillSuccess(data);
+        setTimeout(() => {
+          window.location.href = '<?= base_url('pos/order') ?>/' + orderId;
+        }, 2000);
+        cart = [];
+        discountData = {
+          type: '',
+          value: 0,
+          amount: 0
+        };
+        renderCart();
+      } else {
+        throw new Error(data.message || 'Payment failed');
+      }
+    }).catch(err => {
+      showToast(err.message, 'error');
+    }).finally(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa fa-check"></i> Confirm Payment';
+    });
+  }
+
+  function showBillSuccess(data) {
+    const msg = document.createElement('div');
+    msg.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;';
+    msg.innerHTML = `<div style="background:#fff;border-radius:16px;padding:2rem;text-align:center;max-width:320px;width:90%">
     <div style="font-size:3rem;margin-bottom:1rem">✅</div>
     <div style="font-size:1.25rem;font-weight:800;margin-bottom:.5rem">Payment Successful!</div>
     <div style="font-size:.9rem;color:var(--text-muted);margin-bottom:1rem">Bill #${data.invoice_number}</div>
     ${data.change > 0 ? `<div style="background:#F0FFF4;padding:.75rem;border-radius:8px;margin-bottom:1rem;font-weight:700;color:var(--success)">Change: ${CURRENCY}${data.change.toFixed(2)}</div>` : ''}
     <button onclick="this.closest('div[style]').remove()" style="background:var(--primary);color:#fff;border:none;padding:.75rem 2rem;border-radius:8px;font-weight:700;cursor:pointer;width:100%">New Order</button>
   </div>`;
-  document.body.appendChild(msg);
-}
-
-// ── KOT ──────────────────────────────────────────────────────
-function printKot() {
-  if (!orderId) {
-    showToast('Please create the order first', 'warning');
-    return;
+    document.body.appendChild(msg);
   }
-  fetch('<?= base_url('pos/order/print-kot') ?>', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': CSRF_TOKEN },
-    body: `order_id=${orderId}`
-  }).then(r=>r.json()).then(data => {
-    showToast(data.success ? 'KOT sent to kitchen!' : (data.error || 'Print failed'), data.success ? 'success' : 'error');
-  });
-}
 
-// ── Customer ─────────────────────────────────────────────────
-function openCustomerModal() { openModal('customerModal'); }
-function searchCustomer() {
-  const phone = document.getElementById('customerSearch').value;
-  if (!phone) return;
-  fetch('<?= base_url('admin/customers') ?>?phone=' + phone + '&ajax=1')
-    .then(r=>r.json()).then(data => {
-      const result = document.getElementById('customerResult');
-      if (data.found) {
-        result.style.display = '';
-        result.innerHTML = `<div style="padding:.75rem"><strong>${data.name}</strong><br><small>${data.phone}</small>
+  // ── KOT ──────────────────────────────────────────────────────
+  function printKot() {
+    if (!orderId) {
+      showToast('Please create the order first', 'warning');
+      return;
+    }
+    fetch('<?= base_url('pos/order/print-kot') ?>', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRF-TOKEN': CSRF_TOKEN
+      },
+      body: `order_id=${orderId}`
+    }).then(r => r.json()).then(data => {
+      showToast(data.success ? 'KOT sent to kitchen!' : (data.error || 'Print failed'), data.success ? 'success' : 'error');
+    });
+  }
+
+  // ── Customer ─────────────────────────────────────────────────
+  function openCustomerModal() {
+    openModal('customerModal');
+  }
+
+  function searchCustomer() {
+    const phone = document.getElementById('customerSearch').value;
+    if (!phone) return;
+    fetch('<?= base_url('admin/customers') ?>?phone=' + phone + '&ajax=1')
+      .then(r => r.json()).then(data => {
+        const result = document.getElementById('customerResult');
+        if (data.found) {
+          result.style.display = '';
+          result.innerHTML = `<div style="padding:.75rem"><strong>${data.name}</strong><br><small>${data.phone}</small>
           <button class="btn btn-sm btn-primary" style="float:right;margin-top:-.5rem" onclick="selectCustomer('${data.id}','${data.name}','${data.phone}')">Select</button></div>`;
-        document.getElementById('custName').value  = data.name;
-        document.getElementById('custPhone').value = data.phone;
-      } else { result.style.display = 'none'; showToast('Customer not found', 'warning'); }
-    });
-}
-function selectCustomer(id, name, phone) { cartCustomer = {id,name,phone}; closeModal('customerModal'); showToast('Customer: ' + name, 'success'); }
-function setCustomer() {
-  cartCustomer.name  = document.getElementById('custName').value;
-  cartCustomer.phone = document.getElementById('custPhone').value;
-  closeModal('customerModal');
-}
+          document.getElementById('custName').value = data.name;
+          document.getElementById('custPhone').value = data.phone;
+        } else {
+          result.style.display = 'none';
+          showToast('Customer not found', 'warning');
+        }
+      });
+  }
 
-// ── Menu Filter ──────────────────────────────────────────────
-document.getElementById('menuSearch').addEventListener('input', function() {
-  const q = this.value.toLowerCase();
-  document.querySelectorAll('.menu-item-card').forEach(card => {
-    const match = card.dataset.name.toLowerCase().includes(q);
-    card.style.display = match ? '' : 'none';
-  });
-});
+  function selectCustomer(id, name, phone) {
+    cartCustomer = {
+      id,
+      name,
+      phone
+    };
+    closeModal('customerModal');
+    showToast('Customer: ' + name, 'success');
+  }
 
-document.querySelectorAll('.cat-tab').forEach(btn => {
-  btn.addEventListener('click', function() {
-    document.querySelectorAll('.cat-tab').forEach(b => b.classList.remove('active'));
-    this.classList.add('active');
-    const cat = this.dataset.cat;
+  function setCustomer() {
+    cartCustomer.name = document.getElementById('custName').value;
+    cartCustomer.phone = document.getElementById('custPhone').value;
+    closeModal('customerModal');
+  }
+
+  // ── Menu Filter ──────────────────────────────────────────────
+  document.getElementById('menuSearch').addEventListener('input', function() {
+    const q = this.value.toLowerCase();
     document.querySelectorAll('.menu-item-card').forEach(card => {
-      card.style.display = (cat === 'all' || card.dataset.cat === cat) ? '' : 'none';
+      const match = card.dataset.name.toLowerCase().includes(q);
+      card.style.display = match ? '' : 'none';
     });
   });
-});
 
-// ── Mobile Cart Toggle ───────────────────────────────────────
-function toggleCart() { document.getElementById('posCart').classList.toggle('show'); }
+  document.querySelectorAll('.cat-tab').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.cat-tab').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      const cat = this.dataset.cat;
+      document.querySelectorAll('.menu-item-card').forEach(card => {
+        card.style.display = (cat === 'all' || card.dataset.cat === cat) ? '' : 'none';
+      });
+    });
+  });
 
-// ── Modal Helpers ────────────────────────────────────────────
-function openModal(id)  { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
-});
+  // ── Mobile Cart Toggle ───────────────────────────────────────
+  function toggleCart() {
+    document.getElementById('posCart').classList.toggle('show');
+  }
 
-// ── Toast ────────────────────────────────────────────────────
-function showToast(msg, type = 'info') {
-  const colors = { success:'var(--success)', error:'var(--danger)', warning:'var(--warning)', info:'var(--info)' };
-  const t = document.createElement('div');
-  t.style.cssText = `position:fixed;bottom:6rem;left:50%;transform:translateX(-50%);background:${colors[type]};color:#fff;
+  // ── Modal Helpers ────────────────────────────────────────────
+  function openModal(id) {
+    document.getElementById(id).classList.add('open');
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+  }
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) overlay.classList.remove('open');
+    });
+  });
+
+  // ── Toast ────────────────────────────────────────────────────
+  function showToast(msg, type = 'info') {
+    const colors = {
+      success: 'var(--success)',
+      error: 'var(--danger)',
+      warning: 'var(--warning)',
+      info: 'var(--info)'
+    };
+    const t = document.createElement('div');
+    t.style.cssText = `position:fixed;bottom:6rem;left:50%;transform:translateX(-50%);background:${colors[type]};color:#fff;
     padding:.6rem 1.25rem;border-radius:20px;font-size:.85rem;font-weight:600;z-index:9999;
     box-shadow:0 4px 12px rgba(0,0,0,.2);white-space:nowrap;animation:slideUp .2s ease;`;
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
-}
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+  }
 </script>
 
 <?php $this->endSection(); ?>

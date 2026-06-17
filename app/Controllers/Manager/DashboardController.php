@@ -64,13 +64,15 @@ class DashboardController extends BaseController
             ->get()->getResultArray();
 
         $topItems = $db->table('order_items oi')
-            ->select('oi.menu_item_id, ANY_VALUE(oi.name) as name, SUM(oi.quantity) as total_qty, SUM(oi.total_price) as total_revenue')
+            ->select('oi.menu_item_id, oi.name, SUM(oi.quantity) as total_qty, SUM(oi.total_price) as total_revenue')
             ->join('orders o', 'o.id = oi.order_id')
             ->where('o.restaurant_id', $restaurantId)
             ->where('DATE(o.created_at)', date('Y-m-d'))
-            ->groupBy('oi.menu_item_id')
-            ->orderBy('total_qty','DESC')
-            ->limit(6)->get()->getResultArray();
+            ->groupBy('oi.menu_item_id, oi.name')
+            ->orderBy('total_qty', 'DESC')
+            ->limit(6)
+            ->get()
+            ->getResultArray();
 
         $hourlyRevenue = $db->table('orders')
             ->select('HOUR(created_at) as hour, SUM(total_amount) as revenue')
