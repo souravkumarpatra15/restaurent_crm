@@ -264,7 +264,13 @@ $this->section('content'); ?>
       });
   }
 
-  function printKotAction() {
+  function openKotSlip() {
+  window.open('<?= base_url('pos/slip/kot/'.$order['id']) ?>','kot_slip','width=380,height=650,scrollbars=yes');
+}
+function openBillSlip() {
+  window.open('<?= base_url('pos/slip/bill/'.$order['id']) ?>','bill_slip','width=380,height=750,scrollbars=yes');
+}
+function printKotAction() {
     fetch('<?= base_url('pos/order/print-kot') ?>', {
         method: 'POST',
         headers: {

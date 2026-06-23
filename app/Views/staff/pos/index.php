@@ -1,212 +1,225 @@
 <?php $this->extend('layouts/pos_layout'); $this->section('content'); ?>
+<?php
+$totalTables = 0; $availCount = 0; $occuCount = 0;
+foreach ($tables as $area) {
+  foreach ($area['tables'] as $t) {
+    $totalTables++;
+    if ($t['status'] === 'available') $availCount++;
+    elseif ($t['status'] === 'occupied') $occuCount++;
+  }
+}
+?>
 
-<div style="display:flex;height:calc(100vh - 48px);overflow:hidden;background:var(--bg)">
+<div class="kitch-root" style="background:var(--bg)">
 
-  <!-- LEFT: Table Map + Quick Actions -->
-  <div style="flex:1;overflow-y:auto;padding:1rem">
-
-    <!-- Quick Action Buttons -->
-    <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
-      <a href="<?= base_url('pos/new-order/dine_in') ?>" class="btn btn-primary" style="flex:1;min-width:120px;justify-content:center">
-        <i class="fa fa-chair"></i> Dine-in
-      </a>
-      <a href="<?= base_url('pos/new-order/takeaway') ?>" class="btn btn-outline" style="flex:1;min-width:120px;justify-content:center;background:#fff">
-        <i class="fa fa-bag-shopping"></i> Takeaway
-      </a>
-      <a href="<?= base_url('pos/new-order/delivery') ?>" class="btn btn-outline" style="flex:1;min-width:120px;justify-content:center;background:#fff">
-        <i class="fa fa-motorcycle"></i> Delivery
-      </a>
+  <!-- Top Bar -->
+  <div class="posbar">
+    <a href="<?= base_url('admin/dashboard') ?>" class="posbar-back"><i class="fa fa-arrow-left"></i></a>
+    <div class="posbar-info">
+      <div class="posbar-title"><i class="fa fa-cash-register"></i> POS</div>
+      <div class="posbar-branch"><?= esc(session('restaurant_name') ?? 'RestOne') ?> · <?= esc($branch['name'] ?? 'Main Branch') ?></div>
     </div>
-
-    <!-- Stats Bar -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:1rem">
-      <div style="background:#fff;border-radius:10px;padding:.75rem;text-align:center;box-shadow:var(--shadow)">
-        <div style="font-weight:800;font-size:1.25rem;color:var(--primary)"><?= $openOrder ?? 0 ?></div>
-        <div style="font-size:.7rem;color:var(--text-muted)">Active Orders</div>
-      </div>
-      <div style="background:#fff;border-radius:10px;padding:.75rem;text-align:center;box-shadow:var(--shadow)">
-        <?php
-          $availCount = 0;
-          $occupiedCount = 0;
-          foreach ($tables as $area) {
-            foreach ($area['tables'] as $t) {
-              if ($t['status'] === 'available') $availCount++;
-              else $occupiedCount++;
-            }
-          }
-        ?>
-        <div style="font-weight:800;font-size:1.25rem;color:var(--success)"><?= $availCount ?></div>
-        <div style="font-size:.7rem;color:var(--text-muted)">Available</div>
-      </div>
-      <div style="background:#fff;border-radius:10px;padding:.75rem;text-align:center;box-shadow:var(--shadow)">
-        <div style="font-weight:800;font-size:1.25rem;color:var(--danger)"><?= $occupiedCount ?></div>
-        <div style="font-size:.7rem;color:var(--text-muted)">Occupied</div>
-      </div>
+    <div class="posbar-actions">
+      <div class="posbar-clock" id="idxClock"></div>
+      <a href="<?= base_url('pos/kitchen') ?>" class="posbar-btn" title="Kitchen Display"><i class="fa fa-fire-burner"></i></a>
+      <a href="<?= base_url('pos/shift/summary') ?>" class="posbar-btn" title="Shift"><i class="fa fa-clock"></i></a>
+      <a href="<?= base_url('logout') ?>" class="posbar-btn" title="Logout"><i class="fa fa-right-from-bracket"></i></a>
     </div>
-
-    <!-- Table Map -->
-    <?php if (empty($tables)): ?>
-      <div style="text-align:center;padding:3rem;color:var(--text-muted)">
-        <i class="fa fa-chair" style="font-size:3rem;opacity:.2;display:block;margin-bottom:1rem"></i>
-        <p>No tables set up yet.</p>
-        <a href="<?= base_url('admin/tables') ?>" class="btn btn-primary" style="margin-top:.75rem">Set Up Tables</a>
-      </div>
-    <?php else: ?>
-      <?php foreach ($tables as $area): ?>
-        <?php if (!empty($area['tables'])): ?>
-        <div style="margin-bottom:1.25rem">
-          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:.5rem">
-            <i class="fa fa-layer-group"></i> <?= esc($area['name']) ?>
-          </div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:.5rem">
-            <?php foreach ($area['tables'] as $t): ?>
-              <?php
-                $statusColor = match($t['status']) {
-                  'available' => ['border'=>'var(--success)','bg'=>'#F0FFF4','text'=>'var(--success)'],
-                  'occupied'  => ['border'=>'var(--danger)', 'bg'=>'#FFF5F5','text'=>'var(--danger)'],
-                  'reserved'  => ['border'=>'var(--warning)','bg'=>'#FFFBEB','text'=>'var(--warning)'],
-                  'cleaning'  => ['border'=>'var(--info)',   'bg'=>'#EBF8FF','text'=>'var(--info)'],
-                  default     => ['border'=>'var(--border)', 'bg'=>'#fff',   'text'=>'var(--text-muted)'],
-                };
-              ?>
-              <div onclick="tableClick('<?= $t['id'] ?>','<?= $t['status'] ?>','<?= esc($t['table_number']) ?>')"
-                   style="border:2px solid <?= $statusColor['border'] ?>;background:<?= $statusColor['bg'] ?>;border-radius:10px;padding:.6rem .4rem;text-align:center;cursor:pointer;transition:all .2s"
-                   onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                <div style="font-weight:800;font-size:1rem;color:var(--text)"><?= esc($t['table_number']) ?></div>
-                <div style="font-size:.65rem;color:var(--text-muted)"><i class="fa fa-users"></i> <?= $t['capacity'] ?></div>
-                <div style="font-size:.62rem;font-weight:700;color:<?= $statusColor['text'] ?>;text-transform:uppercase;margin-top:.15rem"><?= $t['status'] ?></div>
-              </div>
-            <?php endforeach; ?>
-          </div>
-        </div>
-        <?php endif; ?>
-      <?php endforeach; ?>
-    <?php endif; ?>
   </div>
 
-  <!-- RIGHT: Active Orders List -->
-  <div style="width:280px;flex-shrink:0;background:#fff;border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden" id="activeOrdersPanel">
-    <div style="padding:.875rem 1rem;border-bottom:1px solid var(--border);font-weight:700;font-size:.9rem;display:flex;align-items:center;justify-content:space-between">
-      <span><i class="fa fa-receipt" style="color:var(--primary)"></i> Active Orders</span>
-      <button onclick="loadActiveOrders()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:.8rem"><i class="fa fa-rotate"></i></button>
+  <!-- Quick Actions -->
+  <div class="pos-quick-bar">
+    <a href="<?= base_url('pos/new-order/dine_in') ?>" class="pos-quick-btn primary">
+      <i class="fa fa-chair"></i><span>Dine-in</span>
+    </a>
+    <a href="<?= base_url('pos/new-order/takeaway') ?>" class="pos-quick-btn">
+      <i class="fa fa-bag-shopping"></i><span>Takeaway</span>
+    </a>
+    <a href="<?= base_url('pos/new-order/delivery') ?>" class="pos-quick-btn">
+      <i class="fa fa-motorcycle"></i><span>Delivery</span>
+    </a>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="pos-stats-row">
+    <div class="pos-stat">
+      <div class="pos-stat-val" id="openOrdersStat"><?= $openOrder ?? 0 ?></div>
+      <div class="pos-stat-lbl">Active Orders</div>
     </div>
-    <div style="flex:1;overflow-y:auto" id="activeOrdersList">
-      <div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:.85rem">
-        <i class="fa fa-spinner fa-spin"></i> Loading...
+    <div class="pos-stat">
+      <div class="pos-stat-val" style="color:var(--success)"><?= $availCount ?></div>
+      <div class="pos-stat-lbl">Available</div>
+    </div>
+    <div class="pos-stat">
+      <div class="pos-stat-val" style="color:var(--danger)"><?= $occuCount ?></div>
+      <div class="pos-stat-lbl">Occupied</div>
+    </div>
+    <div class="pos-stat">
+      <div class="pos-stat-val"><?= $totalTables ?></div>
+      <div class="pos-stat-lbl">Tables</div>
+    </div>
+  </div>
+
+  <!-- Table Map -->
+  <div style="flex:1;overflow-y:auto;padding:.875rem">
+    <?php if (empty($tables)): ?>
+    <div style="text-align:center;padding:4rem 1rem;color:var(--text-m)">
+      <div style="font-size:3rem;margin-bottom:1rem">🪑</div>
+      <div style="font-weight:700;margin-bottom:.5rem">No Tables Set Up</div>
+      <a href="<?= base_url('admin/tables') ?>" style="color:var(--primary);font-weight:700">Set up tables →</a>
+    </div>
+    <?php else: ?>
+    <?php foreach ($tables as $area): if (empty($area['tables'])) continue; ?>
+    <div class="table-area-label"><?= esc($area['name']) ?></div>
+    <div class="table-grid">
+      <?php foreach ($area['tables'] as $t):
+        $cls = match($t['status']) { 'available'=>'avail','occupied'=>'occu','reserved'=>'resv','cleaning'=>'clean', default=>'' };
+        $statusLabel = match($t['status']) { 'available'=>'Available','occupied'=>'Occupied','reserved'=>'Reserved','cleaning'=>'Cleaning', default=>ucfirst($t['status']) };
+      ?>
+      <div class="ttile <?= $cls ?>" onclick="tableClick('<?= $t['id'] ?>','<?= $t['status'] ?>','<?= esc($t['table_number']) ?>')">
+        <div class="ttile-num"><?= esc($t['table_number']) ?></div>
+        <div class="ttile-cap"><i class="fa fa-users" style="font-size:.55rem"></i> <?= $t['capacity'] ?></div>
+        <div class="ttile-status"><?= $statusLabel ?></div>
       </div>
+      <?php endforeach; ?>
     </div>
+    <?php endforeach; ?>
+    <?php endif; ?>
   </div>
 </div>
 
-<!-- Table Action Modal -->
-<div class="modal-overlay" id="tableModal">
-  <div class="modal" style="max-width:320px">
-    <div class="modal-header">
-      <span class="modal-title" id="tableModalTitle">Table Action</span>
-      <button class="modal-close" onclick="closeModal('tableModal')"><i class="fa fa-times"></i></button>
-    </div>
-    <div class="modal-body" id="tableModalBody"></div>
+<!-- Active Orders Sheet (bottom) -->
+<div class="sheet-bg" id="bgOrders" onclick="closeBg('bgOrders','sOrders')"></div>
+<div class="sheet" id="sOrders">
+  <div class="sheet-pip"></div>
+  <div class="sheet-hdr">
+    <span class="sheet-title" id="sOrdersTitle">Table Orders</span>
+    <button class="sheet-x" onclick="closeSheet('sOrders','bgOrders')"><i class="fa fa-times"></i></button>
   </div>
+  <div class="sheet-body" id="sOrdersBody">
+    <div style="text-align:center;padding:2rem;color:var(--text-m)"><i class="fa fa-spinner fa-spin"></i> Loading...</div>
+  </div>
+  <div class="sheet-foot" id="sOrdersFoot"></div>
+</div>
+
+<!-- Table Action Sheet -->
+<div class="sheet-bg" id="bgTableAction" onclick="closeBg('bgTableAction','sTableAction')"></div>
+<div class="sheet" id="sTableAction">
+  <div class="sheet-pip"></div>
+  <div class="sheet-hdr">
+    <span class="sheet-title" id="sTableTitle">Table Action</span>
+    <button class="sheet-x" onclick="closeSheet('sTableAction','bgTableAction')"><i class="fa fa-times"></i></button>
+  </div>
+  <div class="sheet-body" id="sTableBody"></div>
 </div>
 
 <script>
-function tableClick(tableId, status, tableNum) {
-  const title = document.getElementById('tableModalTitle');
-  const body  = document.getElementById('tableModalBody');
-  title.textContent = 'Table ' + tableNum;
+const BASE = '<?= base_url() ?>';
+const CN   = '<?= csrf_token() ?>';
+const CT   = '<?= csrf_hash() ?>';
 
+// Clock
+setInterval(() => {
+  const el = document.getElementById('idxClock');
+  if (el) el.textContent = new Date().toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}, 1000);
+
+// Sheet helpers
+function openSheet(id)  { document.getElementById('bg'+id.slice(1))?.classList.add('on'); document.getElementById(id).classList.add('on'); document.body.style.overflow='hidden'; }
+function closeSheet(id,bgId) { document.getElementById(id)?.classList.remove('on'); document.getElementById(bgId||'')?.classList.remove('on'); document.body.style.overflow=''; }
+function closeBg(bgId,shId) { closeSheet(shId, bgId); }
+
+// Table click
+function tableClick(tableId, status, tableNum) {
   if (status === 'available') {
+    // Go directly to new order sheet
+    const body  = document.getElementById('sTableBody');
+    const title = document.getElementById('sTableTitle');
+    title.textContent = 'Table ' + tableNum + ' — New Order';
     body.innerHTML = `
-      <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:1rem">Table is available. What would you like to do?</p>
-      <div style="display:flex;flex-direction:column;gap:.5rem">
-        <a href="<?= base_url('pos/new-order/dine_in') ?>?table=" + tableId" class="btn btn-primary btn-block">
-          <i class="fa fa-utensils"></i> New Dine-in Order
+      <div style="display:flex;flex-direction:column;gap:.75rem">
+        <a href="${BASE}pos/new-order/dine_in?table=${tableId}" style="display:flex;align-items:center;gap:1rem;padding:1rem;border:2px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text);transition:border-color .15s" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="width:48px;height:48px;border-radius:var(--radius);background:var(--primary-l);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:1.25rem"><i class="fa fa-chair"></i></div>
+          <div><div style="font-weight:800;font-size:.95rem">New Dine-in Order</div><div style="font-size:.78rem;color:var(--text-m)">Table ${tableNum} · Start taking order</div></div>
+          <i class="fa fa-chevron-right" style="margin-left:auto;color:var(--text-l)"></i>
         </a>
-        <a href="<?= base_url('pos/new-order/dine_in') ?>?table="+tableId class="btn btn-primary btn-block">
-          <i class="fa fa-utensils"></i> New Dine-in Order
+        <a href="${BASE}pos/new-order/takeaway" style="display:flex;align-items:center;gap:1rem;padding:1rem;border:2px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text);transition:border-color .15s" onmouseover="this.style.borderColor='var(--info)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="width:48px;height:48px;border-radius:var(--radius);background:var(--info-l);color:var(--info);display:flex;align-items:center;justify-content:center;font-size:1.25rem"><i class="fa fa-bag-shopping"></i></div>
+          <div><div style="font-weight:800;font-size:.95rem">Takeaway Order</div><div style="font-size:.78rem;color:var(--text-m)">Customer carries out</div></div>
+          <i class="fa fa-chevron-right" style="margin-left:auto;color:var(--text-l)"></i>
+        </a>
+        <a href="${BASE}pos/new-order/delivery" style="display:flex;align-items:center;gap:1rem;padding:1rem;border:2px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text);transition:border-color .15s" onmouseover="this.style.borderColor='var(--success)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="width:48px;height:48px;border-radius:var(--radius);background:var(--success-l);color:var(--success);display:flex;align-items:center;justify-content:center;font-size:1.25rem"><i class="fa fa-motorcycle"></i></div>
+          <div><div style="font-weight:800;font-size:.95rem">Delivery Order</div><div style="font-size:.78rem;color:var(--text-m)">Deliver to customer address</div></div>
+          <i class="fa fa-chevron-right" style="margin-left:auto;color:var(--text-l)"></i>
         </a>
       </div>`;
-    // Fix the link properly
-    body.innerHTML = `
-      <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:1rem">Table ${tableNum} is available.</p>
-      <div style="display:flex;flex-direction:column;gap:.5rem">
-        <a href="<?= base_url('pos/new-order/dine_in') ?>?table=${tableId}" class="btn btn-primary btn-block">
-          <i class="fa fa-utensils"></i> New Dine-in Order
-        </a>
-        <button onclick="closeModal('tableModal')" class="btn btn-outline btn-block">Cancel</button>
-      </div>`;
+    openSheet('sTableAction');
   } else if (status === 'occupied') {
-    body.innerHTML = `<div style="text-align:center;padding:1rem"><i class="fa fa-spinner fa-spin"></i><p style="margin-top:.5rem;font-size:.85rem">Loading orders...</p></div>`;
-    fetch('<?= base_url('pos/table-orders/') ?>' + tableId)
+    // Load orders for this table
+    const title = document.getElementById('sOrdersTitle');
+    const body  = document.getElementById('sOrdersBody');
+    const foot  = document.getElementById('sOrdersFoot');
+    title.textContent = 'Table ' + tableNum + ' — Active Orders';
+    body.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--text-m)"><i class="fa fa-spinner fa-spin"></i> Loading orders...</div>`;
+    foot.innerHTML  = '';
+    openSheet('sOrders');
+
+    fetch(BASE + 'pos/table-orders/' + tableId)
       .then(r => r.json()).then(orders => {
-        if (orders.length === 0) {
-          body.innerHTML = `<p style="color:var(--text-muted);font-size:.85rem">No active orders found.</p>`;
+        if (!orders.length) {
+          body.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--text-m)">No active orders found.</div>`;
+          foot.innerHTML = `<a href="${BASE}pos/new-order/dine_in?table=${tableId}" style="flex:1;padding:.75rem;background:var(--primary);color:#fff;border:none;border-radius:var(--radius-sm);font-weight:800;text-align:center;text-decoration:none;font-size:.9rem"><i class="fa fa-plus"></i> New Order</a>`;
           return;
         }
-        let html = `<p style="font-size:.8rem;color:var(--text-muted);margin-bottom:.75rem">Active orders on this table:</p>`;
-        orders.forEach(o => {
-          html += `<div style="border:1px solid var(--border);border-radius:8px;padding:.75rem;margin-bottom:.5rem">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <div>
-                <div style="font-weight:700;font-size:.875rem">${o.order_number}</div>
-                <div style="font-size:.72rem;color:var(--text-muted)">${o.items_count} items · ₹${parseFloat(o.total_amount).toFixed(2)}</div>
-              </div>
-              <a href="<?= base_url('pos/order/') ?>${o.id}" class="btn btn-sm btn-primary">Open</a>
+        const statusClr = {pending:'var(--warning)',confirmed:'var(--info)',preparing:'var(--info)',ready:'var(--success)',served:'var(--success)'};
+        body.innerHTML = orders.map(o => `
+          <div class="active-order-item">
+            <div style="flex:1">
+              <div class="aoi-num">${o.order_number}</div>
+              <div class="aoi-sub">${o.items_count} items · ${o.time_ago}</div>
             </div>
-          </div>`;
-        });
-        html += `<a href="<?= base_url('pos/new-order/dine_in') ?>?table=${tableId}" class="btn btn-outline btn-block" style="margin-top:.5rem"><i class="fa fa-plus"></i> Add New Order</a>`;
-        body.innerHTML = html;
-      }).catch(() => {
-        body.innerHTML = `
-          <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:1rem">Table ${tableNum} is occupied.</p>
-          <a href="<?= base_url('pos/new-order/dine_in') ?>?table=${tableId}" class="btn btn-primary btn-block">
-            <i class="fa fa-plus"></i> New Order on This Table
+            <span class="aoi-status" style="background:${statusClr[o.status]||'var(--text-l)'}22;color:${statusClr[o.status]||'var(--text-m)'}">
+              ${o.status.charAt(0).toUpperCase()+o.status.slice(1)}
+            </span>
+            <div style="text-align:right;margin:0 .5rem">
+              <div class="aoi-amt">₹${parseFloat(o.total_amount).toFixed(2)}</div>
+            </div>
+            <a href="${BASE}pos/order/${o.id}" class="aoi-open">Open</a>
+          </div>`).join('');
+        foot.innerHTML = `
+          <a href="${BASE}pos/new-order/dine_in?table=${tableId}" style="flex:1;padding:.75rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-weight:700;text-align:center;text-decoration:none;color:var(--text-2);font-size:.875rem;background:#fff">
+            <i class="fa fa-plus"></i> Add Order
           </a>`;
+      }).catch(() => {
+        body.innerHTML = `<div style="color:var(--danger);text-align:center;padding:1.5rem">Could not load orders</div>`;
       });
   } else {
+    // Reserved / Cleaning
+    const body  = document.getElementById('sTableBody');
+    const title = document.getElementById('sTableTitle');
+    title.textContent = 'Table ' + tableNum + ' · ' + status.charAt(0).toUpperCase() + status.slice(1);
     body.innerHTML = `
-      <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:1rem">Table ${tableNum} is ${status}.</p>
-      <a href="<?= base_url('pos/new-order/dine_in') ?>?table=${tableId}" class="btn btn-primary btn-block">
-        <i class="fa fa-utensils"></i> Start Order Anyway
-      </a>`;
+      <div style="text-align:center;padding:1.5rem 0">
+        <div style="font-size:3rem;margin-bottom:.75rem">${status==='reserved'?'📅':'🧹'}</div>
+        <div style="font-weight:700;font-size:1rem;margin-bottom:.5rem">Table is ${status}</div>
+        <div style="font-size:.85rem;color:var(--text-m);margin-bottom:1.5rem">You can still create an order if needed.</div>
+        <a href="${BASE}pos/new-order/dine_in?table=${tableId}" style="display:inline-flex;align-items:center;gap:.5rem;padding:.75rem 1.5rem;background:var(--primary);color:#fff;border-radius:var(--radius-sm);font-weight:800;text-decoration:none">
+          <i class="fa fa-utensils"></i> Start Order Anyway
+        </a>
+      </div>`;
+    openSheet('sTableAction');
   }
-
-  openModal('tableModal');
 }
 
-function loadActiveOrders() {
-  const list = document.getElementById('activeOrdersList');
-  fetch('<?= base_url('pos/active-orders') ?>')
-    .then(r => r.json())
-    .then(orders => {
-      if (!orders.length) {
-        list.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:.85rem"><i class="fa fa-check-circle" style="font-size:2rem;opacity:.3;display:block;margin-bottom:.75rem"></i>No active orders</div>';
-        return;
-      }
-      const statusColors = {pending:'var(--warning)',confirmed:'var(--info)',preparing:'var(--info)',ready:'var(--success)',served:'var(--success)'};
-      list.innerHTML = orders.map(o => `
-        <a href="<?= base_url('pos/order/') ?>${o.id}" style="display:block;padding:.75rem 1rem;border-bottom:1px solid var(--border);text-decoration:none;color:inherit;transition:background .15s" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start">
-            <div>
-              <div style="font-weight:700;font-size:.82rem">${o.order_number}</div>
-              <div style="font-size:.7rem;color:var(--text-muted)">${o.order_type.replace('_',' ')} ${o.table_number ? '· T'+o.table_number : ''}</div>
-              <div style="font-size:.7rem;color:var(--text-muted)">${o.time_ago}</div>
-            </div>
-            <div style="text-align:right">
-              <div style="font-size:.7rem;font-weight:700;color:${statusColors[o.status]||'var(--text-muted)'};text-transform:uppercase">${o.status}</div>
-              <div style="font-weight:700;font-size:.85rem;color:var(--primary)">₹${parseFloat(o.total_amount).toFixed(2)}</div>
-            </div>
-          </div>
-        </a>`).join('');
-    })
-    .catch(() => {
-      list.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-muted);font-size:.8rem">Could not load orders</div>';
-    });
-}
-
-// Load on page open + refresh every 30s
-loadActiveOrders();
-setInterval(loadActiveOrders, 30000);
+// Auto refresh active orders count every 30s
+setInterval(() => {
+  fetch(BASE + 'pos/active-orders')
+    .then(r => r.json()).then(orders => {
+      const el = document.getElementById('openOrdersStat');
+      if (el) el.textContent = orders.length;
+    }).catch(() => {});
+}, 30000);
 </script>
+
 <?php $this->endSection(); ?>

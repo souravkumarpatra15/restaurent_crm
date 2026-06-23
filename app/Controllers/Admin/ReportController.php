@@ -1,10 +1,15 @@
 <?php
+
 namespace App\Controllers\Admin;
+
 use App\Controllers\BaseController;
 
 class ReportController extends BaseController
 {
-    public function index()   { return $this->revenue(); }
+    public function index()
+    {
+        return $this->revenue();
+    }
     public function revenue()
     {
         $db = \Config\Database::connect();
@@ -13,15 +18,15 @@ class ReportController extends BaseController
 
         $payments = $db->table('subscription_payments')
             ->select('SUM(amount) as total, COUNT(*) as count, billing_cycle')
-            ->where('status','paid')
+            ->where('status', 'paid')
             ->where('DATE(paid_at) >=', $from)
             ->where('DATE(paid_at) <=', $to)
             ->groupBy('billing_cycle')
             ->get()->getResultArray();
 
-        $totalRevenue = array_sum(array_column($payments,'total'));
+        $totalRevenue = array_sum(array_column($payments, 'total'));
         $restaurants  = $db->table('restaurants')->countAllResults();
-        $active       = $db->table('restaurants')->where('subscription_status','active')->countAllResults();
+        $active       = $db->table('restaurants')->where('subscription_status', 'active')->countAllResults();
 
         return view('admin/reports/revenue', [
             'pageTitle'    => 'Revenue Report',
@@ -35,5 +40,8 @@ class ReportController extends BaseController
             'userRole'     => session('role_slug'),
         ]);
     }
-    public function subscriptions() { return $this->revenue(); }
+    public function subscriptions()
+    {
+        return $this->revenue();
+    }
 }

@@ -286,7 +286,9 @@ class PosController extends BaseController
             'success'        => true,
             'invoice_number' => $invoiceNumber,
             'change'         => max(0, $totalPaid - $order['total_amount']),
-            'print_url'      => base_url('pos/order/' . $orderId . '/print'),
+            'bill_slip_url'  => base_url('pos/slip/bill/' . $orderId),
+            'kot_slip_url'   => base_url('pos/slip/kot/'  . $orderId),
+            'print_url'      => base_url('pos/slip/bill/' . $orderId),
         ]);
     }
 
@@ -461,5 +463,59 @@ class PosController extends BaseController
             ? min($subtotal * $coupon['discount_value'] / 100, $coupon['max_discount_amount'] ?: PHP_INT_MAX)
             : $coupon['discount_value'];
         return $this->response->setJSON(['success'=>true,'discount'=>round($discount,2)]);
+    }
+
+    // ── Web-based KOT Slip (fallback when no thermal printer) ──
+    public function kotSlip($orderId)
+    {
+        $order      = $this->orderModel->getOrderWithDetails($orderId);
+        if (!$order) return redirect()->to(base_url('pos'));
+
+        // Get latest KOT number for this order
+        $db  = \Config\Database::connect();
+        $kot = $db->table('kots')
+            ->where('order_id', $orderId)
+            ->orderBy('created_at','DESC')
+            ->get()->getRowArray();
+
+        $kotNumber  = $kot['kot_number'] ?? ('KOT-' . str_pad($orderId, 4, '0', STR_PAD_LEFT));
+        $restaurant = $db->table('restaurants')
+            ->where('id', $this->session->get('restaurant_id'))
+            ->get()->getRowArray();
+        $branch = $db->table('branches')
+            ->where('id', $this->session->get('branch_id'))
+            ->get()->getRowArray();
+
+        return view('staff/pos/kot_slip', [
+            'order'      => $order,
+            'kotNumber'  => $kotNumber,
+            'restaurant' => $restaurant ?? [],
+            'branch'     => $branch ?? [],
+        ]);
+    }
+
+    // ── Web-based Bill Slip (fallback when no thermal printer) ──
+    public function billSlip($orderId)
+    {
+        $db         = \Config\Database::connect();
+        $order      = $this->orderModel->getOrderWithDetails($orderId);
+        if (!$order) return redirect()->to(base_url('pos'));
+
+        $invoice    = $db->table('invoices')
+            ->where('order_id', $orderId)
+            ->get()->getRowArray();
+        $restaurant = $db->table('restaurants')
+            ->where('id', $this->session->get('restaurant_id'))
+            ->get()->getRowArray();
+        $branch     = $db->table('branches')
+            ->where('id', $this->session->get('branch_id'))
+            ->get()->getRowArray();
+
+        return view('staff/pos/bill_slip', [
+            'order'      => $order,
+            'invoice'    => $invoice,
+            'restaurant' => $restaurant ?? [],
+            'branch'     => $branch ?? [],
+        ]);
     }
 }
