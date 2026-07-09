@@ -415,16 +415,31 @@ function openCategoryModal(data = null) {
 function editCategory(data) { openCategoryModal(data); }
 
 function saveCategory() {
-  const id   = document.getElementById('catId').value;
-  const url  = id ? '<?= base_url('admin/menu/categories/update/') ?>' + id : '<?= base_url('admin/menu/categories/store') ?>';
-  const btn  = document.getElementById('saveCatBtn');
+  const id  = document.getElementById('catId').value;
+  const url = id
+    ? '<?= base_url('admin/menu/categories/update/') ?>' + id
+    : '<?= base_url('admin/menu/categories/store') ?>';
+  const btn = document.getElementById('saveCatBtn');
   btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
-  const form = document.getElementById('categoryForm');
-  fetch(url, { method:'POST', body: new FormData(form) })
-    .then(r=>r.json()).then(d=>{
-      if(d.success){closeModal('categoryModal');showToast(id?'Updated':'Created','success');setTimeout(()=>location.reload(),600);}
-      else showToast(d.message||'Failed','error');
-    }).finally(()=>{btn.disabled=false;btn.innerHTML='<i class="fa fa-save"></i> Save Category';});
+  // URLSearchParams + explicit CSRF token prevents CI4 303 CSRF redirect on AJAX
+  const params = new URLSearchParams({
+    [CSRF_NAME]: CSRF,
+    name:        document.getElementById('catName').value,
+    description: document.getElementById('catDesc').value || '',
+    sort_order:  document.getElementById('catSort').value,
+    is_active:   document.getElementById('catStatus').value,
+  });
+  if (id) params.append('id', id);
+  fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'},
+    body: params
+  }).then(r => { if (!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+  .then(d => {
+    if (d.success) { closeModal('categoryModal'); showToast(id?'Category updated':'Category created','success'); setTimeout(()=>location.reload(),600); }
+    else showToast(d.message||'Failed to save','error');
+  }).catch(e => showToast('Error: '+e.message,'error'))
+  .finally(() => { btn.disabled=false; btn.innerHTML='<i class="fa fa-save"></i> Save Category'; });
 }
 
 function toggleCategory(id, active) {
@@ -447,12 +462,20 @@ function deleteCategory(id, name) {
 // Addon Group
 function openAddonGroupModal() { openModal('addonGroupModal'); }
 function saveAddonGroup() {
+  const params = new URLSearchParams({
+    [CSRF_NAME]: CSRF,
+    name:           document.getElementById('agName').value,
+    selection_type: document.getElementById('agType').value,
+    is_required:    document.getElementById('agRequired').value,
+  });
   fetch('<?= base_url('admin/menu/addon-groups/store') ?>', {
-    method:'POST', body: new FormData(document.getElementById('addonGroupForm'))
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'},
+    body: params
   }).then(r=>r.json()).then(d=>{
     if(d.success){closeModal('addonGroupModal');showToast('Addon group added','success');setTimeout(()=>location.reload(),600);}
     else showToast('Failed','error');
-  });
+  }).catch(e=>showToast('Error: '+e.message,'error'));
 }
 
 function deleteAddonGroup(id) {

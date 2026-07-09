@@ -10,7 +10,8 @@ class KitchenController extends BaseController
         $bid = session('branch_id');
 
         $kots = $db->table('kots k')
-            ->select('k.*')
+            ->select('k.*, o.payment_status, o.order_number, o.order_type, o.total_amount, o.customer_name')
+            ->join('orders o','o.id=k.order_id','left')
             ->where('k.branch_id', $bid)
             ->whereIn('k.status', ['pending','in_progress'])
             ->orderBy('k.created_at','ASC')

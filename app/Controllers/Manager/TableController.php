@@ -23,6 +23,10 @@ class TableController extends BaseController
 
     public function store()
     {
+        $bid   = session('branch_id');
+        $count = $this->model->where('branch_id',$bid)->countAllResults();
+        $check = $this->checkPlanLimit('tables',$count);
+        if (!$check['allowed']) return $this->response->setJSON(['success'=>false,'message'=>$check['message']]);
         $this->model->insert([
             'branch_id'    => session('branch_id'),
             'area_id'      => $this->request->getPost('area_id') ?: null,

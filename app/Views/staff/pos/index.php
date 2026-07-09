@@ -173,20 +173,27 @@ function tableClick(tableId, status, tableNum) {
           return;
         }
         const statusClr = {pending:'var(--warning)',confirmed:'var(--info)',preparing:'var(--info)',ready:'var(--success)',served:'var(--success)'};
-        body.innerHTML = orders.map(o => `
-          <div class="active-order-item">
-            <div style="flex:1">
-              <div class="aoi-num">${o.order_number}</div>
+        body.innerHTML = orders.map(o => {
+          const isPaid = o.payment_status === 'paid';
+          const payBadge = isPaid
+            ? `<span style="background:#dcfce7;color:#15803d;font-size:.6rem;font-weight:800;padding:.12rem .4rem;border-radius:20px;vertical-align:middle;margin-left:.3rem">✓ PAID</span>`
+            : (parseInt(o.kot_count||0) > 0
+              ? `<span style="background:#fff7ed;color:#c2410c;font-size:.6rem;font-weight:800;padding:.12rem .4rem;border-radius:20px;vertical-align:middle;margin-left:.3rem">KOT#${o.kot_count} · UNPAID</span>`
+              : `<span style="background:#fef9c3;color:#854d0e;font-size:.6rem;font-weight:800;padding:.12rem .4rem;border-radius:20px;vertical-align:middle;margin-left:.3rem">UNPAID</span>`);
+          return `<div class="active-order-item" style="border-left:3px solid ${isPaid?'var(--success)':'var(--warning)'}">
+            <div style="flex:1;min-width:0">
+              <div class="aoi-num">${o.order_number}${payBadge}</div>
               <div class="aoi-sub">${o.items_count} items · ${o.time_ago}</div>
             </div>
             <span class="aoi-status" style="background:${statusClr[o.status]||'var(--text-l)'}22;color:${statusClr[o.status]||'var(--text-m)'}">
               ${o.status.charAt(0).toUpperCase()+o.status.slice(1)}
             </span>
-            <div style="text-align:right;margin:0 .5rem">
+            <div style="text-align:right;margin:0 .5rem;flex-shrink:0">
               <div class="aoi-amt">₹${parseFloat(o.total_amount).toFixed(2)}</div>
             </div>
             <a href="${BASE}pos/order/${o.id}" class="aoi-open">Open</a>
-          </div>`).join('');
+          </div>`;
+        }).join('');
         foot.innerHTML = `
           <a href="${BASE}pos/new-order/dine_in?table=${tableId}" style="flex:1;padding:.75rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-weight:700;text-align:center;text-decoration:none;color:var(--text-2);font-size:.875rem;background:#fff">
             <i class="fa fa-plus"></i> Add Order

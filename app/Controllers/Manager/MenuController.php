@@ -37,7 +37,10 @@ class MenuController extends BaseController
 
     public function storeItem()
     {
-        $rid = session('restaurant_id');
+        $rid   = session('restaurant_id');
+        $count = $this->menuModel->where('restaurant_id',$rid)->countAllResults();
+        $check = $this->checkPlanLimit('menu_items',$count);
+        if (!$check['allowed']) return redirect()->back()->with('error',$check['message']);
         $data = [
             'restaurant_id' => $rid,
             'category_id'   => $this->request->getPost('category_id'),

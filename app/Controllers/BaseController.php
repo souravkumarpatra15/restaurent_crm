@@ -42,4 +42,51 @@ abstract class BaseController extends Controller
         // Preload any models, libraries, etc, here.
         // $this->session = service('session');
     }
+
+    protected function checkPlanLimit(string $feature, int $currentCount): array
+    {
+        $db  = \Config\Database::connect();
+        $rid = session('restaurant_id');
+        if (!$rid) return ['allowed' => true];
+
+        $restaurant = $db->table('restaurants r')
+            ->select('r.subscription_status, r.plan_id, p.max_branches, p.max_users, p.max_menu_items, p.max_tables')
+            ->join('saas_plans p', 'p.id = r.plan_id', 'left')
+            ->where('r.id', $rid)
+            ->get()->getRowArray();
+
+        if (!$restaurant) return ['allowed' => true];
+
+        if (in_array($restaurant['subscription_status'] ?? '', ['suspended','cancelled','expired'])) {
+            return ['allowed'=>false,'message'=>'Your subscription is '.$restaurant['subscription_status'].'. Please renew to continue.'];
+        }
+
+        $limits = [
+            'branches'   => (int)($restaurant['max_branches']   ?? 999),
+            'users'      => (int)($restaurant['max_users']      ?? 999),
+            'menu_items' => (int)($restaurant['max_menu_items'] ?? 999),
+            'tables'     => (int)($restaurant['max_tables']     ?? 999),
+        ];
+
+        if (!isset($limits[$feature])) return ['allowed' => true];
+
+        if ($currentCount >= $limits[$feature]) {
+            $label = str_replace('_',' ',$feature);
+            return ['allowed'=>false,'message'=>"Your plan allows max {$limits[$feature]} {$label}. Upgrade your plan to add more."];
+        }
+        return ['allowed' => true];
+    }
+
+    protected function getPlanFeature(string $feature): bool
+    {
+        $db  = \Config\Database::connect();
+        $rid = session('restaurant_id');
+        if (!$rid) return true;
+        $plan = $db->table('restaurants r')
+            ->select('p.'.$feature)
+            ->join('saas_plans p','p.id=r.plan_id','left')
+            ->where('r.id',$rid)->get()->getRowArray();
+        return !$plan || (bool)($plan[$feature] ?? false);
+    }
+
 }

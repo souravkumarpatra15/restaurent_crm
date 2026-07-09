@@ -127,8 +127,29 @@ class RestaurantController extends BaseController
             'updated_at'        => date('Y-m-d H:i:s'),
         ]);
 
-        return redirect()->to(base_url('super/restaurants'))
-            ->with('success', "Restaurant '{$name}' created. Admin login: {$this->request->getPost('email')} / {$adminPass}");
+        // Record initial payment if status is 'active' at creation
+        if ($this->request->getPost('subscription_status') === 'active') {
+            $plan = $db->table('saas_plans')->where('id',$this->request->getPost('plan_id'))->get()->getRowArray();
+            if ($plan) {
+                $cycle  = $this->request->getPost('billing_cycle') ?? 'monthly';
+                $amount = $cycle === 'yearly' ? $plan['price_yearly'] : $plan['price_monthly'];
+                $db->table('subscription_payments')->insert([
+                    'restaurant_id'  => $restaurantId,
+                    'plan_id'        => $plan['id'],
+                    'amount'         => $amount,
+                    'billing_cycle'  => $cycle,
+                    'period_start'   => date('Y-m-d'),
+                    'period_end'     => $this->request->getPost('subscription_ends_at') ?: date('Y-m-d',strtotime('+1 month')),
+                    'status'         => 'paid',
+                    'payment_method' => 'cash',
+                    'paid_at'        => date('Y-m-d H:i:s'),
+                    'notes'          => 'Initial payment on restaurant creation',
+                    'created_at'     => date('Y-m-d H:i:s'),
+                ]);
+            }
+        }
+        return redirect()->to(base_url('super/subscriptions?new_restaurant='.$restaurantId))
+            ->with('success', "Restaurant '{$name}' created. Admin: {$this->request->getPost('email')} / {$adminPass}. Set up subscription payment below.");
     }
 
     public function edit($id)

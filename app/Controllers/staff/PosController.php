@@ -407,8 +407,9 @@ class PosController extends BaseController
     public function activeOrders()
     {
         $orders = $this->db->table('orders o')
-            ->select('o.id, o.order_number, o.order_type, o.status, o.total_amount, o.created_at, t.table_number,
-                      (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as items_count')
+            ->select('o.id, o.order_number, o.order_type, o.status, o.payment_status, o.total_amount, o.created_at, t.table_number,
+                      (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as items_count,
+                      (SELECT COUNT(*) FROM kots WHERE order_id = o.id) as kot_count')
             ->join('tables t', 't.id = o.table_id', 'left')
             ->where('o.branch_id', $this->session->get('branch_id'))
             ->whereIn('o.status', ['pending','confirmed','preparing','ready','served'])

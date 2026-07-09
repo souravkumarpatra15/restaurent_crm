@@ -827,3 +827,113 @@ a { text-decoration:none; color:inherit; }
   .menu-grid { grid-template-columns:repeat(auto-fill,minmax(148px,1fr)); }
   .pos-cart  { width:350px; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE PATCH v2 — mobile/tablet improvements
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Mobile (≤767px) ─────────────────────────────────────── */
+@media (max-width:767px) {
+  /* Prevent body overflow-hidden on POS index table map */
+  .kitch-root { overflow-y: auto !important; }
+
+  /* FAB safe area */
+  .cart-fab { bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem) !important; }
+
+  /* Table tiles bigger/easier tap */
+  .table-grid { grid-template-columns: repeat(auto-fill, minmax(78px,1fr)); gap:.35rem; }
+  .ttile { padding:.375rem; }
+  .ttile-num { font-size:.9rem; }
+  .ttile-status { font-size:.52rem; }
+
+  /* Quick bar — compact */
+  .pos-quick-btn { padding:.45rem .2rem; font-size:.68rem; }
+  .pos-quick-btn i { font-size:.8rem; }
+
+  /* Stats row — tighter */
+  .pos-stats-row { padding:.3rem .5rem; gap:.2rem; }
+  .pos-stat { padding:.35rem .25rem; }
+
+  /* POS top bar — hide clock on very small screens */
+  .posbar-clock { display: none; }
+  .posbar-title  { font-size: .82rem; }
+  .posbar-branch { font-size: .62rem; }
+
+  /* Checkout modal — bottom sheet on mobile */
+  .modal-overlay { align-items: flex-end; }
+  .modal {
+    margin: 0 !important;
+    border-radius: 24px 24px 0 0 !important;
+    max-height: 92vh;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+  }
+
+  /* Payment method grid 2-col */
+  .payment-btn { font-size:.7rem !important; padding:.3rem .15rem !important; }
+
+  /* Menu grid on new-order screen */
+  .menu-grid {
+    grid-template-columns: repeat(auto-fill, minmax(93px,1fr)) !important;
+    gap: .35rem !important;
+  }
+  .mcard-body  { padding:.3rem .375rem .4rem; }
+  .mcard-name  { font-size:.68rem; }
+  .mcard-price { font-size:.74rem; }
+  .mcard-emoji { font-size:1.5rem; }
+
+  /* Cart bottom sheet */
+  .sheet { max-height:92vh; border-radius:22px 22px 0 0; }
+
+  /* Active order items in sheets */
+  .active-order-item { padding:.6rem 1rem; }
+  .aoi-num { font-size:.8rem; }
+  .aoi-sub { font-size:.68rem; }
+  .aoi-open { padding:.25rem .55rem; font-size:.68rem; }
+}
+
+/* ── Landscape mobile ────────────────────────────────────── */
+@media (max-width:767px) and (orientation:landscape) {
+  .menu-grid { grid-template-columns: repeat(auto-fill, minmax(100px,1fr)) !important; }
+  .pos-cart  { width: 260px !important; display: flex !important; }
+  .cart-fab  { display: none !important; }
+  .sheet     { max-height: 80vh; }
+}
+
+/* ── Tablet (768–1023px) ─────────────────────────────────── */
+@media (min-width:768px) and (max-width:1023px) {
+  .pos-cart  { width: 270px; }
+  .mcard-name { font-size: .7rem; }
+  .menu-grid  { grid-template-columns: repeat(auto-fill, minmax(112px,1fr)); gap:.4rem; }
+}
+
+/* ── Active order item base styles (if not already defined) ─ */
+.active-order-item {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .75rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  transition: background .12s;
+}
+.active-order-item:hover { background: var(--bg); }
+.aoi-num  { font-weight: 800; font-size: .875rem; line-height: 1.3; }
+.aoi-sub  { font-size: .72rem; color: var(--text-m); margin-top: .1rem; }
+.aoi-amt  { font-weight: 800; font-size: .9rem; color: var(--primary); }
+.aoi-status {
+  font-size: .65rem; font-weight: 800; padding: .2rem .5rem;
+  border-radius: 20px; text-transform: capitalize; flex-shrink: 0;
+}
+.aoi-open {
+  padding: .3rem .7rem; background: var(--primary); color: #fff;
+  border-radius: var(--radius-sm); font-size: .72rem; font-weight: 800;
+  text-decoration: none; flex-shrink: 0; transition: background .15s;
+}
+.aoi-open:hover { background: var(--primary-d); }
+
+/* ── Subscription badge colours ─────────────────────────── */
+.badge-success { background: var(--success-l); color: #15803d; }
+.badge-warning { background: var(--warning-l); color: #92400e; }
+.badge-danger  { background: var(--danger-l);  color: #b91c1c; }
+.badge-gray    { background: #F1F5F9; color: var(--text-m); }
+.badge-primary { background: var(--primary-l); color: var(--primary-d); }

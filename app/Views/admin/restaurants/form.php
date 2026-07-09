@@ -160,4 +160,28 @@ $this->section('content'); ?>
     </div>
   </form>
 </div>
+
+<script>
+function calcSubEnd() {
+  const cycleEl  = document.querySelector('[name="billing_cycle"]');
+  const statusEl = document.querySelector('[name="subscription_status"]');
+  const endField = document.querySelector('[name="subscription_ends_at"]');
+  if (!endField || !cycleEl) return;
+  const cycle  = cycleEl.value || 'monthly';
+  const status = statusEl ? statusEl.value : 'trial';
+  const end = new Date();
+  if (status === 'trial') {
+    end.setDate(end.getDate() + 30);
+  } else if (cycle === 'yearly') {
+    end.setFullYear(end.getFullYear() + 1);
+  } else {
+    end.setMonth(end.getMonth() + 1);
+  }
+  endField.value = end.toISOString().split('T')[0];
+}
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelector('[name="billing_cycle"]')?.addEventListener('change', calcSubEnd);
+  document.querySelector('[name="subscription_status"]')?.addEventListener('change', calcSubEnd);
+});
+</script>
 <?php $this->endSection(); ?>

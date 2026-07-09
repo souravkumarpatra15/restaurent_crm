@@ -41,6 +41,9 @@ $routes->group('super', ['filter' => 'auth:super_admin'], function ($routes) {
     $routes->post('subscriptions/change-plan/(:num)', 'Admin\SubscriptionController::changePlan/$1');
     $routes->post('subscriptions/suspend/(:num)',   'Admin\SubscriptionController::suspend/$1');
     $routes->post('subscriptions/activate/(:num)', 'Admin\SubscriptionController::activate/$1');
+    $routes->post('subscriptions/record-payment/(:num)', 'Admin\SubscriptionController::recordPayment/$1');
+    $routes->post('subscriptions/generate-link/(:num)',  'Admin\SubscriptionController::generatePaymentLink/$1');
+    $routes->get('subscriptions/payments/(:num)',         'Admin\SubscriptionController::payments/$1');
 
     // Reports
     $routes->get('reports/revenue',                 'Admin\ReportController::revenue');
@@ -56,11 +59,6 @@ $routes->group('super', ['filter' => 'auth:super_admin'], function ($routes) {
     $routes->post('notifications/mark-read',        'Admin\NotificationController::markRead');
     $routes->get('notifications/count',             'Admin\NotificationController::count');
     $routes->post('subscriptions/remind/(:num)',    'Admin\SubscriptionController::remind/$1');
-
-    // Notifications
-    $routes->get('notifications',                   'Admin\NotificationController::index');
-    $routes->post('notifications/mark-read',        'Admin\NotificationController::markRead');
-    $routes->get('notifications/count',             'Admin\NotificationController::count');
 });
 
 // ── RESTAURANT ADMIN / MANAGER ───────────────────────────────

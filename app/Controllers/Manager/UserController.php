@@ -33,6 +33,10 @@ class UserController extends BaseController
 
     public function store()
     {
+        $rid   = session('restaurant_id');
+        $count = \Config\Database::connect()->table('users')->where('restaurant_id',$rid)->where('is_active',1)->countAllResults();
+        $check = $this->checkPlanLimit('users',$count);
+        if (!$check['allowed']) return redirect()->back()->with('error',$check['message']);
         $this->model->insert([
             'restaurant_id' => session('restaurant_id'),
             'branch_id'     => $this->request->getPost('branch_id') ?: null,

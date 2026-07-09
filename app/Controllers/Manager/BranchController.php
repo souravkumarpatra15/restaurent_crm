@@ -29,6 +29,10 @@ class BranchController extends BaseController
 
     public function store()
     {
+        $rid   = session('restaurant_id');
+        $count = \Config\Database::connect()->table('branches')->where('restaurant_id',$rid)->where('is_active',1)->countAllResults();
+        $check = $this->checkPlanLimit('branches', $count);
+        if (!$check['allowed']) return redirect()->back()->with('error',$check['message']);
         $this->model->insert([
             'restaurant_id' => session('restaurant_id'),
             'name'          => $this->request->getPost('name'),

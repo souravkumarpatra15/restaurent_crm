@@ -287,7 +287,7 @@ body {
 
 <script>
 // Auto-print if opened with ?autoprint=1
-<?php if ($this->request->getGet('autoprint')): ?>
+<?php if (service('request')->getGet('autoprint')): ?>
 window.onload = function() { setTimeout(window.print, 400); };
 <?php endif; ?>
 </script>

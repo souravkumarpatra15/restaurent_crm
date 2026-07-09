@@ -55,12 +55,22 @@ $ready      = count(array_filter($kots, fn($k) => $k['status'] === 'ready'));
         <!-- Header -->
         <div class="kotc-hdr">
           <div>
-            <div class="kotc-num"><?= esc($kot['kot_number']) ?></div>
+            <div class="kotc-num">
+              <?= esc($kot['kot_number']) ?>
+              <?php if (!empty($kot['payment_status'])): ?>
+                <?php if ($kot['payment_status'] === 'paid'): ?>
+                  <span style="background:#dcfce7;color:#15803d;font-size:.58rem;font-weight:800;padding:.1rem .4rem;border-radius:12px;vertical-align:middle;margin-left:.3rem">✓ PAID</span>
+                <?php else: ?>
+                  <span style="background:#fef9c3;color:#854d0e;font-size:.58rem;font-weight:800;padding:.1rem .4rem;border-radius:12px;vertical-align:middle;margin-left:.3rem">UNPAID</span>
+                <?php endif; ?>
+              <?php endif; ?>
+            </div>
             <div class="kotc-meta">
               <?= ucfirst(str_replace('_',' ', $kot['order_type'] ?? 'dine_in')) ?>
               <?php if ($kot['table_number']): ?>
                · Table <strong><?= esc($kot['table_number']) ?></strong>
               <?php endif; ?>
+              <?php if (!empty($kot['order_number'])): ?> · <span style="opacity:.7"><?= esc($kot['order_number']) ?></span><?php endif; ?>
               · <?= date('h:i A', strtotime($kot['created_at'])) ?>
             </div>
           </div>
