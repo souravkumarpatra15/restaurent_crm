@@ -156,7 +156,7 @@ foreach ($tables as $area) {
   <div class="pi-bar">
     <a href="<?= base_url('admin/dashboard') ?>" class="pi-bar-back"><i class="fa fa-arrow-left"></i></a>
     <div class="pi-bar-brand">
-      <div class="pi-bar-rest"><i class="fa fa-cash-register" style="opacity:.6;margin-right:.3rem"></i><?= esc(session('restaurant_name') ?? 'RestOne POS') ?></div>
+      <div class="pi-bar-rest"><i class="fa fa-cash-register" style="opacity:.6;margin-right:.3rem"></i><?= esc(session('restaurant_name') ?? 'DinoviX POS') ?></div>
       <div class="pi-bar-sub"><?= esc($branch['name'] ?? 'Main Branch') ?></div>
     </div>
     <div class="pi-bar-acts">

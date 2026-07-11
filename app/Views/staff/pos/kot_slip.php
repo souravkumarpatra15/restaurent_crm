@@ -274,7 +274,7 @@ body {
     <?php else: ?>
     <div style="background:#fff3cd;border:1.5px solid #ffc107;border-radius:3px;padding:.3rem;font-weight:900;font-size:12px;color:#856404;margin-bottom:.35rem">⏳ Pending Payment</div>
     <?php endif; ?>
-    <div>Powered by RestOne</div>
+    <div>Powered by DinoviX</div>
   </div>
   <div class="slip-time">Printed: <?= date('d M Y h:i:s A') ?></div>
 

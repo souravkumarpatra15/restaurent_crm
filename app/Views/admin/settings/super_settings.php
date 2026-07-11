@@ -38,7 +38,7 @@
     <div class="card-body">
       <div style="display:flex;flex-direction:column;gap:.5rem;font-size:.875rem">
         <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--border)">
-          <span style="color:var(--text-muted)">Version</span><strong>RestOne v1.0</strong>
+          <span style="color:var(--text-muted)">Version</span><strong>DinoviX v1.0</strong>
         </div>
         <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--border)">
           <span style="color:var(--text-muted)">Framework</span><strong>CodeIgniter 4.7</strong>

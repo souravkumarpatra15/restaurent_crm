@@ -184,7 +184,7 @@ class ThermalPrinter
             }
         } else {
             $data .= $this->centerText('Thank you! Visit again!') . self::LF;
-            $data .= $this->centerText('Powered by RestOne') . self::LF;
+            $data .= $this->centerText('Powered by DinoviX') . self::LF;
         }
 
         // QR code placeholder for UPI payment

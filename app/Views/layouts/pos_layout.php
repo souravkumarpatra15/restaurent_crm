@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title><?= $title ?? 'POS' ?> — RestOne</title>
+<title><?= $title ?? 'POS' ?> — DinoviX</title>
 <meta name="csrf-token" data-name="<?= csrf_token() ?>" content="<?= csrf_hash() ?>">
 <meta name="theme-color" content="#0F172A">
 <link rel="preconnect" href="https://fonts.googleapis.com">

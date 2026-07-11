@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>Login — RestOne</title>
+  <title>Login — DinoviX</title>
   <meta name="theme-color" content="#1A202C">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -35,22 +35,125 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 1rem
+      padding: 1rem;
+      overflow-x: hidden
     }
 
+    /* ---------- Restaurant-themed background ---------- */
     .login-bg {
       position: fixed;
       inset: 0;
-      background: linear-gradient(135deg, #1A202C 0%, #2D3748 50%, #1A202C 100%);
-      z-index: 0
+      z-index: 0;
+      background:
+        radial-gradient(ellipse 620px 420px at 50% -8%, rgba(255, 107, 53, .16), transparent 62%),
+        radial-gradient(ellipse 520px 520px at 102% 105%, rgba(255, 107, 53, .10), transparent 60%),
+        radial-gradient(ellipse 480px 480px at -5% 100%, rgba(255, 107, 53, .07), transparent 60%),
+        linear-gradient(135deg, #1A202C 0%, #2D3748 50%, #1A202C 100%)
     }
 
+    /* faint fork / knife / plate line pattern, evokes a table setting */
     .login-bg::before {
       content: '';
       position: fixed;
       inset: 0;
-      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")
+      opacity: .5;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='0.05' stroke-width='1.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 10 L16 27 M20 10 L20 27 M24 10 L24 27 M16 27 Q16 34 20 34 Q24 34 24 27 M20 34 L20 58'/%3E%3Cpath d='M62 10 Q52 16 52 26 Q52 33 62 34 L62 58'/%3E%3Ccircle cx='40' cy='70' r='11'/%3E%3Ccircle cx='40' cy='70' r='6'/%3E%3C/g%3E%3C/svg%3E");
+      background-size: 90px 90px
     }
+
+    /* warm glow pooling at the bottom, like ambient restaurant lighting on a table */
+    .login-bg::after {
+      content: '';
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: -12%;
+      height: 45%;
+      background: radial-gradient(ellipse 80% 100% at 50% 100%, rgba(255, 107, 53, .14), transparent 72%);
+      z-index: 0
+    }
+
+    /* small steam wisp accent, top-left */
+    .steam-accent {
+      position: fixed;
+      top: 6%;
+      left: 6%;
+      width: 34px;
+      height: 46px;
+      opacity: .35;
+      z-index: 0;
+      pointer-events: none;
+      display: none
+    }
+
+    @media (min-width: 640px) {
+      .steam-accent {
+        display: block
+      }
+    }
+
+    .steam-accent span {
+      position: absolute;
+      bottom: 10px;
+      width: 3px;
+      height: 14px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, .5);
+      filter: blur(1px);
+      animation: steamRise 3.6s ease-in-out infinite
+    }
+
+    .steam-accent span:nth-child(1) {
+      left: 6px;
+      animation-delay: 0s
+    }
+
+    .steam-accent span:nth-child(2) {
+      left: 15px;
+      animation-delay: .8s
+    }
+
+    .steam-accent span:nth-child(3) {
+      left: 24px;
+      animation-delay: 1.6s
+    }
+
+    .steam-accent .cup {
+      position: absolute;
+      bottom: 0;
+      left: 4px;
+      width: 26px;
+      height: 12px;
+      border: 2px solid rgba(255, 255, 255, .4);
+      border-top: none;
+      border-radius: 0 0 8px 8px
+    }
+
+    @keyframes steamRise {
+
+      0% {
+        transform: translateY(0) scaleY(.6);
+        opacity: 0
+      }
+
+      25% {
+        opacity: .8
+      }
+
+      100% {
+        transform: translateY(-26px) scaleY(1.3);
+        opacity: 0
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .steam-accent span {
+        animation: none;
+        opacity: .3
+      }
+    }
+
+    /* ---------------------------------------------------- */
 
     .login-wrap {
       position: relative;
@@ -60,15 +163,23 @@
     }
 
     .login-card {
+      position: relative;
       background: #fff;
       border-radius: var(--radius);
       padding: 2rem;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, .4)
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .4);
+      overflow: hidden
     }
 
-    .login-logo {
-      text-align: center;
-      margin-bottom: 2rem
+    /* slim menu-card accent edge on top of the card */
+    .login-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary), #FF8C5A)
     }
 
     .login-logo {
@@ -77,7 +188,7 @@
     }
 
     .login-logo-img {
-      width: 150px;
+      width: 200px;
       height: auto;
       display: block;
       margin: 0 auto 1rem;
@@ -93,7 +204,7 @@
     .login-logo p {
       font-size: .85rem;
       color: #718096;
-      margin-top: .3rem;
+      margin-top: -0.75rem;
     }
 
     .login-logo h1 {
@@ -105,7 +216,7 @@
     .login-logo p {
       font-size: .82rem;
       color: #718096;
-      margin-top: .25rem
+      margin-top: -0.75rem;
     }
 
     .form-group {
@@ -130,7 +241,8 @@
       color: #1A202C;
       background: #fff;
       transition: border-color .2s, box-shadow .2s;
-      -webkit-appearance: none
+      -webkit-appearance: none;
+      appearance: none
     }
 
     .form-control:focus {
@@ -335,10 +447,14 @@
 
 <body>
   <div class="login-bg"></div>
+  <div class="steam-accent" aria-hidden="true">
+    <span></span><span></span><span></span>
+    <div class="cup"></div>
+  </div>
   <div class="login-wrap">
     <div class="login-card">
       <div class="login-logo">
-        <img src="<?= base_url('images/logo.png') ?>" alt="RestOne" class="login-logo-img">
+        <img src="<?= base_url('images/logo.png') ?>" alt="DinoviX" class="login-logo-img">
         <p>Restaurant Management Platform</p>
       </div>
 
@@ -394,7 +510,7 @@
       <div class="demo-accounts">
         <div class="demo-title">— Quick Demo Access —</div>
         <div class="demo-grid">
-          <button class="demo-btn" onclick="fillLogin('superadmin@restone.com','admin@123')">
+          <button class="demo-btn" onclick="fillLogin('superadmin@dinovix.in','admin@123')">
             <span class="role">⚡ Super Admin</span>
             <span class="email">Platform owner</span>
           </button>
@@ -414,7 +530,7 @@
       </div>
 
       <div class="saas-badge">
-        <span><strong>RestOne</strong> • Powered by <a style="color:#FF6B35; font-weight:500;" href="https://www.ngwebd.com" target="_blank">NGWebD</a></span>
+        <span><strong>DinoviX</strong> • Powered by <a style="color:#FF6B35; font-weight:500;" href="https://www.ngwebd.com" target="_blank">NGWebD</a></span>
       </div>
     </div>
   </div>

@@ -231,7 +231,7 @@
 
   <!-- SaaS feature pitch panel -->
   <div class="pitch" style="margin-bottom:1.25rem">
-    <div class="pitch-title">🚀 Why Clients Choose RestOne CRM</div>
+    <div class="pitch-title">🚀 Why Clients Choose DinoviX CRM</div>
     <div class="pitch-grid">
       <div class="pitch-item">
         <div class="pitch-icon">📱</div>

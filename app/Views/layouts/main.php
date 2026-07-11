@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title><?= $pageTitle ?? 'RestOne' ?> — <?= $restaurantName ?? session('restaurant_name') ?? 'RestOne' ?></title>
+<title><?= $pageTitle ?? 'DinoviX' ?> — <?= $restaurantName ?? session('restaurant_name') ?? 'DinoviX' ?></title>
 <meta name="csrf-token" data-name="<?= csrf_token() ?>" content="<?= csrf_hash() ?>">
 <meta name="theme-color" content="<?= session('theme_color') ?? '#FF6B35' ?>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,7 +30,7 @@
 <header class="mobile-header" id="mobileHeader">
   <button class="sidebar-toggle" id="sidebarToggle"><span></span><span></span><span></span></button>
   <div class="mobile-logo">
-    <img src="<?= base_url('images/logo.png') ?>" alt="RestOne" style="height:28px">
+    <img src="<?= base_url('images/logo.png') ?>" alt="DinoviX" style="height:28px">
   </div>
   <div class="mobile-actions">
     <?php if (in_array($userRole, ['restaurant_admin','branch_manager','cashier','waiter'])): ?>
@@ -63,7 +63,7 @@
     <div class="brand">
       <img src="<?= base_url('images/favicon.png') ?>" alt="" style="width:32px;height:32px;border-radius:8px">
       <div class="brand-text">
-        <strong>RestOne</strong>
+        <strong>DinoviX</strong>
         <small><?= esc(session('branch_name') ?? session('restaurant_name') ?? 'Platform') ?></small>
       </div>
     </div>

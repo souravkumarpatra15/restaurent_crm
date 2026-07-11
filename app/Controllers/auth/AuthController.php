@@ -3,6 +3,7 @@
 namespace App\Controllers\Auth;
 
 use App\Controllers\BaseController;
+use App\Libraries\Mail;
 
 class AuthController extends BaseController
 {
@@ -122,8 +123,7 @@ class AuthController extends BaseController
                 'reset_token'      => $token,
                 'reset_expires_at' => $expires,
             ]);
-            // In production: send email with reset link
-            // Mail::send($email, 'Reset Password', base_url('reset-password/'.$token));
+            Mail::send($email, 'Reset Password', base_url('reset-password/'.$token));
             log_message('info', 'Password reset token for ' . $email . ': ' . $token);
         }
 
