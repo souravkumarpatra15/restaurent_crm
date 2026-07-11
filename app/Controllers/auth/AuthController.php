@@ -123,7 +123,8 @@ class AuthController extends BaseController
                 'reset_token'      => $token,
                 'reset_expires_at' => $expires,
             ]);
-            Mail::send($email, 'Reset Password', base_url('reset-password/'.$token));
+            $resetLink = base_url('reset-password/' . $token);
+            $sent      = Mail::sendPasswordReset($email, $user['name'], $resetLink);
             log_message('info', 'Password reset token for ' . $email . ': ' . $token);
         }
 
