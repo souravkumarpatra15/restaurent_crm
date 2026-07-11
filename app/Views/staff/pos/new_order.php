@@ -1,6 +1,8 @@
 <?php $this->extend('layouts/pos_layout'); $this->section('content'); ?>
 <?php
-$sym     = $restaurant['currency_symbol'] ?? '₹';
+$sym       = $restaurant['currency_symbol'] ?? '₹';
+$addToId   = $add_to_order_id ?? 0;
+$addToOrder= $existing_order ?? null;
 $taxType = $restaurant['tax_type'] ?? 'exclusive';
 $svcPct  = (float)($restaurant['service_charge_percent'] ?? 0);
 $typeIcons = ['dine_in'=>'fa-chair','takeaway'=>'fa-bag-shopping','delivery'=>'fa-motorcycle'];
@@ -23,6 +25,15 @@ $typeIcons = ['dine_in'=>'fa-chair','takeaway'=>'fa-bag-shopping','delivery'=>'f
     <a href="<?= base_url('admin/dashboard') ?>" class="posbar-btn" title="Dashboard"><i class="fa fa-gauge-high"></i></a>
   </div>
 </div>
+
+<?php if ($addToId): ?>
+<!-- ADD ROUND BANNER -->
+<div style="background:linear-gradient(90deg,#6D28D9,#7C3AED);color:#fff;padding:.6rem 1rem;display:flex;align-items:center;gap:.625rem;font-size:.82rem;font-weight:700;flex-shrink:0">
+  <i class="fa fa-circle-plus" style="font-size:1rem"></i>
+  <span>Adding Round to Order <strong>#<?= esc($addToOrder['order_number'] ?? $addToId) ?></strong></span>
+  <span style="margin-left:auto;opacity:.7;font-weight:500">Items will be added to existing order</span>
+</div>
+<?php endif; ?>
 
 <!-- ═══ POS ROOT ═══ -->
 <div class="pos-root">
@@ -678,8 +689,14 @@ async function autoKot(oid){
   try{ await postF(BASE+'pos/order/print-kot',{order_id:oid}); }catch(e){}
 }
 
+const ADD_TO_ORDER = <?= (int)($add_to_order_id ?? 0) ?>;
+
 async function createOrder(){
   const items=cart.map(i=>({menu_item_id:i.id,variant_id:i.vid,variant_name:i.vname,quantity:i.qty,notes:i.note,addons:i.addons}));
+  if (ADD_TO_ORDER) {
+    // Add Round mode — append to existing order
+    return postF(BASE+'pos/order/add-round',{order_id:ADD_TO_ORDER,items:JSON.stringify(items)});
+  }
   return postF(BASE+'pos/order/create',{order_type:OMODE,table_id:TABLEID,customer_id:cust.id||'',customer_name:cust.name||'',customer_phone:cust.phone||'',no_of_guests:guests,discount_type:disc.type||'flat',discount_value:disc.amt||0,kitchen_notes:note,items:JSON.stringify(items)});
 }
 

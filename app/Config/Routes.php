@@ -107,6 +107,9 @@ $routes->group('admin', ['filter' => 'auth:restaurant_admin,branch_manager,super
     $routes->post('tables/store',                   'Manager\TableController::store');
     $routes->post('tables/update/(:num)',           'Manager\TableController::update/$1');
     $routes->post('tables/toggle/(:num)',           'Manager\TableController::toggle/$1');
+    $routes->post('tables/book/(:num)',             'Manager\TableController::book/$1');
+    $routes->post('tables/cancel-booking/(:num)',   'Manager\TableController::cancelBooking/$1');
+    $routes->get('tables/generate-qr/(:num)',       'Manager\TableController::generateQr/$1');
 
     // Customers
     $routes->get('customers',                       'Manager\CustomerController::index');
@@ -155,6 +158,12 @@ $routes->group('admin', ['filter' => 'auth:restaurant_admin,branch_manager,super
 });
 
 // ── POS ──────────────────────────────────────────────────────
+// Public customer menu (QR code scan — no auth)
+$routes->get('menu/table/(:segment)/status/(:num)', 'Public\CustomerMenuController::orderStatus/$1/$2');
+$routes->get('menu/table/(:segment)/poll/(:num)',   'Public\CustomerMenuController::pollStatus/$1/$2');
+$routes->post('menu/table/(:segment)/order',         'Public\CustomerMenuController::placeOrder/$1');
+$routes->get('menu/table/(:any)',                    'Public\CustomerMenuController::index/$1');
+
 $routes->group('pos', ['filter' => 'auth:cashier,waiter,branch_manager,restaurant_admin'], function ($routes) {
     $routes->get('/',                               'Staff\PosController::index');
     $routes->get('table-map',                       'Staff\PosController::tableMap');
@@ -164,8 +173,14 @@ $routes->group('pos', ['filter' => 'auth:cashier,waiter,branch_manager,restauran
     $routes->post('order/checkout',                 'Staff\PosController::checkout');
     $routes->post('order/print-kot',                'Staff\PosController::printKot');
     $routes->post('order/print-bill',               'Staff\PosController::printBill');
+    $routes->get('order/pending-customer',               'Staff\PosController::pendingCustomerOrders');
+    $routes->post('order/confirm-customer/(:num)',        'Staff\PosController::confirmCustomerOrder/$1');
+    $routes->post('order/reject-customer/(:num)',         'Staff\PosController::rejectCustomerOrder/$1');
     $routes->post('order/cancel/(:num)',            'Staff\PosController::cancelOrder/$1');
     $routes->post('order/apply-coupon',             'Staff\PosController::applyCoupon');
+    $routes->post('order/add-round',                'Staff\PosController::addRound');
+    $routes->post('table/book/(:num)',              'Staff\PosController::bookTable/$1');
+    $routes->post('table/cancel-booking/(:num)',    'Staff\PosController::cancelTableBooking/$1');
     $routes->get('active-orders',                   'Staff\PosController::activeOrders');
     $routes->get('table-orders/(:num)',             'Staff\PosController::tableOrders/$1');
     $routes->get('kitchen',                         'Staff\KitchenController::index');

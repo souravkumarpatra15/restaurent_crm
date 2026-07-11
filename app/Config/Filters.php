@@ -21,13 +21,13 @@ class Filters extends BaseConfig
     ];
 
     public array $required = [
-        'before' => ['csrf'],
+        'before' => [],
         'after'  => ['toolbar'],
     ];
 
     public array $globals = [
         'before' => [
-            'csrf' => ['except' => ['login','forgot-password','reset-password/*','api/*']],
+            'csrf' => ['except' => ['login','forgot-password','reset-password/*','api/*','menu/table*','menu/table/*','menu/table/*/order','menu/table/*/poll/*']],
         ],
         'after' => [],
     ];

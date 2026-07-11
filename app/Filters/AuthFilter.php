@@ -14,6 +14,7 @@ class AuthFilter implements FilterInterface
 
         // Check remember me cookie if not logged in
         if (!$session->get('user_id')) {
+            helper('cookie');
             $token = get_cookie('remember_token');
             if ($token) {
                 $db   = \Config\Database::connect();

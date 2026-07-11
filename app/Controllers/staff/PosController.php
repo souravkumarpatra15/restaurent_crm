@@ -61,15 +61,22 @@ class PosController extends BaseController
     // ----------------------------------------------------------------
     public function newOrder($type = 'dine_in')
     {
-        $tableId = $this->request->getGet('table');
+        $tableId    = $this->request->getGet('table');
+        $addToOrder = (int)$this->request->getGet('add_to'); // for "add round" mode
+        $existingOrder = null;
+        if ($addToOrder) {
+            $existingOrder = $this->orderModel->find($addToOrder);
+        }
         $data = [
-            'title'      => 'New Order',
-            'order_type' => $type,
-            'table_id'   => $tableId,
-            'table'      => $tableId ? $this->tableModel->find($tableId) : null,
-            'categories' => $this->menuModel->getCategoriesWithItems($this->session->get('restaurant_id'), $this->session->get('branch_id')),
-            'restaurant' => $this->restaurant,
-            'branch'     => $this->branch,
+            'title'           => $addToOrder ? 'Add Round to Order' : 'New Order',
+            'order_type'      => $type,
+            'table_id'        => $tableId,
+            'table'           => $tableId ? $this->tableModel->find($tableId) : null,
+            'categories'      => $this->menuModel->getCategoriesWithItems($this->session->get('restaurant_id'), $this->session->get('branch_id')),
+            'restaurant'      => $this->restaurant,
+            'branch'          => $this->branch,
+            'add_to_order_id' => $addToOrder ?: 0,
+            'existing_order'  => $existingOrder,
         ];
         return view('staff/pos/new_order', $data);
     }
@@ -426,12 +433,175 @@ class PosController extends BaseController
     public function tableOrders($tableId)
     {
         $orders = $this->db->table('orders')
-            ->select('id, order_number, order_type, status, total_amount,
-                      (SELECT COUNT(*) FROM order_items WHERE order_id = orders.id) as items_count')
+            ->select('id, order_number, order_type, status, payment_status, total_amount, created_at,
+                      (SELECT COUNT(*) FROM order_items WHERE order_id = orders.id) as items_count,
+                      (SELECT COUNT(*) FROM kots WHERE order_id = orders.id) as kot_count')
             ->where('table_id', $tableId)
             ->whereIn('status', ['pending','confirmed','preparing','ready','served'])
+            ->orderBy('created_at', 'ASC')
             ->get()->getResultArray();
+        foreach ($orders as &$o) {
+            $mins = (time() - strtotime($o['created_at'])) / 60;
+            $o['time_ago'] = $mins < 1 ? 'Just now' : (floor($mins) . 'm ago');
+        }
         return $this->response->setJSON($orders);
+    }
+
+    // ── Add round: append items to existing order ─────────────
+    public function addRound()
+    {
+        $orderId = (int)$this->request->getPost('order_id');
+        $order   = $this->orderModel->find($orderId);
+        if (!$order) return $this->response->setJSON(['success'=>false,'message'=>'Order not found']);
+
+        $items = json_decode($this->request->getPost('items'), true);
+        if (empty($items)) return $this->response->setJSON(['success'=>false,'message'=>'No items in cart']);
+
+        $db = \Config\Database::connect();
+        $db->transStart();
+
+        foreach ($items as $item) {
+            $menuItem = $this->menuModel->find($item['menu_item_id']);
+            if (!$menuItem) continue;
+            $price = $item['variant_id']
+                ? $this->menuModel->getVariantPrice($item['variant_id'])
+                : $menuItem['base_price'];
+            $qty      = max(1, (float)$item['quantity']);
+            $taxAmt   = round($price * $qty * $menuItem['tax_percent'] / 100, 2);
+
+            $db->table('order_items')->insert([
+                'order_id'     => $orderId,
+                'menu_item_id' => $menuItem['id'],
+                'variant_id'   => $item['variant_id'] ?? null,
+                'name'         => $menuItem['name'],
+                'variant_name' => $item['variant_name'] ?? null,
+                'quantity'     => $qty,
+                'unit_price'   => $price,
+                'tax_percent'  => $menuItem['tax_percent'],
+                'tax_amount'   => $taxAmt,
+                'total_price'  => round($price * $qty, 2),
+                'notes'        => $item['notes'] ?? '',
+                'status'       => 'pending',
+            ]);
+        }
+
+        // Recalculate totals from all items
+        $allItems    = $db->table('order_items')->where('order_id', $orderId)->get()->getResultArray();
+        $subtotal    = array_sum(array_column($allItems, 'total_price'));
+        $taxAmount   = array_sum(array_column($allItems, 'tax_amount'));
+        $svcCharge   = round($subtotal * ((float)($this->restaurant['service_charge_percent'] ?? 0) / 100), 2);
+        $grandTotal  = round($subtotal + $taxAmount + $svcCharge - (float)$order['discount_amount'], 2);
+
+        $this->orderModel->update($orderId, [
+            'subtotal'       => $subtotal,
+            'tax_amount'     => $taxAmount,
+            'service_charge' => $svcCharge,
+            'total_amount'   => $grandTotal,
+            'status'         => 'pending',
+        ]);
+
+        $db->transComplete();
+
+        if ($db->transStatus() === false) {
+            return $this->response->setJSON(['success'=>false,'message'=>'Failed to add items']);
+        }
+
+        // Print new KOT for this round
+        $this->_printKot($orderId);
+
+        return $this->response->setJSON([
+            'success'  => true,
+            'order_id' => $orderId,
+            'redirect' => base_url('pos/order/' . $orderId),
+        ]);
+    }
+
+    // ── Book a table from POS ─────────────────────────────────
+    public function bookTable($tableId)
+    {
+        $this->db->table('tables')->where('id', $tableId)->update([
+            'status'       => 'booked',
+            'booked_name'  => $this->request->getPost('name'),
+            'booked_phone' => $this->request->getPost('phone') ?: null,
+            'booked_for'   => $this->request->getPost('booked_for') ?: null,
+            'booked_note'  => $this->request->getPost('note') ?: null,
+        ]);
+        return $this->response->setJSON(['success' => true]);
+    }
+
+    // ── Cancel booking from POS ───────────────────────────────
+    public function cancelTableBooking($tableId)
+    {
+        $this->db->table('tables')->where('id', $tableId)->update([
+            'status'       => 'available',
+            'booked_name'  => null,
+            'booked_phone' => null,
+            'booked_for'   => null,
+            'booked_note'  => null,
+        ]);
+        return $this->response->setJSON(['success' => true]);
+    }
+
+    // ── Pending customer (QR) orders — for POS notification ───
+    public function pendingCustomerOrders()
+    {
+        $bid    = $this->session->get('branch_id');
+        $orders = $this->db->table('orders o')
+            ->select('o.id, o.order_number, o.status, o.total_amount, o.customer_name,
+                      o.customer_phone, o.estimated_mins, o.created_at,
+                      t.table_number,
+                      (SELECT COUNT(*) FROM order_items WHERE order_id=o.id) as items_count')
+            ->join('tables t', 't.id = o.table_id', 'left')
+            ->where('o.branch_id', $bid)
+            ->where('o.source', 'qr_customer')
+            ->where('o.status', 'pending')
+            ->orderBy('o.created_at', 'ASC')
+            ->get()->getResultArray();
+
+        foreach ($orders as &$o) {
+            $mins = (time() - strtotime($o['created_at'])) / 60;
+            $o['waiting'] = $mins < 1 ? 'Just now' : (floor($mins) . 'm ago');
+            // Load items
+            $o['items'] = $this->db->table('order_items')
+                ->select('name, quantity, unit_price, notes')
+                ->where('order_id', $o['id'])
+                ->get()->getResultArray();
+        }
+        return $this->response->setJSON(['success' => true, 'orders' => $orders, 'count' => count($orders)]);
+    }
+
+    // ── Confirm customer QR order → creates KOT → goes to kitchen ─
+    public function confirmCustomerOrder($orderId)
+    {
+        $order = $this->orderModel->find($orderId);
+        if (!$order) return $this->response->setJSON(['success' => false, 'message' => 'Order not found']);
+
+        // Update order status to confirmed
+        $this->orderModel->update($orderId, [
+            'status'     => 'confirmed',
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        // Print / create KOT
+        $this->_printKot($orderId);
+
+        return $this->response->setJSON([
+            'success'  => true,
+            'order_id' => $orderId,
+            'redirect' => base_url('pos/order/' . $orderId),
+        ]);
+    }
+
+    // ── Reject a customer QR order ────────────────────────────
+    public function rejectCustomerOrder($orderId)
+    {
+        $this->orderModel->update($orderId, [
+            'status'           => 'cancelled',
+            'cancelled_reason' => 'Rejected by cashier',
+            'cancelled_by'     => $this->session->get('user_id'),
+            'updated_at'       => date('Y-m-d H:i:s'),
+        ]);
+        return $this->response->setJSON(['success' => true]);
     }
 
     public function cancelOrder($id)
