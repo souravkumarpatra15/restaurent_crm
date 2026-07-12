@@ -6,9 +6,14 @@
     <div style="font-size:.8rem;color:var(--text-muted)">
       <strong><?= count($tables) ?></strong> tables
     </div>
-    <button class="btn btn-primary" onclick="openModal('addTableModal')">
-      <i class="fa fa-plus"></i> Add Table
-    </button>
+    <div style="display:flex;gap:.5rem">
+      <a href="<?= base_url('admin/tables/bulk-qr') ?>" class="btn btn-outline">
+        <i class="fa fa-qrcode"></i> Print QR Codes
+      </a>
+      <button class="btn btn-primary" onclick="openModal('addTableModal')">
+        <i class="fa fa-plus"></i> Add Table
+      </button>
+    </div>
   </div>
 
   <!-- Table grid -->

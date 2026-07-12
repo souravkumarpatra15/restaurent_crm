@@ -98,4 +98,59 @@ class TableController extends BaseController
         ]);
         return $this->response->setJSON(['success' => true]);
     }
+
+    // ── Bulk QR print page ────────────────────────────────
+    public function bulkQr()
+    {
+        $db  = \Config\Database::connect();
+        $bid = session('branch_id');
+        $rid = session('restaurant_id');
+
+        // Get restaurant + branch details for QR card header
+        $restaurant = $db->table('restaurants')->where('id', $rid)->get()->getRowArray();
+        $branch     = $db->table('branches')->where('id', $bid)->get()->getRowArray();
+
+        // Get tables grouped by area
+        $areas = $db->table('table_areas ta')
+            ->select('ta.id, ta.name')
+            ->where('ta.branch_id', $bid)
+            ->where('ta.is_active', 1)
+            ->orderBy('ta.sort_order', 'ASC')
+            ->get()->getResultArray();
+
+        foreach ($areas as &$area) {
+            $area['tables'] = $this->model
+                ->where('branch_id', $bid)
+                ->where('area_id', $area['id'])
+                ->where('is_active', 1)
+                ->orderBy('sort_order', 'ASC')
+                ->findAll();
+        }
+
+        // Tables with no area
+        $noArea = $this->model
+            ->where('branch_id', $bid)
+            ->where('is_active', 1)
+            ->where('area_id IS NULL', null, false)
+            ->orderBy('sort_order', 'ASC')
+            ->findAll();
+        if ($noArea) {
+            $areas[] = ['id' => 0, 'name' => 'All Tables', 'tables' => $noArea];
+        }
+
+        // If no areas at all, just get all tables
+        if (empty($areas)) {
+            $allTables = $this->model->where('branch_id', $bid)->where('is_active', 1)->orderBy('sort_order','ASC')->findAll();
+            $areas = [['id' => 0, 'name' => 'Tables', 'tables' => $allTables]];
+        }
+
+        return view('admin/tables/bulk_qr', [
+            'pageTitle'  => 'Print Table QR Codes',
+            'restaurant' => $restaurant,
+            'branch'     => $branch,
+            'areas'      => $areas,
+            'userName'   => session('user_name'),
+            'userRole'   => session('role_slug'),
+        ]);
+    }
 }

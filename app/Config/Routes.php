@@ -4,7 +4,7 @@ use CodeIgniter\Router\RouteCollection;
 /** @var RouteCollection $routes */
 
 // ── PUBLIC ──────────────────────────────────────────────────
-$routes->get('/',                       'Auth\AuthController::login');
+// $routes->get('/',                       'Auth\AuthController::login');
 $routes->get('login',                   'Auth\AuthController::login');
 $routes->post('login',                  'Auth\AuthController::doLogin');
 $routes->get('logout',                  'Auth\AuthController::logout');
@@ -101,6 +101,7 @@ $routes->group('admin', ['filter' => 'auth:restaurant_admin,branch_manager,super
     $routes->post('menu/addon-groups/delete/(:num)','Manager\MenuController::deleteAddonGroup/$1');
     $routes->post('menu/addons/store',              'Manager\MenuController::storeAddon');
     $routes->post('menu/addons/delete/(:num)',      'Manager\MenuController::deleteAddon/$1');
+    $routes->get('menu/print',                      'Manager\MenuController::printMenu');
 
     // Tables
     $routes->get('tables',                          'Manager\TableController::index');
@@ -110,6 +111,7 @@ $routes->group('admin', ['filter' => 'auth:restaurant_admin,branch_manager,super
     $routes->post('tables/book/(:num)',             'Manager\TableController::book/$1');
     $routes->post('tables/cancel-booking/(:num)',   'Manager\TableController::cancelBooking/$1');
     $routes->get('tables/generate-qr/(:num)',       'Manager\TableController::generateQr/$1');
+    $routes->get('tables/bulk-qr',                  'Manager\TableController::bulkQr');
 
     // Customers
     $routes->get('customers',                       'Manager\CustomerController::index');
@@ -158,6 +160,11 @@ $routes->group('admin', ['filter' => 'auth:restaurant_admin,branch_manager,super
 });
 
 // ── POS ──────────────────────────────────────────────────────
+
+// Landing page
+$routes->get('/', 'Public\LandingController::index');
+$routes->get('landing', 'Public\LandingController::index');
+
 // Public customer menu (QR code scan — no auth)
 $routes->get('menu/table/(:segment)/status/(:num)', 'Public\CustomerMenuController::orderStatus/$1/$2');
 $routes->get('menu/table/(:segment)/poll/(:num)',   'Public\CustomerMenuController::pollStatus/$1/$2');

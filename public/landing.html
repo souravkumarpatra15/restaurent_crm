@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="DinoviX CRM — QR ordering, live kitchen display, POS and billing for Indian restaurants. Table to kitchen in seconds.">
+<title>DinoviX — Run Your Restaurant Smarter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+/* ── RESET & BASE ──────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --p:#FF6B35; --p-d:#E55A20; --p-l:rgba(255,107,53,.12);
+  --g:#22C55E; --g-l:rgba(34,197,94,.12);
+  --bg:#080D1A; --bg2:#0E1525; --bg3:#151F35;
+  --card:rgba(255,255,255,.04); --card-b:rgba(255,255,255,.07);
+  --t:#F8FAFC; --t2:rgba(248,250,252,.55); --t3:rgba(248,250,252,.28);
+  --display:'Syne',sans-serif; --body:'Inter',sans-serif; --mono:'JetBrains Mono',monospace;
+  --r:14px; --r2:20px;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--t);font-family:var(--body);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+img{max-width:100%;display:block}
+::selection{background:var(--p);color:#fff}
+
+/* ── NAV ──────────────────────────────────────────────── */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:.875rem 2rem;display:flex;align-items:center;gap:2rem;transition:background .3s,backdrop-filter .3s}
+nav.scrolled{background:rgba(8,13,26,.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--card-b)}
+.nav-logo{font-family:var(--display);font-size:1.3rem;font-weight:800;color:var(--t);display:flex;align-items:center;gap:.5rem;flex-shrink:0}
+.nav-logo span{color:var(--p)}
+.nav-links{display:flex;align-items:center;gap:1.75rem;margin-left:auto}
+.nav-links a{font-size:.85rem;font-weight:500;color:var(--t2);transition:color .15s}
+.nav-links a:hover{color:var(--t)}
+.nav-cta{background:var(--p);color:#fff;font-size:.82rem;font-weight:700;padding:.55rem 1.25rem;border-radius:24px;transition:background .15s,transform .15s}
+.nav-cta:hover{background:var(--p-d);transform:translateY(-1px)}
+.nav-mob{display:none;background:none;border:none;color:var(--t);font-size:1.3rem;cursor:pointer;margin-left:auto}
+
+/* ── HERO ──────────────────────────────────────────────── */
+.hero{min-height:100vh;display:flex;align-items:center;padding:7rem 2rem 4rem;position:relative;overflow:hidden}
+.hero-bg{position:absolute;inset:0;pointer-events:none}
+.hero-glow1{position:absolute;top:-10%;left:-5%;width:600px;height:600px;background:radial-gradient(circle,rgba(255,107,53,.12) 0%,transparent 70%);animation:pulse 6s ease-in-out infinite}
+.hero-glow2{position:absolute;bottom:-10%;right:-5%;width:500px;height:500px;background:radial-gradient(circle,rgba(34,197,94,.08) 0%,transparent 70%);animation:pulse 6s ease-in-out 3s infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.1);opacity:1}}
+.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center;max-width:1200px;margin:0 auto;width:100%;position:relative;z-index:1}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:.5rem;font-size:.75rem;font-weight:700;color:var(--p);background:var(--p-l);border:1px solid rgba(255,107,53,.2);padding:.35rem .875rem;border-radius:20px;margin-bottom:1.25rem;letter-spacing:.05em;text-transform:uppercase}
+.hero-h1{font-family:var(--display);font-size:clamp(2.5rem,5vw,4rem);font-weight:800;line-height:1.05;letter-spacing:-.025em;margin-bottom:1.25rem}
+.hero-h1 .accent{color:var(--p)}
+.hero-sub{font-size:1.05rem;color:var(--t2);line-height:1.7;margin-bottom:2rem;max-width:480px}
+.hero-btns{display:flex;gap:.875rem;flex-wrap:wrap;margin-bottom:2.5rem}
+.btn-hero-p{background:var(--p);color:#fff;padding:.875rem 2rem;border-radius:12px;font-weight:700;font-size:.95rem;display:inline-flex;align-items:center;gap:.5rem;transition:all .2s}
+.btn-hero-p:hover{background:var(--p-d);transform:translateY(-2px);box-shadow:0 8px 24px rgba(255,107,53,.35)}
+.btn-hero-s{background:var(--card);color:var(--t);padding:.875rem 2rem;border-radius:12px;font-weight:600;font-size:.95rem;display:inline-flex;align-items:center;gap:.5rem;border:1px solid var(--card-b);transition:all .2s}
+.btn-hero-s:hover{background:rgba(255,255,255,.08);transform:translateY(-2px)}
+.hero-trust{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.trust-pill{display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--t3);font-weight:500}
+.trust-pill i{color:var(--g);font-size:.75rem}
+
+/* ── LIVE TABLE MAP (Hero visual) ─────────────────────── */
+.hero-visual{position:relative}
+.pos-mockup{background:var(--bg3);border:1px solid var(--card-b);border-radius:20px;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.04);position:relative}
+.pos-bar{background:#0E1525;padding:.625rem 1rem;display:flex;align-items:center;gap:.625rem;border-bottom:1px solid rgba(255,255,255,.06)}
+.pos-bar-dot{width:10px;height:10px;border-radius:50%}
+.pos-bar-title{font-size:.72rem;font-weight:700;color:var(--t2);margin-left:.25rem;font-family:var(--mono)}
+.pos-bar-time{margin-left:auto;font-family:var(--mono);font-size:.68rem;color:var(--t3)}
+.pos-body{padding:1rem}
+.pos-stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-bottom:1rem}
+.pos-stat{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:.5rem .625rem;text-align:center}
+.ps-val{font-size:1.1rem;font-weight:900;font-family:var(--display)}
+.ps-lbl{font-size:.55rem;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-top:.1rem}
+.area-lbl{font-size:.58rem;font-weight:800;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.5rem}
+.table-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;margin-bottom:.75rem}
+.t-tile{border-radius:10px;padding:.6rem .4rem;text-align:center;border:1.5px solid;cursor:pointer;transition:all .3s;position:relative}
+.t-tile .tn{font-weight:900;font-size:.85rem;line-height:1}
+.t-tile .tc{font-size:.5rem;opacity:.7;margin-top:.15rem}
+.t-tile .ts{font-size:.5rem;font-weight:900;letter-spacing:.05em;margin-top:.2rem;text-transform:uppercase}
+.t-avail{background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.3);color:#22C55E}
+.t-occu {background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.3); color:#EF4444}
+.t-book {background:rgba(139,92,246,.08);border-color:rgba(139,92,246,.3);color:#8B5CF6}
+/* notification pop */
+.notif{position:absolute;top:.75rem;right:.75rem;background:#EF4444;color:#fff;border-radius:12px;padding:.5rem .75rem;font-size:.65rem;font-weight:800;display:flex;align-items:center;gap:.35rem;box-shadow:0 4px 16px rgba(239,68,68,.4);animation:notifpop .4s cubic-bezier(.34,1.56,.64,1) both;opacity:0;pointer-events:none}
+@keyframes notifpop{0%{transform:scale(.6) translateY(-8px);opacity:0}100%{transform:scale(1) translateY(0);opacity:1}}
+/* qr scan anim */
+.qr-scan-wrap{position:absolute;bottom:.75rem;left:.75rem;background:rgba(8,13,26,.92);border:1px solid var(--card-b);border-radius:10px;padding:.5rem .75rem;display:flex;align-items:center;gap:.5rem;opacity:0;transform:translateY(8px);transition:all .4s}
+.qr-scan-wrap.show{opacity:1;transform:translateY(0)}
+.qr-scan-wrap img{width:32px;height:32px}
+.qr-text{font-size:.62rem;color:var(--t2);font-weight:600}
+.qr-text b{color:var(--g);display:block;font-size:.7rem}
+
+/* ── LOGOS STRIP ──────────────────────────────────────── */
+.strip{padding:2rem;border-top:1px solid var(--card-b);border-bottom:1px solid var(--card-b);background:var(--bg2)}
+.strip-inner{max-width:1000px;margin:0 auto;display:flex;align-items:center;justify-content:center;gap:3rem;flex-wrap:wrap}
+.strip-label{font-size:.72rem;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;font-weight:600;text-align:center;width:100%}
+.stat-big{text-align:center}
+.stat-big-val{font-family:var(--display);font-size:2rem;font-weight:800;color:var(--t)}
+.stat-big-lbl{font-size:.72rem;color:var(--t3);margin-top:.15rem}
+
+/* ── SECTIONS ─────────────────────────────────────────── */
+section{padding:6rem 2rem}
+.sec-inner{max-width:1200px;margin:0 auto}
+.eyebrow{font-size:.72rem;font-weight:700;color:var(--p);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem}
+.sec-h{font-family:var(--display);font-size:clamp(2rem,4vw,3rem);font-weight:800;line-height:1.1;letter-spacing:-.02em;margin-bottom:1rem}
+.sec-sub{font-size:1rem;color:var(--t2);max-width:560px;line-height:1.7}
+
+/* ── FEATURES GRID ────────────────────────────────────── */
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-top:3.5rem}
+.feat-card{background:var(--card);border:1px solid var(--card-b);border-radius:var(--r2);padding:1.75rem;transition:all .25s;position:relative;overflow:hidden}
+.feat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--p),transparent);opacity:0;transition:opacity .3s}
+.feat-card:hover{background:rgba(255,255,255,.06);border-color:rgba(255,107,53,.2);transform:translateY(-4px)}
+.feat-card:hover::before{opacity:1}
+.feat-icon{width:48px;height:48px;border-radius:14px;background:var(--p-l);display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:1.25rem;border:1px solid rgba(255,107,53,.15)}
+.feat-title{font-family:var(--display);font-size:1.05rem;font-weight:800;margin-bottom:.5rem;letter-spacing:-.01em}
+.feat-desc{font-size:.85rem;color:var(--t2);line-height:1.65}
+.feat-tag{display:inline-block;font-size:.6rem;font-weight:800;color:var(--p);background:var(--p-l);padding:.18rem .5rem;border-radius:8px;margin-top:.875rem;letter-spacing:.05em;text-transform:uppercase}
+
+/* ── QR FEATURE (full-width section) ─────────────────── */
+.qr-section{background:var(--bg2)}
+.qr-grid{display:grid;grid-template-columns:1fr 1fr;gap:5rem;align-items:center}
+.qr-steps{display:flex;flex-direction:column;gap:1.5rem;margin-top:2rem}
+.qr-step{display:flex;gap:1.25rem;align-items:flex-start}
+.qr-step-num{width:38px;height:38px;border-radius:50%;background:var(--p);color:#fff;font-family:var(--display);font-weight:800;font-size:.9rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(255,107,53,.3)}
+
+/* Phone mockup */
+.phone-wrap{position:relative;display:flex;justify-content:center}
+.phone{width:260px;background:#0E1525;border-radius:36px;border:2px solid rgba(255,255,255,.1);overflow:hidden;box-shadow:0 32px 64px rgba(0,0,0,.6),0 0 0 8px rgba(255,255,255,.03)}
+.phone-bar{background:#080D1A;height:32px;display:flex;align-items:center;justify-content:center}
+.phone-cam{width:12px;height:12px;border-radius:50%;background:#1E293B;border:2px solid rgba(255,255,255,.1)}
+.phone-screen{padding:.875rem}
+.ph-rest{font-family:var(--display);font-size:.85rem;font-weight:800;color:#fff;margin-bottom:.15rem}
+.ph-table{background:var(--p);color:#fff;font-size:.58rem;font-weight:800;padding:.15rem .4rem;border-radius:10px;display:inline-block;margin-bottom:.875rem}
+.ph-cat-row{display:flex;gap:.35rem;margin-bottom:.75rem;overflow:hidden}
+.ph-cat{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:.25rem .6rem;font-size:.58rem;font-weight:700;color:var(--t2);white-space:nowrap;flex-shrink:0}
+.ph-cat.on{background:var(--p);color:#fff;border-color:var(--p)}
+.ph-items{display:flex;flex-direction:column;gap:.5rem}
+.ph-item{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:.625rem;display:flex;align-items:center;gap:.625rem}
+.ph-item-emoji{font-size:1.1rem;flex-shrink:0}
+.ph-item-body{flex:1;min-width:0}
+.ph-item-name{font-size:.68rem;font-weight:700;color:#fff}
+.ph-item-price{font-size:.62rem;color:var(--p);font-weight:800}
+.ph-add{width:24px;height:24px;border-radius:50%;background:var(--p);color:#fff;font-size:.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:transform .15s}
+.ph-add.added{background:var(--g)}
+.ph-fab{background:var(--p);border-radius:20px;padding:.6rem .875rem;display:flex;justify-content:space-between;align-items:center;margin-top:.75rem}
+.ph-fab-l{font-size:.62rem;font-weight:800;color:rgba(255,255,255,.7)}
+.ph-fab-r{font-size:.65rem;font-weight:800;color:#fff}
+.phone-glow{position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);width:160px;height:80px;background:var(--p);filter:blur(40px);opacity:.25;border-radius:50%}
+
+/* ── HOW IT WORKS ─────────────────────────────────────── */
+.hiw-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2rem;margin-top:3.5rem;position:relative}
+.hiw-grid::before{content:'';position:absolute;top:32px;left:16.6%;right:16.6%;height:1px;background:linear-gradient(90deg,transparent,var(--p),var(--p),transparent);opacity:.3}
+.hiw-card{text-align:center;padding:2rem 1.5rem;position:relative}
+.hiw-num{width:56px;height:56px;border-radius:50%;background:var(--bg3);border:2px solid var(--p);color:var(--p);font-family:var(--display);font-size:1.1rem;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem}
+.hiw-icon{font-size:2.5rem;margin-bottom:.75rem}
+.hiw-title{font-family:var(--display);font-size:1.05rem;font-weight:800;margin-bottom:.5rem}
+.hiw-desc{font-size:.85rem;color:var(--t2);line-height:1.65}
+
+/* ── PRICING ──────────────────────────────────────────── */
+.pricing-section{background:var(--bg2)}
+.price-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-top:3.5rem}
+.price-card{background:var(--bg3);border:1.5px solid var(--card-b);border-radius:var(--r2);padding:2rem;position:relative;transition:all .25s}
+.price-card.popular{border-color:var(--p);background:linear-gradient(135deg,rgba(255,107,53,.06),rgba(255,107,53,.02))}
+.popular-badge{position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:var(--p);color:#fff;font-size:.65rem;font-weight:800;padding:.3rem .875rem;border-radius:20px;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+.price-plan{font-size:.72rem;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem}
+.price-val{font-family:var(--display);font-size:2.5rem;font-weight:800;line-height:1;margin-bottom:.25rem}
+.price-val sup{font-size:1.2rem;vertical-align:top;margin-top:.4rem}
+.price-cycle{font-size:.78rem;color:var(--t3);margin-bottom:.25rem}
+.price-yearly{font-size:.75rem;color:var(--g);font-weight:700;margin-bottom:1.5rem}
+.price-desc{font-size:.82rem;color:var(--t2);margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--card-b)}
+.price-feats{display:flex;flex-direction:column;gap:.625rem;margin-bottom:1.75rem}
+.pf{display:flex;align-items:center;gap:.625rem;font-size:.82rem;color:var(--t2)}
+.pf i{color:var(--g);font-size:.75rem;flex-shrink:0}
+.pf.no{color:var(--t3)}
+.pf.no i{color:var(--t3)}
+.price-btn{width:100%;padding:.875rem;border-radius:12px;font-family:var(--body);font-weight:700;font-size:.9rem;cursor:pointer;border:none;transition:all .2s;text-align:center;display:block}
+.price-btn.p{background:var(--p);color:#fff}
+.price-btn.p:hover{background:var(--p-d);transform:translateY(-2px);box-shadow:0 8px 24px rgba(255,107,53,.3)}
+.price-btn.s{background:var(--card);color:var(--t);border:1px solid var(--card-b)}
+.price-btn.s:hover{background:rgba(255,255,255,.08)}
+.price-note{text-align:center;margin-top:1.25rem;font-size:.78rem;color:var(--t3)}
+.price-note a{color:var(--p);font-weight:600}
+
+/* ── TESTIMONIALS ─────────────────────────────────────── */
+.testi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-top:3rem}
+.testi{background:var(--card);border:1px solid var(--card-b);border-radius:var(--r2);padding:1.5rem}
+.testi-quote{font-size:.9rem;color:var(--t2);line-height:1.7;margin-bottom:1.25rem;font-style:italic}
+.testi-quote::before{content:'"';font-size:2rem;color:var(--p);line-height:0;vertical-align:-.4rem;margin-right:.15rem;font-family:Georgia,serif}
+.testi-author{display:flex;align-items:center;gap:.75rem}
+.testi-avatar{width:38px;height:38px;border-radius:50%;background:var(--p);color:#fff;font-family:var(--display);font-weight:800;display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0}
+.testi-name{font-weight:700;font-size:.85rem}
+.testi-role{font-size:.72rem;color:var(--t3)}
+.stars{color:#F59E0B;font-size:.75rem;margin-top:.15rem;letter-spacing:.1em}
+
+/* ── FAQ ──────────────────────────────────────────────── */
+.faq-list{max-width:720px;margin:3rem auto 0;display:flex;flex-direction:column;gap:.75rem}
+.faq-item{background:var(--card);border:1px solid var(--card-b);border-radius:var(--r);overflow:hidden}
+.faq-q{padding:1.25rem 1.5rem;font-weight:700;font-size:.9rem;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:1rem;transition:color .15s}
+.faq-q:hover{color:var(--p)}
+.faq-q i{color:var(--t3);font-size:.8rem;transition:transform .25s;flex-shrink:0}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .35s ease,padding .25s}
+.faq-a-inner{padding:0 1.5rem 1.25rem;font-size:.87rem;color:var(--t2);line-height:1.7}
+.faq-item.open .faq-q i{transform:rotate(180deg)}
+.faq-item.open .faq-a{max-height:300px}
+
+/* ── CTA BOTTOM ───────────────────────────────────────── */
+.cta-section{background:linear-gradient(135deg,rgba(255,107,53,.08),rgba(34,197,94,.05));border-top:1px solid var(--card-b);text-align:center;padding:7rem 2rem}
+.cta-h{font-family:var(--display);font-size:clamp(2rem,4vw,3rem);font-weight:800;letter-spacing:-.025em;margin-bottom:1rem}
+.cta-sub{font-size:1rem;color:var(--t2);margin-bottom:2.5rem;max-width:500px;margin-left:auto;margin-right:auto;line-height:1.7}
+.cta-btns{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
+.cta-input-row{display:flex;gap:.75rem;max-width:420px;margin:0 auto 1.5rem;flex-wrap:wrap}
+.cta-input{flex:1;min-width:200px;padding:.875rem 1.25rem;background:rgba(255,255,255,.06);border:1.5px solid var(--card-b);border-radius:12px;color:#fff;font-family:var(--body);font-size:.9rem;outline:none;transition:border-color .15s}
+.cta-input:focus{border-color:var(--p)}
+.cta-input::placeholder{color:var(--t3)}
+.cta-btn{background:var(--p);color:#fff;padding:.875rem 2rem;border-radius:12px;font-weight:700;font-family:var(--body);font-size:.9rem;border:none;cursor:pointer;transition:all .2s;white-space:nowrap}
+.cta-btn:hover{background:var(--p-d);transform:translateY(-2px);box-shadow:0 8px 24px rgba(255,107,53,.35)}
+.cta-guarantee{font-size:.75rem;color:var(--t3);margin-top:.75rem}
+
+/* ── FOOTER ───────────────────────────────────────────── */
+footer{background:var(--bg2);border-top:1px solid var(--card-b);padding:3rem 2rem}
+.footer-inner{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:3rem}
+.footer-brand .nav-logo{margin-bottom:.875rem;font-size:1.2rem}
+.footer-brand p{font-size:.83rem;color:var(--t3);line-height:1.7;max-width:260px}
+.footer-col h4{font-size:.78rem;font-weight:800;color:var(--t);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.875rem}
+.footer-col a{display:block;font-size:.83rem;color:var(--t3);margin-bottom:.5rem;transition:color .15s}
+.footer-col a:hover{color:var(--p)}
+.footer-bottom{max-width:1200px;margin:2rem auto 0;padding-top:1.5rem;border-top:1px solid var(--card-b);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}
+.footer-bottom p{font-size:.78rem;color:var(--t3)}
+
+/* ── SCROLL REVEAL ────────────────────────────────────── */
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .6s ease,transform .6s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+/* ── MOBILE NAV DRAWER ────────────────────────────────── */
+.mob-menu{position:fixed;top:0;right:-100%;width:280px;height:100vh;background:#0E1525;border-left:1px solid var(--card-b);z-index:200;padding:5rem 2rem 2rem;display:flex;flex-direction:column;gap:1.5rem;transition:right .3s;box-shadow:-16px 0 40px rgba(0,0,0,.4)}
+.mob-menu.open{right:0}
+.mob-menu a{font-size:1rem;font-weight:600;color:var(--t2);padding:.5rem 0;border-bottom:1px solid var(--card-b)}
+.mob-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:199;display:none}
+.mob-overlay.open{display:block}
+.mob-close{position:absolute;top:1.25rem;right:1.25rem;background:none;border:none;color:var(--t2);font-size:1.3rem;cursor:pointer}
+
+/* ── RESPONSIVE ───────────────────────────────────────── */
+@media(max-width:1024px){
+  .hero-grid{grid-template-columns:1fr;text-align:center}
+  .hero-sub{margin-left:auto;margin-right:auto}
+  .hero-btns{justify-content:center}
+  .hero-trust{justify-content:center}
+  .hero-visual{display:none}
+  .feat-grid{grid-template-columns:repeat(2,1fr)}
+  .qr-grid{grid-template-columns:1fr;gap:2.5rem}
+  .phone-wrap{order:-1}
+  .hiw-grid::before{display:none}
+  .price-grid{grid-template-columns:1fr}
+  .price-card.popular{transform:none}
+  .testi-grid{grid-template-columns:1fr}
+  .footer-inner{grid-template-columns:1fr 1fr}
+  .nav-links{display:none}
+  .nav-mob{display:block}
+}
+@media(max-width:640px){
+  section{padding:4rem 1.25rem}
+  .hero{padding:5.5rem 1.25rem 3rem}
+  .feat-grid{grid-template-columns:1fr}
+  .hiw-grid{grid-template-columns:1fr;gap:1.5rem}
+  .footer-inner{grid-template-columns:1fr}
+  .strip-inner{gap:2rem}
+  nav{padding:.75rem 1.25rem}
+}
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+
+<!-- ── NAV ──────────────────────────────────────────── -->
+<nav id="nav">
+  <div class="nav-logo">🍽 Dinovi<span>X</span></div>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#qr">QR Ordering</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#faq">FAQ</a>
+    <a href="/login" class="nav-cta">Login</a>
+  </div>
+  <button class="nav-mob" onclick="openMob()"><i class="fa fa-bars"></i></button>
+</nav>
+
+<!-- Mobile nav -->
+<div class="mob-overlay" id="mobOverlay" onclick="closeMob()"></div>
+<div class="mob-menu" id="mobMenu">
+  <button class="mob-close" onclick="closeMob()"><i class="fa fa-times"></i></button>
+  <a href="#features" onclick="closeMob()">Features</a>
+  <a href="#qr" onclick="closeMob()">QR Ordering</a>
+  <a href="#pricing" onclick="closeMob()">Pricing</a>
+  <a href="#faq" onclick="closeMob()">FAQ</a>
+  <a href="/login" style="color:var(--p);font-weight:800">Login →</a>
+</div>
+
+<!-- ── HERO ──────────────────────────────────────────── -->
+<section class="hero">
+  <div class="hero-bg">
+    <div class="hero-glow1"></div>
+    <div class="hero-glow2"></div>
+  </div>
+  <div class="hero-grid">
+    <!-- Left -->
+    <div>
+      <div class="hero-eyebrow"><i class="fa fa-bolt"></i> Built for Indian Restaurants</div>
+      <h1 class="hero-h1">Your Customers Order.<br><span class="accent">Your Kitchen Cooks.</span><br>You Just Watch.</h1>
+      <p class="hero-sub">DinoviX connects your tables, kitchen, and billing in real time — with QR ordering, live KOT display, and a POS your staff will actually use.</p>
+      <div class="hero-btns">
+        <a href="#pricing" class="btn-hero-p"><i class="fa fa-rocket"></i> Start Free Trial</a>
+        <a href="#qr" class="btn-hero-s"><i class="fa fa-play"></i> See How It Works</a>
+      </div>
+      <div class="hero-trust">
+        <div class="trust-pill"><i class="fa fa-check-circle"></i> No installation</div>
+        <div class="trust-pill"><i class="fa fa-check-circle"></i> 30-day free trial</div>
+        <div class="trust-pill"><i class="fa fa-check-circle"></i> Cancel anytime</div>
+      </div>
+    </div>
+    <!-- Right: Live table map mockup -->
+    <div class="hero-visual reveal">
+      <div class="pos-mockup">
+        <div class="pos-bar">
+          <div class="pos-bar-dot" style="background:#EF4444"></div>
+          <div class="pos-bar-dot" style="background:#F59E0B;margin:0 4px"></div>
+          <div class="pos-bar-dot" style="background:#22C55E"></div>
+          <span class="pos-bar-title">DinoviX POS — Spice Garden · Main Branch</span>
+          <span class="pos-bar-time" id="heroTime"></span>
+        </div>
+        <div class="pos-body">
+          <div class="pos-stat-row">
+            <div class="pos-stat"><div class="ps-val" style="color:#F59E0B" id="hStatA">6</div><div class="ps-lbl">Active</div></div>
+            <div class="pos-stat"><div class="ps-val" style="color:#22C55E">4</div><div class="ps-lbl">Free</div></div>
+            <div class="pos-stat"><div class="ps-val" style="color:#EF4444">4</div><div class="ps-lbl">Busy</div></div>
+            <div class="pos-stat"><div class="ps-val" style="color:#8B5CF6">1</div><div class="ps-lbl">Booked</div></div>
+          </div>
+          <div class="area-lbl">Ground Floor</div>
+          <div class="table-grid" id="heroTables">
+            <div class="t-tile t-avail"><div class="tn">T01</div><div class="tc">2 pax</div><div class="ts">Free</div></div>
+            <div class="t-tile t-occu" id="ht2"><div class="tn">T02</div><div class="tc">4 pax</div><div class="ts">Busy</div></div>
+            <div class="t-tile t-occu"><div class="tn">T03</div><div class="tc">2 pax</div><div class="ts">Busy</div></div>
+            <div class="t-tile t-avail"><div class="tn">T04</div><div class="tc">4 pax</div><div class="ts">Free</div></div>
+            <div class="t-tile t-occu"><div class="tn">T05</div><div class="tc">6 pax</div><div class="ts">Busy</div></div>
+            <div class="t-tile t-avail"><div class="tn">T06</div><div class="tc">2 pax</div><div class="ts">Free</div></div>
+            <div class="t-tile t-book"><div class="tn">T07</div><div class="tc">4 pax</div><div class="ts">Booked</div></div>
+            <div class="t-tile t-occu"><div class="tn">T08</div><div class="tc">2 pax</div><div class="ts">Busy</div></div>
+          </div>
+          <div class="area-lbl">First Floor</div>
+          <div class="table-grid">
+            <div class="t-tile t-avail"><div class="tn">T09</div><div class="tc">4 pax</div><div class="ts">Free</div></div>
+            <div class="t-tile t-occu" id="ht10"><div class="tn">T10</div><div class="tc">2 pax</div><div class="ts">Busy</div></div>
+            <div class="t-tile t-avail"><div class="tn">T11</div><div class="tc">6 pax</div><div class="ts">Free</div></div>
+            <div class="t-tile t-occu"><div class="tn">T12</div><div class="tc">4 pax</div><div class="ts">Busy</div></div>
+          </div>
+          <!-- notification pop -->
+          <div class="notif" id="heroNotif"><i class="fa fa-bell"></i> New QR order — T06</div>
+          <!-- qr scan indicator -->
+          <div class="qr-scan-wrap" id="heroQr">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <rect x="2" y="2" width="12" height="12" rx="2" fill="none" stroke="#FF6B35" stroke-width="2"/>
+              <rect x="5" y="5" width="6" height="6" rx="1" fill="#FF6B35"/>
+              <rect x="18" y="2" width="12" height="12" rx="2" fill="none" stroke="#FF6B35" stroke-width="2"/>
+              <rect x="21" y="5" width="6" height="6" rx="1" fill="#FF6B35"/>
+              <rect x="2" y="18" width="12" height="12" rx="2" fill="none" stroke="#FF6B35" stroke-width="2"/>
+              <rect x="5" y="21" width="6" height="6" rx="1" fill="#FF6B35"/>
+              <rect x="18" y="18" width="3" height="3" fill="#FF6B35"/>
+              <rect x="23" y="18" width="3" height="3" fill="#FF6B35"/>
+              <rect x="28" y="18" width="3" height="3" fill="#FF6B35"/>
+              <rect x="18" y="23" width="3" height="3" fill="#FF6B35"/>
+              <rect x="23" y="23" width="3" height="3" fill="#FF6B35"/>
+              <rect x="28" y="28" width="3" height="3" fill="#FF6B35"/>
+            </svg>
+            <div class="qr-text"><b>Customer scanning T06</b>Viewing menu now…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STATS STRIP ────────────────────────────────────── -->
+<div class="strip">
+  <div class="strip-inner">
+    <div class="stat-big"><div class="stat-big-val">500+</div><div class="stat-big-lbl">Restaurants Onboarded</div></div>
+    <div style="width:1px;height:40px;background:var(--card-b)"></div>
+    <div class="stat-big"><div class="stat-big-val">2.4L+</div><div class="stat-big-lbl">Orders Processed</div></div>
+    <div style="width:1px;height:40px;background:var(--card-b)"></div>
+    <div class="stat-big"><div class="stat-big-val">99.9%</div><div class="stat-big-lbl">Uptime</div></div>
+    <div style="width:1px;height:40px;background:var(--card-b)"></div>
+    <div class="stat-big"><div class="stat-big-val">8 sec</div><div class="stat-big-lbl">Avg. QR to Kitchen</div></div>
+  </div>
+</div>
+
+<!-- ── FEATURES ───────────────────────────────────────── -->
+<section id="features">
+  <div class="sec-inner">
+    <div class="eyebrow">Everything you need</div>
+    <h2 class="sec-h reveal">One platform.<br>Every role covered.</h2>
+    <p class="sec-sub reveal">From the customer's phone to the kitchen's screen — DinoviX handles every step so your staff can focus on the food.</p>
+    <div class="feat-grid">
+      <div class="feat-card reveal">
+        <div class="feat-icon">📱</div>
+        <div class="feat-title">QR Self-Ordering</div>
+        <div class="feat-desc">Each table gets a unique QR code. Customers scan, browse your full menu, add to cart, and place their order — from their own phone. No app download needed.</div>
+        <div class="feat-tag">⭐ Most loved feature</div>
+      </div>
+      <div class="feat-card reveal">
+        <div class="feat-icon">👨‍🍳</div>
+        <div class="feat-title">Live Kitchen Display</div>
+        <div class="feat-desc">Every confirmed order becomes a live KOT card in the kitchen — with a running timer, table number, and item list. Kitchen staff always know what to cook next.</div>
+      </div>
+      <div class="feat-card reveal">
+        <div class="feat-icon">🖥️</div>
+        <div class="feat-title">Smart POS</div>
+        <div class="feat-desc">A floor map POS that works on any screen. Take dine-in, takeaway, and delivery orders. Handle split bills, discounts, multiple payment methods, and GST-compliant receipts.</div>
+      </div>
+      <div class="feat-card reveal">
+        <div class="feat-icon">🏪</div>
+        <div class="feat-title">Multi-Branch Support</div>
+        <div class="feat-desc">Manage every location from one dashboard. Each branch has its own staff, menu, tables, and reports — but you see everything from the top.</div>
+      </div>
+      <div class="feat-card reveal">
+        <div class="feat-icon">🖨️</div>
+        <div class="feat-title">Thermal Printer Ready</div>
+        <div class="feat-desc">Connect your 80mm or 57mm thermal printer over WiFi. Print KOT slips and customer bills automatically — no extra software required.</div>
+      </div>
+      <div class="feat-card reveal">
+        <div class="feat-icon">📊</div>
+        <div class="feat-title">Sales & Tax Reports</div>
+        <div class="feat-desc">Daily, weekly, and monthly sales reports with CGST/SGST breakdowns. Category-wise, item-wise, and staff-wise performance — export-ready.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── QR ORDERING DEEP DIVE ──────────────────────────── -->
+<section id="qr" class="qr-section">
+  <div class="sec-inner">
+    <div class="qr-grid">
+      <!-- Phone mockup -->
+      <div class="phone-wrap reveal">
+        <div class="phone">
+          <div class="phone-bar"><div class="phone-cam"></div></div>
+          <div class="phone-screen">
+            <div style="background:linear-gradient(135deg,#0F172A,#1E293B);margin:-.875rem -.875rem .875rem;padding:.875rem;border-radius:0 0 14px 14px">
+              <div class="ph-rest">Spice Garden</div>
+              <div class="ph-table">🪑 Table T06</div>
+            </div>
+            <div class="ph-cat-row">
+              <div class="ph-cat on">All</div>
+              <div class="ph-cat">Starters</div>
+              <div class="ph-cat">Biryani</div>
+              <div class="ph-cat">Drinks</div>
+            </div>
+            <div class="ph-items">
+              <div class="ph-item">
+                <div class="ph-item-emoji">🍗</div>
+                <div class="ph-item-body">
+                  <div class="ph-item-name">Chicken Tikka</div>
+                  <div class="ph-item-price">₹280 · 🔥 Bestseller</div>
+                </div>
+                <div class="ph-add added" id="padd1">✓</div>
+              </div>
+              <div class="ph-item">
+                <div class="ph-item-emoji">🍛</div>
+                <div class="ph-item-body">
+                  <div class="ph-item-name">Chicken Biryani</div>
+                  <div class="ph-item-price">₹280 · ⭐ Chef's Pick</div>
+                </div>
+                <div class="ph-add" id="padd2" onclick="this.textContent='✓';this.classList.add('added');this.style.pointerEvents='none';updateFab()">+</div>
+              </div>
+              <div class="ph-item">
+                <div class="ph-item-emoji">🥭</div>
+                <div class="ph-item-body">
+                  <div class="ph-item-name">Mango Lassi</div>
+                  <div class="ph-item-price">₹80</div>
+                </div>
+                <div class="ph-add" id="padd3" onclick="this.textContent='✓';this.classList.add('added');this.style.pointerEvents='none';updateFab()">+</div>
+              </div>
+            </div>
+            <div class="ph-fab" id="phFab">
+              <span class="ph-fab-l" id="phFabL">1 item in order</span>
+              <span class="ph-fab-r">View Order →</span>
+            </div>
+          </div>
+        </div>
+        <div class="phone-glow"></div>
+      </div>
+      <!-- Text -->
+      <div class="reveal">
+        <div class="eyebrow">QR Ordering</div>
+        <h2 class="sec-h">From Scan to Kitchen<br>in Under 10 Seconds</h2>
+        <p class="sec-sub">No dedicated device. No printed menus. Customers use their own phone — and your kitchen gets the order instantly.</p>
+        <div class="qr-steps">
+          <div class="qr-step">
+            <div class="qr-step-num">1</div>
+            <div class="qr-step-body">
+              <div class="qr-step-title">Customer scans the table QR</div>
+              <div class="qr-step-desc">Each table has a unique QR code. No login, no app — the menu opens instantly in their browser.</div>
+            </div>
+          </div>
+          <div class="qr-step">
+            <div class="qr-step-num">2</div>
+            <div class="qr-step-body">
+              <div class="qr-step-title">Browses menu and places order</div>
+              <div class="qr-step-desc">Full menu with categories, search, images, and bestseller badges. One tap to add, one tap to order.</div>
+            </div>
+          </div>
+          <div class="qr-step">
+            <div class="qr-step-num">3</div>
+            <div class="qr-step-body">
+              <div class="qr-step-title">Cashier confirms → Kitchen cooks</div>
+              <div class="qr-step-desc">The POS notifies your cashier instantly. One tap to confirm — the KOT appears in the kitchen display.</div>
+            </div>
+          </div>
+          <div class="qr-step">
+            <div class="qr-step-num">4</div>
+            <div class="qr-step-body">
+              <div class="qr-step-title">Customer tracks live status</div>
+              <div class="qr-step-desc">Their phone shows a live tracker: Received → Confirmed → Cooking → Ready. Zero calls to the waiter.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ────────────────────────────────────── -->
+<section>
+  <div class="sec-inner" style="text-align:center">
+    <div class="eyebrow">Setup in minutes</div>
+    <h2 class="sec-h reveal">Your restaurant live in 3 steps</h2>
+    <div class="hiw-grid">
+      <div class="hiw-card reveal">
+        <div class="hiw-num">1</div>
+        <div class="hiw-icon">🏪</div>
+        <div class="hiw-title">Create Your Restaurant</div>
+        <div class="hiw-desc">Enter your restaurant details, GST number, and branding. Add branches, floors, and tables — takes about 5 minutes.</div>
+      </div>
+      <div class="hiw-card reveal">
+        <div class="hiw-num">2</div>
+        <div class="hiw-icon">🍽️</div>
+        <div class="hiw-title">Upload Your Menu</div>
+        <div class="hiw-desc">Add categories, items, prices, and photos. Mark bestsellers, set tax rates, and configure variants. Your QR menu is live instantly.</div>
+      </div>
+      <div class="hiw-card reveal">
+        <div class="hiw-num">3</div>
+        <div class="hiw-icon">🚀</div>
+        <div class="hiw-title">Print & Start Taking Orders</div>
+        <div class="hiw-desc">Print the QR codes for your tables, connect your thermal printer, and open the POS. You're live.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PRICING ─────────────────────────────────────────── -->
+<section id="pricing" class="pricing-section">
+  <div class="sec-inner" style="text-align:center">
+    <div class="eyebrow">Simple pricing</div>
+    <h2 class="sec-h reveal">Pay monthly or save 20% yearly</h2>
+    <p class="sec-sub reveal" style="margin:0 auto 0">All plans include a 30-day free trial. No credit card required.</p>
+    <div class="price-grid">
+      <!-- Starter -->
+      <div class="price-card reveal">
+        <div class="price-plan">Starter</div>
+        <div class="price-val"><sup>₹</sup>999</div>
+        <div class="price-cycle">per month</div>
+        <div class="price-yearly">₹9,590/year · Save ₹1,398</div>
+        <div class="price-desc">Perfect for a single-outlet restaurant just getting started with digital ordering.</div>
+        <div class="price-feats">
+          <div class="pf"><i class="fa fa-check"></i> 1 Branch</div>
+          <div class="pf"><i class="fa fa-check"></i> Up to 5 Staff Accounts</div>
+          <div class="pf"><i class="fa fa-check"></i> Up to 20 Tables</div>
+          <div class="pf"><i class="fa fa-check"></i> Up to 100 Menu Items</div>
+          <div class="pf"><i class="fa fa-check"></i> QR Self-Ordering</div>
+          <div class="pf"><i class="fa fa-check"></i> Kitchen Display (KOT)</div>
+          <div class="pf"><i class="fa fa-check"></i> Thermal Printer Support</div>
+          <div class="pf no"><i class="fa fa-times"></i> Online Ordering Portal</div>
+          <div class="pf no"><i class="fa fa-times"></i> Advanced Reports</div>
+        </div>
+        <a href="/login" class="price-btn s">Start Free Trial</a>
+      </div>
+      <!-- Growth (popular) -->
+      <div class="price-card popular reveal">
+        <div class="popular-badge">Most Popular</div>
+        <div class="price-plan">Growth</div>
+        <div class="price-val"><sup>₹</sup>2,499</div>
+        <div class="price-cycle">per month</div>
+        <div class="price-yearly">₹23,990/year · Save ₹5,998</div>
+        <div class="price-desc">For growing restaurants with multiple branches and a team that needs full control.</div>
+        <div class="price-feats">
+          <div class="pf"><i class="fa fa-check"></i> Up to 3 Branches</div>
+          <div class="pf"><i class="fa fa-check"></i> Up to 20 Staff Accounts</div>
+          <div class="pf"><i class="fa fa-check"></i> Up to 50 Tables</div>
+          <div class="pf"><i class="fa fa-check"></i> Unlimited Menu Items</div>
+          <div class="pf"><i class="fa fa-check"></i> QR Self-Ordering</div>
+          <div class="pf"><i class="fa fa-check"></i> Kitchen Display (KOT)</div>
+          <div class="pf"><i class="fa fa-check"></i> Thermal Printer Support</div>
+          <div class="pf"><i class="fa fa-check"></i> Advanced Reports</div>
+          <div class="pf"><i class="fa fa-check"></i> Loyalty &amp; Coupons</div>
+        </div>
+        <a href="/login" class="price-btn p">Start Free Trial</a>
+      </div>
+      <!-- Enterprise -->
+      <div class="price-card reveal">
+        <div class="price-plan">Enterprise</div>
+        <div class="price-val"><sup>₹</sup>4,999</div>
+        <div class="price-cycle">per month</div>
+        <div class="price-yearly">₹47,990/year · Save ₹11,998</div>
+        <div class="price-desc">For chains and hotel groups that need unlimited scale, API access, and white-labelling.</div>
+        <div class="price-feats">
+          <div class="pf"><i class="fa fa-check"></i> Unlimited Branches</div>
+          <div class="pf"><i class="fa fa-check"></i> Unlimited Staff</div>
+          <div class="pf"><i class="fa fa-check"></i> Unlimited Tables &amp; Items</div>
+          <div class="pf"><i class="fa fa-check"></i> Everything in Growth</div>
+          <div class="pf"><i class="fa fa-check"></i> API Access</div>
+          <div class="pf"><i class="fa fa-check"></i> White-Label Branding</div>
+          <div class="pf"><i class="fa fa-check"></i> Priority Support</div>
+          <div class="pf"><i class="fa fa-check"></i> Custom Onboarding</div>
+        </div>
+        <a href="mailto:info.dinovix@gmail.com" class="price-btn s">Contact Sales</a>
+      </div>
+    </div>
+    <p class="price-note">Need help choosing? <a href="mailto:info.dinovix@gmail.com">Talk to us</a> — we'll suggest the right plan for your restaurant type.</p>
+  </div>
+</section>
+
+<!-- ── TESTIMONIALS ────────────────────────────────────── -->
+<section>
+  <div class="sec-inner" style="text-align:center">
+    <div class="eyebrow">What restaurant owners say</div>
+    <h2 class="sec-h reveal">Loved by kitchens across India</h2>
+    <div class="testi-grid">
+      <div class="testi reveal">
+        <div class="testi-quote">The QR ordering completely changed how our peak hours work. Tables turn faster, staff isn't running to take orders, and the kitchen actually knows what's happening.</div>
+        <div class="testi-author">
+          <div class="testi-avatar">RK</div>
+          <div>
+            <div class="testi-name">Rajesh Kumar</div>
+            <div class="testi-role">Owner, The Biryani House · Kolkata</div>
+            <div class="stars">★★★★★</div>
+          </div>
+        </div>
+      </div>
+      <div class="testi reveal">
+        <div class="testi-quote">We have 3 branches and one dashboard for everything. The reports are clean, staff permissions work properly, and setup took less than a day per branch.</div>
+        <div class="testi-author">
+          <div class="testi-avatar">PM</div>
+          <div>
+            <div class="testi-name">Priya Mehta</div>
+            <div class="testi-role">F&amp;B Manager, Spice Routes · Delhi</div>
+            <div class="stars">★★★★★</div>
+          </div>
+        </div>
+      </div>
+      <div class="testi reveal">
+        <div class="testi-quote">Our kitchen staff love the KOT display. No more paper slips getting lost, no more shouting across the kitchen. Every order comes in clear with a timer.</div>
+        <div class="testi-author">
+          <div class="testi-avatar">AS</div>
+          <div>
+            <div class="testi-name">Amit Sharma</div>
+            <div class="testi-role">Head Chef, Coastal Kitchen · Mumbai</div>
+            <div class="stars">★★★★★</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FAQ ─────────────────────────────────────────────── -->
+<section id="faq" style="background:var(--bg2)">
+  <div class="sec-inner" style="text-align:center">
+    <div class="eyebrow">FAQ</div>
+    <h2 class="sec-h reveal">Questions we get asked a lot</h2>
+    <div class="faq-list">
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Do my customers need to download an app? <i class="fa fa-chevron-down"></i></div>
+        <div class="faq-a"><div class="faq-a-inner">No. The QR menu opens in their browser — any phone, any browser. No app, no login, no friction.</div></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Can I use my existing thermal printer? <i class="fa fa-chevron-down"></i></div>
+        <div class="faq-a"><div class="faq-a-inner">Yes — DinoviX works with any ESC/POS-compatible 80mm or 57mm thermal printer connected over your WiFi network (TCP/IP). No drivers needed.</div></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">What happens when my internet goes down? <i class="fa fa-chevron-down"></i></div>
+        <div class="faq-a"><div class="faq-a-inner">The POS and kitchen display continue to work as long as your local WiFi is up. Orders already in the system remain accessible. Cloud sync resumes when connectivity returns.</div></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Is GST billing supported? <i class="fa fa-chevron-down"></i></div>
+        <div class="faq-a"><div class="faq-a-inner">Yes. DinoviX supports CGST/SGST/IGST, multiple tax slabs per item, tax-inclusive and tax-exclusive pricing. Bills and reports are GST-compliant.</div></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">How many restaurants can I manage? <i class="fa fa-chevron-down"></i></div>
+        <div class="faq-a"><div class="faq-a-inner">Starter supports 1 branch, Growth supports 3 branches, and Enterprise is unlimited. Each branch can have its own menu, staff, tables, and reports — all managed from one admin account.</div></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Can I try it before paying? <i class="fa fa-chevron-down"></i></div>
+        <div class="faq-a"><div class="faq-a-inner">Yes — every plan includes a 30-day free trial. No credit card required to start. If you decide DinoviX isn't for you, just don't renew.</div></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Do you offer support in Hindi? <i class="fa fa-chevron-down"></i></div>
+        <div class="faq-a"><div class="faq-a-inner">Yes — our support team is available in English and Hindi via WhatsApp, email, and phone during business hours (9 AM – 8 PM IST).</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ──────────────────────────────────────────────── -->
+<section class="cta-section">
+  <div class="eyebrow" style="display:inline-flex;align-items:center;gap:.4rem;margin:0 auto .875rem"><i class="fa fa-rocket"></i> Free 30-Day Trial</div>
+  <h2 class="cta-h reveal">Ready to modernise<br>your restaurant?</h2>
+  <p class="cta-sub">Join hundreds of restaurants already using DinoviX. Setup takes under an hour.</p>
+  <div class="cta-input-row">
+    <input type="email" class="cta-input" placeholder="Your email address" id="ctaEmail">
+    <button class="cta-btn" onclick="startTrial()">Get Started Free</button>
+  </div>
+  <div class="cta-guarantee"><i class="fa fa-shield-halved" style="color:var(--g)"></i> No credit card · No setup fee · Cancel anytime</div>
+</section>
+
+<!-- ── FOOTER ──────────────────────────────────────────── -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="nav-logo">🍽 Dinovi<span>X</span></div>
+      <p>Modern restaurant management for the Indian food industry. QR ordering, live kitchen display, POS, and billing in one platform.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Product</h4>
+      <a href="#features">Features</a>
+      <a href="#qr">QR Ordering</a>
+      <a href="#pricing">Pricing</a>
+      <a href="/login">Login</a>
+    </div>
+    <div class="footer-col">
+      <h4>Support</h4>
+      <a href="mailto:info.dinovix@gmail.com">Email Support</a>
+      <a href="#">WhatsApp</a>
+      <a href="#">Documentation</a>
+      <a href="#">Setup Guide</a>
+    </div>
+    <div class="footer-col">
+      <h4>Legal</h4>
+      <a href="#">Privacy Policy</a>
+      <a href="#">Terms of Service</a>
+      <a href="#">Refund Policy</a>
+      <a href="#">GST: 19AABCU9603R1ZX</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>© 2026 DinoviX · Made with ❤️ in India</p>
+    <p style="color:var(--t3);font-size:.75rem">Contact: <a href="mailto:info.dinovix@gmail.com" style="color:var(--p)">info.dinovix@gmail.com</a></p>
+  </div>
+</footer>
+
+<script>
+// ── Nav scroll ───────────────────────────────────────────
+window.addEventListener('scroll', () => {
+  document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 40);
+});
+
+// ── Clock ────────────────────────────────────────────────
+function tick() {
+  const el = document.getElementById('heroTime');
+  if (el) el.textContent = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+tick(); setInterval(tick, 1000);
+
+// ── Hero table animation ─────────────────────────────────
+let animPhase = 0;
+function heroAnim() {
+  const t2  = document.getElementById('ht2');
+  const notif = document.getElementById('heroNotif');
+  const qr    = document.getElementById('heroQr');
+
+  if (animPhase === 0) {
+    // T06 gets a new QR order — show notification
+    notif.style.opacity = '1';
+    notif.style.animation = 'notifpop .4s cubic-bezier(.34,1.56,.64,1) both';
+    qr.classList.add('show');
+  } else if (animPhase === 1) {
+    // hide notif after 2s
+    notif.style.opacity = '0';
+    notif.style.animation = '';
+  } else if (animPhase === 2) {
+    qr.classList.remove('show');
+    // T10 becomes available
+    const t10 = document.getElementById('ht10');
+    if (t10) { t10.className = 't-tile t-avail'; t10.querySelector('.ts').textContent = 'Free'; }
+  } else if (animPhase === 3) {
+    // T10 occupied again
+    const t10 = document.getElementById('ht10');
+    if (t10) { t10.className = 't-tile t-occu'; t10.querySelector('.ts').textContent = 'Busy'; }
+  }
+  animPhase = (animPhase + 1) % 4;
+}
+setInterval(heroAnim, 3000);
+
+// ── Phone mockup add item ────────────────────────────────
+let fabCount = 1;
+function updateFab() {
+  const added = document.querySelectorAll('.ph-add.added').length;
+  const el = document.getElementById('phFabL');
+  if (el) el.textContent = added + ' item' + (added>1?'s':'') + ' in order';
+}
+
+// ── Scroll reveal ────────────────────────────────────────
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
+}, { threshold: 0.12 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ── FAQ toggle ───────────────────────────────────────────
+function toggleFaq(el) {
+  const item = el.parentElement;
+  const isOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
+  if (!isOpen) item.classList.add('open');
+}
+
+// ── Mobile nav ───────────────────────────────────────────
+function openMob()  { document.getElementById('mobMenu').classList.add('open'); document.getElementById('mobOverlay').classList.add('open'); }
+function closeMob() { document.getElementById('mobMenu').classList.remove('open'); document.getElementById('mobOverlay').classList.remove('open'); }
+
+// ── CTA ──────────────────────────────────────────────────
+function startTrial() {
+  const e = document.getElementById('ctaEmail').value.trim();
+  if (!e || !e.includes('@')) { alert('Please enter a valid email address'); return; }
+  window.location.href = '/login?email=' + encodeURIComponent(e);
+}
+</script>
+</body>
+</html>

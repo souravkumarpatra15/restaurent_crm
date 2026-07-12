@@ -13,7 +13,10 @@
   <button class="btn <?= $activeTab === 'addons' ? 'btn-primary' : 'btn-outline' ?>" onclick="switchTab('addons')">
     <i class="fa fa-plus-circle"></i> Add-ons
   </button>
-  <a href="<?= base_url('admin/menu/items/create') ?>" class="btn btn-primary" style="margin-left:auto;flex-shrink:0">
+  <a href="<?= base_url('admin/menu/print') ?>" class="btn btn-outline" style="margin-left:auto;flex-shrink:0" target="_blank">
+    <i class="fa fa-print"></i> Print Menu
+  </a>
+  <a href="<?= base_url('admin/menu/items/create') ?>" class="btn btn-primary" style="flex-shrink:0">
     <i class="fa fa-plus"></i> Add Item
   </a>
 </div>

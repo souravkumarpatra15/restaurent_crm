@@ -454,7 +454,17 @@ function showOccupiedSheet(t) {
     .then(r => r.json()).then(orders => {
       if (!orders.length) {
         document.getElementById('sOrdersBody').innerHTML = '<div style="text-align:center;padding:2.5rem;color:#94A3B8"><i class="fa fa-receipt fa-2x" style="margin-bottom:.75rem;display:block"></i>No active orders at this table.</div>';
-        document.getElementById('sOrdersFoot').innerHTML = `<a href="${BASE}pos/new-order/dine_in?table=${t.id}" style="flex:1;padding:.75rem;background:var(--primary);color:#fff;border:none;border-radius:10px;font-weight:800;text-align:center;text-decoration:none;font-size:.9rem;display:flex;align-items:center;justify-content:center;gap:.4rem"><i class="fa fa-plus"></i> New Order</a>`;
+        document.getElementById('sOrdersFoot').innerHTML = `
+          <div style="display:flex;gap:.5rem;width:100%;">
+              <a href="${BASE}pos/new-order/dine_in?table=${t.id}"
+                style="flex:1;padding:.75rem;background:var(--primary);color:#fff;border:none;border-radius:10px;font-weight:800;text-align:center;text-decoration:none;font-size:.9rem;display:flex;align-items:center;justify-content:center;gap:.4rem">
+                  <i class="fa fa-plus"></i> New Order
+              </a>
+              <button onclick="cancelTableBooking(${t.id})"
+                  style="flex:1;padding:.75rem;background:#EF4444;color:#fff;border:none;border-radius:10px;font-weight:800;font-size:.9rem;display:flex;align-items:center;justify-content:center;gap:.4rem;cursor:pointer">
+                  <i class="fa fa-ban"></i> Cancel Table
+              </button>
+          </div>`;
         return;
       }
 
@@ -490,6 +500,33 @@ function showOccupiedSheet(t) {
         </div>`;
     }).catch(() => {
       document.getElementById('sOrdersBody').innerHTML = '<div style="color:#EF4444;text-align:center;padding:1.5rem">Failed to load orders</div>';
+    });
+}
+
+function cancelTableBooking(tableId) {
+    if (!confirm('Are you sure you want to make this table available?')) {
+        return;
+    }
+    fetch(BASE + 'pos/table/cancel-booking/' + tableId, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: new URLSearchParams({
+            '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
+        })
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            showToast('Table booking cancelled successfully.', 'success');
+            location.reload(setInterval(() => {}, 1000));
+        } else {
+            showToast(res.message || 'Unable to cancel table.', 'info');
+        }
+    })
+    .catch(() => {
+        showToast('Something went wrong.', 'error');
     });
 }
 
@@ -647,6 +684,7 @@ setInterval(() => {
 
 // ── Customer QR order notification polling ───────────────
 let custOrders = [];
+let prevCustCount = 0;
 function pollCustomerOrders() {
   fetch(BASE+'pos/order/pending-customer', {headers:{'X-Requested-With':'XMLHttpRequest'}})
     .then(r=>r.json()).then(d=>{
@@ -665,6 +703,7 @@ function pollCustomerOrders() {
       }
       // Auto-notify with toast
       if (cnt > 0 && document.hidden === false) {
+        playOrderSound();
         const existing = document.getElementById('custToast');
         if (!existing) {
           const t = document.createElement('div');
@@ -676,10 +715,32 @@ function pollCustomerOrders() {
           setTimeout(() => t.remove(), 8000);
         }
       }
+      prevCustCount = cnt;
     }).catch(()=>{});
 }
 pollCustomerOrders();
 setInterval(pollCustomerOrders, 12000);
+
+// ── Notification sound (Web Audio API — no file needed) ──
+function playOrderSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // Three-note ascending chime: G4 → B4 → D5
+    [[392, 0], [494, 0.18], [587, 0.36]].forEach(([freq, delay]) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+      gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+      gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + delay + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.55);
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + 0.6);
+    });
+  } catch(e) {}
+}
 
 function openCustOrders() {
   const modal = document.getElementById('custOrderModal');
@@ -734,6 +795,7 @@ function confirmOrder(id) {
         showToast('Order confirmed! Sent to kitchen 🍳','success');
         pollCustomerOrders();
         setTimeout(renderCustOrders, 800);
+        location.reload(setInterval(() => {}, 1000));
         if (d.redirect) setTimeout(()=> window.open(d.redirect,'_blank'), 1200);
       }
     });
@@ -743,7 +805,7 @@ function rejectOrder(id) {
   if (!confirm('Reject this customer order? They will see it as cancelled.')) return;
   postApi(BASE+'pos/order/reject-customer/'+id, {})
     .then(d => {
-      if (d.success) { showToast('Order rejected','warning'); pollCustomerOrders(); setTimeout(renderCustOrders, 800); }
+      if (d.success) { showToast('Order rejected','warning'); pollCustomerOrders(); setTimeout(renderCustOrders, 800); location.reload(); }
     });
 }
 </script>

@@ -203,4 +203,56 @@ class MenuController extends BaseController
         \Config\Database::connect()->table('menu_addons')->where('id',$id)->delete();
         return $this->response->setJSON(['success' => true]);
     }
+
+    // ── Print Menu Card ───────────────────────────────────
+    public function printMenu()
+    {
+        $db  = \Config\Database::connect();
+        $rid = session('restaurant_id');
+        $bid = session('branch_id');
+
+        $restaurant = $db->table('restaurants')->where('id', $rid)->get()->getRowArray();
+        $branch     = $db->table('branches')->where('id', $bid)->get()->getRowArray();
+
+        // All active categories with their active items + variants
+        $categories = $db->table('menu_categories')
+            ->where('restaurant_id', $rid)
+            ->where('is_active', 1)
+            ->orderBy('sort_order', 'ASC')
+            ->get()->getResultArray();
+
+        foreach ($categories as &$cat) {
+            $cat['items'] = $db->table('menu_items')
+                ->where('restaurant_id', $rid)
+                ->where('category_id', $cat['id'])
+                ->where('is_active', 1)
+                ->orderBy('sort_order', 'ASC')
+                ->get()->getResultArray();
+
+            // Load variants for each item
+            foreach ($cat['items'] as &$item) {
+                $item['variants'] = $db->table('menu_variants')
+                    ->where('menu_item_id', $item['id'])
+                    ->where('is_active', 1)
+                    ->orderBy('price', 'ASC')
+                    ->get()->getResultArray();
+            }
+        }
+
+        // Remove empty categories
+        $categories = array_values(array_filter($categories, fn($c) => !empty($c['items'])));
+
+        $totalItems = array_sum(array_map(fn($c) => count($c['items']), $categories));
+
+        return view('admin/menu/print_menu', [
+            'pageTitle'   => 'Print Menu Card',
+            'restaurant'  => $restaurant,
+            'branch'      => $branch,
+            'categories'  => $categories,
+            'totalItems'  => $totalItems,
+            'userName'    => session('user_name'),
+            'userRole'    => session('role_slug'),
+            'restaurantName' => session('restaurant_name'),
+        ]);
+    }
 }
