@@ -308,10 +308,15 @@ $withQr      = count(array_filter($allTables, fn($t) => !empty($t['qr_token'])))
     margin-top: .15rem;
   }
 
-  /* ── PRINT STYLES ──────────────────────────────────────── */
+  /* ══════════════════════════════════════════════════════════
+     PRINT STYLES — one QR card per printed page.
+     Page size defaults to a table-tent card format (80×120mm).
+     Change the `size:` value in @page below to match whatever
+     paper/label stock you actually feed the printer.
+     ══════════════════════════════════════════════════════════ */
   @media print {
 
-    /* Hide everything except print cards */
+    /* Hide everything except the print cards */
     body * {
       visibility: hidden !important;
     }
@@ -321,103 +326,80 @@ $withQr      = count(array_filter($allTables, fn($t) => !empty($t['qr_token'])))
       visibility: visible !important;
     }
 
+    /* Pin to the page regardless of how much (now-invisible)
+       layout space the rest of the app still reserves above it —
+       this is what previously caused the leading blank page(s). */
     #printArea {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      visibility: visible !important;
-      padding: 8mm;
+      position: fixed !important;
+      inset: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #fff !important;
     }
 
     #printGrid {
-      display: flex !important;
-      flex-wrap: wrap !important;
-      justify-content: flex-start !important;
-      align-items: flex-start !important;
-      gap: 0 !important;
+      display: block !important;
     }
 
+    /* Each card fills the entire page and forces a new page after it */
     #printGrid .qr-card {
-      width: 31.8% !important;
-      margin: 0.8% !important;
+      width: 100% !important;
+      height: 100% !important;
+      margin: 0 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
       box-sizing: border-box !important;
+      border: none !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      page-break-after: always !important;
+      break-after: page !important;
       page-break-inside: avoid !important;
       break-inside: avoid !important;
     }
 
-    .qr-card {
-      border: 1.5px solid #CBD5E1 !important;
-      border-radius: 10px !important;
-      box-shadow: none !important;
-      break-inside: avoid !important;
-      page-break-inside: avoid !important;
-      background: #fff !important;
-      overflow: hidden !important;
+    /* Don't leave a trailing blank page after the last card */
+    #printGrid .qr-card:last-child {
+      page-break-after: auto !important;
+      break-after: auto !important;
     }
 
     .qr-card-header {
       background: <?= esc($themeColor) ?> !important;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
-      padding: .5rem .75rem !important;
+      width: 100% !important;
+      padding: 1rem !important;
     }
 
     .qr-box {
-      padding: 8px !important;
+      padding: 14px !important;
     }
 
     .qr-table-num {
-      font-size: 1.25rem !important;
+      font-size: 2.1rem !important;
     }
 
     .qr-card-body {
-      padding: .75rem .875rem !important;
-      gap: .5rem !important;
+      padding: 1.5rem !important;
+      gap: 1rem !important;
+    }
+
+    .qr-cta {
+      font-size: .78rem !important;
     }
 
     .qr-card-footer {
-      padding: .375rem .75rem !important;
+      padding: .6rem 1rem !important;
+      width: 100% !important;
     }
 
     @page {
-      size: A4;
-      margin: 8mm;
-    }
-
-    @media print {
-
-      @page {
-        size: A4 portrait;
-        margin: 8mm;
-      }
-
-      #printArea {
-        position: static !important;
-        display: block !important;
-        padding: 0 !important;
-      }
-
-      #printGrid {
-        display: flex !important;
-        flex-wrap: wrap !important;
-        align-items: flex-start !important;
-      }
-
-      #printGrid .qr-card {
-
-        width: 60mm !important;
-        height: 87mm !important;
-
-        margin: 2mm;
-
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
-
-        box-shadow: none !important;
-        border: 1px solid #bbb !important;
-      }
-
+      size: 80mm 120mm;
+      /* table-card size — adjust to your printer/paper stock */
+      margin: 0;
     }
   }
 </style>
@@ -493,7 +475,7 @@ $withQr      = count(array_filter($allTables, fn($t) => !empty($t['qr_token'])))
 </div>
 
 <!-- Hidden print area -->
-<div id="printArea" style="display:none;position:absolute;left:-9999px">
+<div id="printArea" style="display:none">
   <div id="printGrid"></div>
 </div>
 
@@ -509,7 +491,6 @@ $withQr      = count(array_filter($allTables, fn($t) => !empty($t['qr_token'])))
   const THEME = '<?= esc($themeColor) ?>';
 
   let selected = new Set();
-  let qrCache = {}; // id → {token, imgDataUrl}
 
   // ── Tile toggle ──────────────────────────────────────────
   function toggleTile(el) {
@@ -579,14 +560,14 @@ $withQr      = count(array_filter($allTables, fn($t) => !empty($t['qr_token'])))
   }
 
   // ── Generate QR code into a container element ────────────
-  function genQr(containerId, url) {
+  function genQr(containerId, url, size = 160) {
     const el = document.getElementById(containerId);
     if (!el) return;
     el.innerHTML = '';
     new QRCode(el, {
       text: url,
-      width: 160,
-      height: 160,
+      width: size,
+      height: size,
       colorDark: '#0F172A',
       colorLight: '#ffffff',
       correctLevel: QRCode.CorrectLevel.M,
@@ -602,13 +583,11 @@ $withQr      = count(array_filter($allTables, fn($t) => !empty($t['qr_token'])))
     }
 
     grid.innerHTML = '';
-    let i = 0;
     selected.forEach(id => {
       const tile = document.getElementById('tile_' + id);
       if (!tile || tile.dataset.token === '') return;
       const cid = 'prev_qr_' + id;
       grid.innerHTML += buildCard(tile.dataset.num, null, cid);
-      i++;
     });
 
     // Generate QR codes after DOM update
@@ -621,65 +600,55 @@ $withQr      = count(array_filter($allTables, fn($t) => !empty($t['qr_token'])))
     }, 50);
   }
 
-  // ── Print ────────────────────────────────────────────────
+  // ── Print: one QR card per page ───────────────────────────
   function printSelected() {
     if (selected.size === 0) return;
 
     const printArea = document.getElementById('printArea');
     const printGrid = document.getElementById('printGrid');
-
     printGrid.innerHTML = '';
 
     let total = 0;
-
-    // Build cards
     selected.forEach(id => {
       const tile = document.getElementById('tile_' + id);
-
       if (!tile || !tile.dataset.token) return;
-
       const cid = 'print_qr_' + id;
-
       printGrid.innerHTML += buildCard(tile.dataset.num, null, cid);
-
       total++;
     });
+
+    if (total === 0) {
+      showToast('None of the selected tables have a QR code yet.', 'error');
+      return;
+    }
 
     // Show print area
     printArea.style.display = 'block';
 
-    // Generate QR Codes
+    // Bigger QR resolution since each card now owns a full page
     selected.forEach(id => {
-
       const tile = document.getElementById('tile_' + id);
-
       if (!tile || !tile.dataset.token) return;
-
-      genQr('print_qr_' + id, BASE + 'menu/table/' + tile.dataset.token);
-
+      genQr('print_qr_' + id, BASE + 'menu/table/' + tile.dataset.token, 260);
     });
 
-    // Wait until all QR images are rendered
+    // Wait until all QR images are rendered (with a safety timeout so
+    // a single stuck code can't leave the print dialog hanging forever)
+    const startedAt = Date.now();
     const wait = setInterval(() => {
-
       const images = printGrid.querySelectorAll('img');
+      const timedOut = Date.now() - startedAt > 4000;
 
-      if (images.length === total) {
-
+      if (images.length >= total || timedOut) {
         clearInterval(wait);
-
         window.print();
-
         setTimeout(() => {
           printArea.style.display = 'none';
-          printArea.style.position = 'absolute';
-          printArea.style.left = '-9999px';
         }, 500);
-
       }
-
     }, 100);
   }
+
   // ── Generate missing QR tokens ───────────────────────────
   async function generateMissing() {
     const noQr = document.querySelectorAll('.tsel.no-qr');
