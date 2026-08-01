@@ -34,14 +34,15 @@ class SmartInsightsController extends BaseController
         }
 
         // 2. Slow-moving items (menu items with < 2 orders in 30 days)
-        $slowItems = $db->table('order_items oi')
-            ->join('orders o','o.id=oi.order_id')
-            ->select('oi.name, SUM(oi.quantity) as total_sold')
-            ->where('o.restaurant_id',$rid)->where('o.branch_id',$bid)
-            ->where('o.created_at >=', date('Y-m-d', strtotime('-30 days')))
-            ->where('o.status !=','cancelled')
-            ->groupBy('oi.name')->having('total_sold <', 3)->limit(5)
-            ->get()->getResultArray();
+        $slowItems = $db->query(
+            'SELECT oi.name, SUM(oi.quantity) as total_sold
+             FROM order_items oi
+             INNER JOIN orders o ON o.id = oi.order_id
+             WHERE o.restaurant_id = ? AND o.branch_id = ?
+               AND o.created_at >= ? AND o.status != "cancelled"
+             GROUP BY oi.name HAVING total_sold < 3 LIMIT 5',
+            [$rid, $bid, date('Y-m-d', strtotime('-30 days'))]
+        )->getResultArray();
         if (!empty($slowItems)) {
             $names = implode(', ', array_column($slowItems, 'name'));
             $insights[] = [
@@ -55,14 +56,15 @@ class SmartInsightsController extends BaseController
         }
 
         // 3. Top item — suggest bundle
-        $topItem = $db->table('order_items oi')
-            ->join('orders o','o.id=oi.order_id')
-            ->select('oi.name, SUM(oi.quantity) as total_sold')
-            ->where('o.restaurant_id',$rid)
-            ->where('o.created_at >=', date('Y-m-d', strtotime('-7 days')))
-            ->where('o.status !=','cancelled')
-            ->groupBy('oi.name')->orderBy('total_sold','DESC')->limit(1)
-            ->get()->getRowArray();
+        $topItem = $db->query(
+            'SELECT oi.name, SUM(oi.quantity) as total_sold
+             FROM order_items oi
+             INNER JOIN orders o ON o.id = oi.order_id
+             WHERE o.restaurant_id = ?
+               AND o.created_at >= ? AND o.status != "cancelled"
+             GROUP BY oi.name ORDER BY total_sold DESC LIMIT 1',
+            [$rid, date('Y-m-d', strtotime('-7 days'))]
+        )->getRowArray();
         if ($topItem) {
             $insights[] = [
                 'type'    => 'upsell',
@@ -123,13 +125,17 @@ class SmartInsightsController extends BaseController
         }
 
         // 6. Customer retention
-        $repeatCusts = $db->table('orders')
-            ->select('customer_id, COUNT(*) as visits')
-            ->where('restaurant_id',$rid)->where('branch_id',$bid)
-            ->where('customer_id IS NOT NULL','',false)
-            ->where('created_at >=', date('Y-m-d', strtotime('-30 days')))
-            ->groupBy('customer_id')->having('visits >=', 3)
-            ->get()->getNumRows();
+        $repeatCusts = (int)$db->query(
+            'SELECT COUNT(*) as cnt FROM (
+                SELECT customer_id, COUNT(*) as visits
+                FROM orders
+                WHERE restaurant_id = ? AND branch_id = ?
+                  AND customer_id IS NOT NULL
+                  AND created_at >= ?
+                GROUP BY customer_id HAVING visits >= 3
+             ) sub',
+            [$rid, $bid, date('Y-m-d', strtotime('-30 days'))]
+        )->getRowArray()['cnt'];
         if ($repeatCusts > 0) {
             $insights[] = [
                 'type'    => 'loyalty',

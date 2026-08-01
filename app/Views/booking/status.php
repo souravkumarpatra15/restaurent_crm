@@ -39,7 +39,7 @@ h2{font-weight:900;font-size:1.2rem;text-align:center;margin-bottom:.35rem}
     <input type="text" name="num" placeholder="Enter Booking ID (e.g. DVX240101ABCD)" autofocus>
     <button type="submit" style="width:100%;padding:.75rem;background:linear-gradient(135deg,#FF6B35,#FF8C5A);color:#fff;border:none;border-radius:10px;font-weight:800;font-size:.9rem;cursor:pointer;font-family:inherit">Check Status</button>
   </form>
-  <?php if ($this->request->getGet('num')): ?>
+  <?php if (service('request')->getGet('num')): ?>
   <div style="margin-top:1rem;color:#EF4444;font-weight:600">Booking not found. Check the ID and try again.</div>
   <?php endif; ?>
 </div>

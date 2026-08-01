@@ -225,13 +225,13 @@ $routes->post('feedback/(:segment)/submit', 'Public\FeedbackController::store/$1
 
 // ── PUBLIC TABLE BOOKING (DinoViX) ────────────────────────
 $routes->get('book',                          'Booking\DiscoverController::index');
-$routes->get('book/(:segment)',               'Booking\DiscoverController::restaurant/$1');
 $routes->post('book/slots',                   'Booking\DiscoverController::slots');
 $routes->post('book/reserve',                 'Booking\DiscoverController::book');
 $routes->get('book/confirmation/(:segment)',  'Booking\DiscoverController::confirmation/$1');
 $routes->get('book/status/(:segment)',        'Booking\DiscoverController::status/$1');
 $routes->get('book/status',                   'Booking\DiscoverController::status');
 $routes->post('book/cancel/(:segment)',       'Booking\DiscoverController::cancel/$1');
+$routes->get('book/(:segment)',               'Booking\DiscoverController::restaurant/$1');
 
 // ── BOOKING MANAGEMENT (Restaurant Admin) ─────────────────
 $routes->get('admin/booking',                 'Manager\BookingMgmtController::index',     ['filter'=>'auth:restaurant_admin,branch_manager,super_admin']);

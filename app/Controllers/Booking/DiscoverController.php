@@ -16,41 +16,55 @@ class DiscoverController extends BaseController
         $date = $this->request->getGet('date') ?? date('Y-m-d');
         $pax  = (int)($this->request->getGet('pax') ?? 2);
 
-        $query = $db->table('restaurants r')
-            ->join('booking_settings bs','bs.restaurant_id = r.id')
-            ->select('r.id, r.name, r.slug, r.booking_slug, r.city, r.state,
-                      r.cuisine_type, r.restaurant_type, r.cover_image, r.short_desc,
-                      r.theme_color, bs.avg_cost_for_two, bs.tags, bs.cuisines,
-                      bs.deposit_required, bs.deposit_amount, bs.min_guests, bs.max_guests,
-                      bs.accepts_online_payment')
-            ->where('r.is_active', 1)
-            ->where('bs.is_enabled', 1)
-            ->where('bs.listed_on_platform', 1);
+        // Raw SQL — CI4 query builder breaks with table aliases + r.* selects
+        $where  = ['r.is_active = 1', 'bs.is_enabled = 1', 'bs.listed_on_platform = 1'];
+        $params = [];
 
-        if ($city) $query->like('r.city', $city);
-        if ($q)    $query->groupStart()->like('r.name',$q)->orLike('bs.cuisines',$q)->orLike('bs.tags',$q)->groupEnd();
-        if ($pax)  { $query->where('bs.min_guests <=', $pax)->where('bs.max_guests >=', $pax); }
-
-        $restaurants = $query->orderBy('r.name','ASC')->get()->getResultArray();
-
-        // Add availability badge for today/selected date
-        foreach ($restaurants as &$rest) {
-            $booked = (int)$db->table('public_bookings')
-                ->where('restaurant_id',$rest['id'])->where('slot_date',$date)
-                ->whereIn('status',['confirmed','pending'])->countAllResults();
-            $rest['has_slots'] = $booked < 30; // simplified check
+        if ($city) { $where[] = 'r.city LIKE ?'; $params[] = '%' . $city . '%'; }
+        if ($q)    {
+            $where[]  = '(r.name LIKE ? OR bs.cuisines LIKE ? OR bs.tags LIKE ?)';
+            $params[] = '%'.$q.'%'; $params[] = '%'.$q.'%'; $params[] = '%'.$q.'%';
+        }
+        if ($pax > 0) {
+            $where[] = 'bs.min_guests <= ?'; $params[] = $pax;
+            $where[] = 'bs.max_guests >= ?'; $params[] = $pax;
         }
 
-        // Cities for filter
-        $cities = $db->table('restaurants r')
-            ->join('booking_settings bs','bs.restaurant_id=r.id')
-            ->select('DISTINCT r.city')->where('bs.listed_on_platform',1)
-            ->where('r.city IS NOT NULL','',false)->orderBy('r.city','ASC')
-            ->get()->getResultArray();
+        $sql = 'SELECT r.id, r.name, r.slug, r.booking_slug, r.city, r.state,
+                       r.cuisine_type, r.restaurant_type, r.cover_image, r.short_desc,
+                       r.theme_color,
+                       bs.avg_cost_for_two, bs.tags, bs.cuisines,
+                       bs.deposit_required, bs.deposit_amount,
+                       bs.min_guests, bs.max_guests, bs.accepts_online_payment
+                FROM restaurants r
+                INNER JOIN booking_settings bs ON bs.restaurant_id = r.id
+                WHERE ' . implode(' AND ', $where) . '
+                ORDER BY r.name ASC';
+
+        $restaurants = $db->query($sql, $params)->getResultArray();
+
+        // Availability badge for selected date
+        foreach ($restaurants as &$rest) {
+            $booked = (int)$db->query(
+                'SELECT COALESCE(SUM(guests),0) as total FROM public_bookings
+                 WHERE restaurant_id = ? AND slot_date = ? AND status IN ("confirmed","pending")',
+                [$rest['id'], $date]
+            )->getRowArray()['total'];
+            $rest['has_slots'] = $booked < ($rest['max_guests'] ?? 20);
+        }
+        unset($rest);
+
+        // Cities dropdown
+        $cities = $db->query(
+            'SELECT DISTINCT r.city FROM restaurants r
+             INNER JOIN booking_settings bs ON bs.restaurant_id = r.id
+             WHERE bs.listed_on_platform = 1 AND r.city IS NOT NULL AND r.is_active = 1
+             ORDER BY r.city ASC'
+        )->getResultArray();
 
         return view('booking/discover', [
             'restaurants' => $restaurants,
-            'cities'      => array_column($cities,'city'),
+            'cities'      => array_column($cities, 'city'),
             'city'        => $city,
             'q'           => $q,
             'date'        => $date,
@@ -61,29 +75,40 @@ class DiscoverController extends BaseController
     public function restaurant($slug)
     {
         $db   = \Config\Database::connect();
-        $rest = $db->table('restaurants r')
-            ->join('booking_settings bs','bs.restaurant_id=r.id')
-            ->select('r.*, bs.*,
-                      r.id as id, r.name as name, r.slug as slug,
-                      bs.id as bs_id')
-            ->where('r.is_active',1)
-            ->where('bs.is_enabled',1)
-            ->groupStart()->where('r.slug',$slug)->orWhere('r.booking_slug',$slug)->groupEnd()
-            ->get()->getRowArray();
 
-        if (!$rest) return redirect()->to(base_url('book'))->with('error','Restaurant not found');
+        // Raw SQL — avoid CI4 alias bug with r.* selects
+        $rest = $db->query(
+            'SELECT r.*, bs.*,
+                    r.id AS id, r.name AS name, r.slug AS slug,
+                    bs.id AS bs_id
+             FROM restaurants r
+             INNER JOIN booking_settings bs ON bs.restaurant_id = r.id
+             WHERE r.is_active = 1 AND bs.is_enabled = 1
+               AND (r.slug = ? OR r.booking_slug = ?)
+             LIMIT 1',
+            [$slug, $slug]
+        )->getRowArray();
 
-        // Load available dates (next 30 days)
-        $availDates = [];
-        $closedDays = $rest['closed_days'] ? explode(',', $rest['closed_days']) : [];
-        for ($i = 0; $i < ($rest['booking_advance_days'] ?? 30); $i++) {
-            $d   = date('Y-m-d', strtotime("+$i days"));
-            $dow = date('w', strtotime($d)); // 0=Sun
-            if (!in_array($dow, $closedDays)) $availDates[] = $d;
+        if (!$rest) {
+            return redirect()->to(base_url('book'))->with('error', 'Restaurant not found or bookings disabled');
         }
 
-        // Branches
-        $branches = $db->table('branches')->where('restaurant_id',$rest['id'])->where('is_active',1)->get()->getResultArray();
+        // Available dates (skip closed days)
+        $availDates = [];
+        $closedDays = $rest['closed_days'] ? explode(',', $rest['closed_days']) : [];
+        $advanceDays = (int)($rest['booking_advance_days'] ?? 30);
+        for ($i = 0; $i < $advanceDays; $i++) {
+            $d   = date('Y-m-d', strtotime("+$i days"));
+            $dow = (int)date('w', strtotime($d));
+            if (!in_array((string)$dow, $closedDays)) {
+                $availDates[] = $d;
+            }
+        }
+
+        $branches = $db->table('branches')
+            ->where('restaurant_id', $rest['id'])
+            ->where('is_active', 1)
+            ->get()->getResultArray();
 
         return view('booking/restaurant', [
             'rest'       => $rest,
@@ -94,39 +119,44 @@ class DiscoverController extends BaseController
 
     public function slots()
     {
-        $db       = \Config\Database::connect();
-        $restId   = (int)$this->request->getPost('restaurant_id');
-        $date     = $this->request->getPost('date');
-        $pax      = (int)($this->request->getPost('pax') ?? 2);
+        $db     = \Config\Database::connect();
+        $restId = (int)$this->request->getPost('restaurant_id');
+        $date   = $this->request->getPost('date');
+        $pax    = (int)($this->request->getPost('pax') ?? 2);
 
-        $rest = $db->table('restaurants r')
-            ->join('booking_settings bs','bs.restaurant_id=r.id')
-            ->select('bs.slot_duration_min, bs.max_guests, bs.min_guests,
-                      bs.open_time, bs.close_time, bs.closed_days')
-            ->where('r.id',$restId)->get()->getRowArray();
+        $rest = $db->query(
+            'SELECT bs.slot_duration_min, bs.max_guests, bs.min_guests,
+                    bs.open_time, bs.close_time, bs.closed_days
+             FROM booking_settings bs
+             WHERE bs.restaurant_id = ?
+             LIMIT 1',
+            [$restId]
+        )->getRowArray();
 
-        if (!$rest) return $this->response->setJSON(['slots'=>[]]);
+        if (!$rest || !$date) {
+            return $this->response->setJSON(['slots' => []]);
+        }
 
-        // Generate slots from open to close
         $slots    = [];
-        $open     = strtotime($date.' '.$rest['open_time']);
-        $close    = strtotime($date.' '.$rest['close_time']);
-        $duration = ($rest['slot_duration_min'] ?? 60) * 60;
+        $open     = strtotime($date . ' ' . $rest['open_time']);
+        $close    = strtotime($date . ' ' . $rest['close_time']);
+        $duration = ((int)($rest['slot_duration_min'] ?? 60)) * 60;
         $now      = time();
+        $maxPax   = (int)($rest['max_guests'] ?? 20);
 
         for ($t = $open; $t < $close; $t += $duration) {
-            if ($t < $now + 1800) continue; // must book 30 min ahead
+            if ($t < $now + 1800) continue; // 30 min advance minimum
 
             $timeStr = date('H:i:s', $t);
-            $booked  = (int)$db->table('public_bookings')
-                ->selectSum('guests')
-                ->where('restaurant_id',$restId)->where('slot_date',$date)
-                ->where('slot_time',$timeStr)->whereIn('status',['confirmed','pending'])
-                ->get()->getRowArray()['guests'] ?? 0;
 
-            $maxCovers = $rest['max_guests'] ?? 20;
-            $avail     = max(0, $maxCovers - $booked);
+            $booked = (int)$db->query(
+                'SELECT COALESCE(SUM(guests),0) as total FROM public_bookings
+                 WHERE restaurant_id = ? AND slot_date = ? AND slot_time = ?
+                   AND status IN ("confirmed","pending")',
+                [$restId, $date, $timeStr]
+            )->getRowArray()['total'];
 
+            $avail = max(0, $maxPax - $booked);
             if ($avail >= $pax) {
                 $slots[] = [
                     'time'      => $timeStr,
@@ -145,38 +175,50 @@ class DiscoverController extends BaseController
         $restId  = (int)$this->request->getPost('restaurant_id');
         $branchId= (int)$this->request->getPost('branch_id');
 
-        $rest    = $db->table('restaurants r')
-            ->join('booking_settings bs','bs.restaurant_id=r.id')
-            ->select('r.*, bs.*')->where('r.id',$restId)->get()->getRowArray();
-        if (!$rest) return $this->response->setJSON(['success'=>false,'message'=>'Invalid restaurant']);
+        $rest = $db->query(
+            'SELECT r.id, r.name,
+                    bs.auto_confirm, bs.max_guests, bs.deposit_required,
+                    bs.deposit_type, bs.deposit_amount, bs.accepts_online_payment
+             FROM restaurants r
+             INNER JOIN booking_settings bs ON bs.restaurant_id = r.id
+             WHERE r.id = ? AND r.is_active = 1 AND bs.is_enabled = 1
+             LIMIT 1',
+            [$restId]
+        )->getRowArray();
 
-        $date    = $this->request->getPost('date');
-        $time    = $this->request->getPost('time');
-        $guests  = (int)$this->request->getPost('guests');
-
-        // Validate capacity
-        $booked = (int)$db->table('public_bookings')
-            ->selectSum('guests')->where('restaurant_id',$restId)
-            ->where('slot_date',$date)->where('slot_time',$time)
-            ->whereIn('status',['confirmed','pending'])
-            ->get()->getRowArray()['guests'] ?? 0;
-        if ($booked + $guests > ($rest['max_guests'] ?? 20)) {
-            return $this->response->setJSON(['success'=>false,'message'=>'Slot full for selected guests']);
+        if (!$rest) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid restaurant']);
         }
 
-        // Generate booking number
-        $num = 'DVX' . date('ymd') . strtoupper(substr(uniqid(),-4));
+        $date   = $this->request->getPost('date');
+        $time   = $this->request->getPost('time');
+        $guests = (int)$this->request->getPost('guests');
 
-        $status = $rest['auto_confirm'] ? 'confirmed' : 'pending';
-        $payReq = $rest['deposit_required'] ? 'pending' : 'not_required';
-        $deposit= 0;
+        // Check capacity
+        $booked = (int)$db->query(
+            'SELECT COALESCE(SUM(guests),0) as total FROM public_bookings
+             WHERE restaurant_id = ? AND slot_date = ? AND slot_time = ?
+               AND status IN ("confirmed","pending")',
+            [$restId, $date, $time]
+        )->getRowArray()['total'];
+
+        if ($booked + $guests > (int)($rest['max_guests'] ?? 20)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Slot full for selected guests. Please pick another time.']);
+        }
+
+        // Booking number: DVX + yymmdd + 4 random chars
+        $num = 'DVX' . date('ymd') . strtoupper(substr(uniqid(), -4));
+
+        $status  = $rest['auto_confirm'] ? 'confirmed' : 'pending';
+        $payReq  = $rest['deposit_required'] ? 'pending' : 'not_required';
+        $deposit = 0;
         if ($rest['deposit_required']) {
             $deposit = $rest['deposit_type'] === 'per_person'
-                ? $rest['deposit_amount'] * $guests
-                : $rest['deposit_amount'];
+                ? (float)$rest['deposit_amount'] * $guests
+                : (float)$rest['deposit_amount'];
         }
 
-        $bookingId = $db->table('public_bookings')->insert([
+        $db->table('public_bookings')->insert([
             'booking_number'   => $num,
             'restaurant_id'    => $restId,
             'branch_id'        => $branchId ?: null,
@@ -200,56 +242,75 @@ class DiscoverController extends BaseController
             'booking_number' => $num,
             'status'         => $status,
             'deposit'        => $deposit,
-            'deposit_req'    => $rest['deposit_required'],
-            'confirm_url'    => base_url('book/confirmation/'.$num),
+            'deposit_req'    => (bool)$rest['deposit_required'],
+            'confirm_url'    => base_url('book/confirmation/' . $num),
         ]);
     }
 
     public function confirmation($num)
     {
         $db      = \Config\Database::connect();
-        $booking = $db->table('public_bookings b')
-            ->join('restaurants r','r.id=b.restaurant_id')
-            ->join('branches br','br.id=b.branch_id','left')
-            ->select('b.*, r.name as rname, r.phone as rphone, r.address as raddress,
-                      r.city as rcity, r.theme_color, r.cover_image,
-                      br.name as bname, br.address as baddress, br.phone as bphone')
-            ->where('b.booking_number',$num)->get()->getRowArray();
+        $booking = $db->query(
+            'SELECT b.*,
+                    r.name AS rname, r.phone AS rphone, r.address AS raddress,
+                    r.city AS rcity, r.theme_color, r.cover_image,
+                    br.name AS bname, br.address AS baddress, br.phone AS bphone
+             FROM public_bookings b
+             INNER JOIN restaurants r ON r.id = b.restaurant_id
+             LEFT  JOIN branches br   ON br.id = b.branch_id
+             WHERE b.booking_number = ?
+             LIMIT 1',
+            [$num]
+        )->getRowArray();
 
-        if (!$booking) return redirect()->to(base_url('book'))->with('error','Booking not found');
-        return view('booking/confirmation', ['booking'=>$booking]);
+        if (!$booking) {
+            return redirect()->to(base_url('book'))->with('error', 'Booking not found');
+        }
+
+        return view('booking/confirmation', ['booking' => $booking]);
     }
 
     public function cancel($num)
     {
         $db      = \Config\Database::connect();
-        $booking = $db->table('public_bookings')->where('booking_number',$num)->get()->getRowArray();
-        if (!$booking) return $this->response->setJSON(['success'=>false,'message'=>'Not found']);
-        if (in_array($booking['status'],['cancelled','completed'])) {
-            return $this->response->setJSON(['success'=>false,'message'=>'Cannot cancel this booking']);
+        $booking = $db->table('public_bookings')
+            ->where('booking_number', $num)
+            ->get()->getRowArray();
+
+        if (!$booking) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Booking not found']);
+        }
+        if (in_array($booking['status'], ['cancelled', 'completed'])) {
+            return $this->response->setJSON(['success' => false, 'message' => 'This booking cannot be cancelled']);
         }
 
-        $db->table('public_bookings')->where('booking_number',$num)->update([
-            'status'       => 'cancelled',
-            'cancelled_by' => 'guest',
-            'cancel_reason'=> $this->request->getPost('reason') ?? 'Guest cancelled',
-            'cancelled_at' => date('Y-m-d H:i:s'),
+        $db->table('public_bookings')->where('booking_number', $num)->update([
+            'status'        => 'cancelled',
+            'cancelled_by'  => 'guest',
+            'cancel_reason' => $this->request->getPost('reason') ?? 'Guest cancelled',
+            'cancelled_at'  => date('Y-m-d H:i:s'),
         ]);
-        return $this->response->setJSON(['success'=>true]);
+
+        return $this->response->setJSON(['success' => true]);
     }
 
     public function status($num = null)
     {
-        $db  = \Config\Database::connect();
-        $num = $num ?? $this->request->getGet('num');
+        $db      = \Config\Database::connect();
+        $num     = $num ?? $this->request->getGet('num');
         $booking = null;
+
         if ($num) {
-            $booking = $db->table('public_bookings b')
-                ->join('restaurants r','r.id=b.restaurant_id')
-                ->select('b.*, r.name as rname, r.theme_color')
-                ->where('b.booking_number', strtoupper(trim($num)))
-                ->get()->getRowArray();
+            $booking = $db->query(
+                'SELECT b.*, r.name AS rname, r.theme_color
+                 FROM public_bookings b
+                 INNER JOIN restaurants r ON r.id = b.restaurant_id
+                 WHERE b.booking_number = ?
+                 LIMIT 1',
+                [strtoupper(trim($num))]
+            )->getRowArray();
         }
-        return view('booking/status', ['booking'=>$booking]);
+
+        return view('booking/status', ['booking' => $booking]);
     }
 }
