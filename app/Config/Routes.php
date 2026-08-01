@@ -198,3 +198,46 @@ $routes->group('pos', ['filter' => 'auth:cashier,waiter,branch_manager,restauran
 // Slip print routes (web-based fallback when no thermal printer)
 $routes->get('pos/slip/kot/(:num)',  'Staff\PosController::kotSlip/$1',  ['filter'=>'auth:cashier,waiter,branch_manager,restaurant_admin,super_admin']);
 $routes->get('pos/slip/bill/(:num)', 'Staff\PosController::billSlip/$1', ['filter'=>'auth:cashier,waiter,branch_manager,restaurant_admin,super_admin']);
+
+// ── NEW ADVANCED FEATURES ──────────────────────────────────
+
+// Smart Insights
+$routes->get('admin/insights',              'Manager\SmartInsightsController::index', ['filter'=>'auth:restaurant_admin,branch_manager,super_admin']);
+
+// Smart Day Close
+$routes->get('admin/smart-close',           'Manager\SmartCloseController::index',   ['filter'=>'auth:restaurant_admin,branch_manager']);
+$routes->post('admin/smart-close/close',    'Manager\SmartCloseController::close',   ['filter'=>'auth:restaurant_admin,branch_manager']);
+$routes->get('admin/smart-close/history',   'Manager\SmartCloseController::history', ['filter'=>'auth:restaurant_admin,branch_manager']);
+
+// Staff Performance
+$routes->get('admin/staff-performance',     'Manager\StaffPerfController::index',    ['filter'=>'auth:restaurant_admin,branch_manager,super_admin']);
+
+// Waste Tracker
+$routes->get('admin/waste',                 'Manager\WasteController::index',        ['filter'=>'auth:restaurant_admin,branch_manager']);
+$routes->post('admin/waste/store',          'Manager\WasteController::store',        ['filter'=>'auth:restaurant_admin,branch_manager']);
+
+// Customer Feedback (manager)
+$routes->get('admin/feedback',              'Manager\FeedbackController::index',     ['filter'=>'auth:restaurant_admin,branch_manager,super_admin']);
+
+// Customer Feedback (public — no auth)
+$routes->get('feedback/(:segment)',         'Public\FeedbackController::index/$1');
+$routes->post('feedback/(:segment)/submit', 'Public\FeedbackController::store/$1');
+
+// ── PUBLIC TABLE BOOKING (DinoViX) ────────────────────────
+$routes->get('book',                          'Booking\DiscoverController::index');
+$routes->get('book/(:segment)',               'Booking\DiscoverController::restaurant/$1');
+$routes->post('book/slots',                   'Booking\DiscoverController::slots');
+$routes->post('book/reserve',                 'Booking\DiscoverController::book');
+$routes->get('book/confirmation/(:segment)',  'Booking\DiscoverController::confirmation/$1');
+$routes->get('book/status/(:segment)',        'Booking\DiscoverController::status/$1');
+$routes->get('book/status',                   'Booking\DiscoverController::status');
+$routes->post('book/cancel/(:segment)',       'Booking\DiscoverController::cancel/$1');
+
+// ── BOOKING MANAGEMENT (Restaurant Admin) ─────────────────
+$routes->get('admin/booking',                 'Manager\BookingMgmtController::index',     ['filter'=>'auth:restaurant_admin,branch_manager,super_admin']);
+$routes->post('admin/booking/confirm/(:num)', 'Manager\BookingMgmtController::confirm/$1',['filter'=>'auth:restaurant_admin,branch_manager']);
+$routes->post('admin/booking/cancel/(:num)',  'Manager\BookingMgmtController::cancel/$1', ['filter'=>'auth:restaurant_admin,branch_manager']);
+$routes->post('admin/booking/no-show/(:num)', 'Manager\BookingMgmtController::noShow/$1', ['filter'=>'auth:restaurant_admin,branch_manager']);
+$routes->post('admin/booking/complete/(:num)','Manager\BookingMgmtController::complete/$1',['filter'=>'auth:restaurant_admin,branch_manager']);
+$routes->get('admin/booking/settings',        'Manager\BookingMgmtController::settings',  ['filter'=>'auth:restaurant_admin,branch_manager']);
+$routes->post('admin/booking/settings/save',  'Manager\BookingMgmtController::saveSettings',['filter'=>'auth:restaurant_admin,branch_manager']);

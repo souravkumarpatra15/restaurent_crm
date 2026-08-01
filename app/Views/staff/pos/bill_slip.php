@@ -259,6 +259,17 @@ body {
 
   <div class="div-d"></div>
 
+  <!-- Feedback QR -->
+  <?php if (!empty($order['feedback_token'])): ?>
+  <div class="upi-box" style="border:1.5px dashed #6366F1;background:#F5F3FF">
+    <div style="font-size:10px;font-weight:700;color:#6366F1;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.3rem">⭐ Rate Your Experience</div>
+    <div style="font-size:10.5px;font-weight:700;color:#4F46E5"><?= rtrim(base_url('feedback/'.$order['feedback_token']),'/') ?></div>
+    <div style="font-size:9px;color:#888;margin-top:.15rem">Scan QR or visit link · Takes 30 seconds</div>
+  </div>
+  <?php endif; ?>
+
+  <div class="div-d"></div>
+
   <!-- Footer -->
   <div class="footer">
     <?php if (!empty($restaurant['receipt_footer'])): ?>

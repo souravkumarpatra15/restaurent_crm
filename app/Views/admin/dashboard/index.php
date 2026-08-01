@@ -297,4 +297,28 @@ function switchBranch(id) {
 }
 </script>
 
+<!-- Advanced Features Quick Access -->
+<div style="padding:0 1rem 1.5rem">
+  <div style="font-size:.72rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.625rem">Advanced Features</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.5rem">
+    <a href="<?= base_url('admin/insights') ?>" style="display:flex;align-items:center;gap:.5rem;padding:.75rem;background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text)">
+      <span style="font-size:1.2rem">🧠</span><span style="font-size:.8rem;font-weight:700">Smart Insights</span>
+    </a>
+    <a href="<?= base_url('admin/staff-performance') ?>" style="display:flex;align-items:center;gap:.5rem;padding:.75rem;background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text)">
+      <span style="font-size:1.2rem">🏆</span><span style="font-size:.8rem;font-weight:700">Staff Perf.</span>
+    </a>
+    <a href="<?= base_url('admin/feedback') ?>" style="display:flex;align-items:center;gap:.5rem;padding:.75rem;background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text)">
+      <span style="font-size:1.2rem">⭐</span><span style="font-size:.8rem;font-weight:700">Feedback</span>
+    </a>
+    <a href="<?= base_url('admin/waste') ?>" style="display:flex;align-items:center;gap:.5rem;padding:.75rem;background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text)">
+      <span style="font-size:1.2rem">♻️</span><span style="font-size:.8rem;font-weight:700">Waste Log</span>
+    </a>
+    <a href="<?= base_url('admin/smart-close') ?>" style="display:flex;align-items:center;gap:.5rem;padding:.75rem;background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text)">
+      <span style="font-size:1.2rem">🌙</span><span style="font-size:.8rem;font-weight:700">Day Close</span>
+    </a>
+    <a href="<?= base_url('admin/booking') ?>" style="display:flex;align-items:center;gap:.5rem;padding:.75rem;background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text)">
+      <span style="font-size:1.2rem">📅</span><span style="font-size:.8rem;font-weight:700">Bookings</span>
+    </a>
+  </div>
+</div>
 <?php $this->endSection(); ?>

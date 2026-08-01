@@ -258,6 +258,10 @@ class PosController extends BaseController
             'completed_at'   => date('Y-m-d H:i:s'),
         ]);
 
+        // Generate feedback token for post-meal QR review
+        $feedbackToken = bin2hex(random_bytes(16));
+        $db->table('orders')->where('id', $orderId)->update(['feedback_token' => $feedbackToken]);
+
         // Create invoice
         $invoiceNumber = $this->_generateInvoiceNumber($order['restaurant_id'], $order['branch_id']);
         $db->table('invoices')->insert([
@@ -296,6 +300,7 @@ class PosController extends BaseController
             'bill_slip_url'  => base_url('pos/slip/bill/' . $orderId),
             'kot_slip_url'   => base_url('pos/slip/kot/'  . $orderId),
             'print_url'      => base_url('pos/slip/bill/' . $orderId),
+            'feedback_url'   => base_url('feedback/' . $feedbackToken),
         ]);
     }
 

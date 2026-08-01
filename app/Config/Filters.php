@@ -27,7 +27,7 @@ class Filters extends BaseConfig
 
     public array $globals = [
         'before' => [
-            'csrf' => ['except' => ['login','forgot-password','reset-password/*','api/*','menu/table*','menu/table/*','menu/table/*/order','menu/table/*/poll/*','landing']],
+            'csrf' => ['except' => ['login','forgot-password','reset-password/*','api/*','menu/table*','menu/table/*','menu/table/*/order','menu/table/*/poll/*','landing','feedback/*']],
         ],
         'after' => [],
     ];

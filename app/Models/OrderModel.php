@@ -21,7 +21,7 @@ class OrderModel extends BaseModel
     public function generateOrderNumber($restaurantId, $branchId)
     {
         $branch = $this->db->table('branches')->where('id', $branchId)->get()->getRowArray();
-        $prefix = $branch['billing_prefix'] ?: 'ORD';
+        $prefix = $branch['billing_prefix'] ?? 'ORD';
         $counter = $branch['billing_counter'] ?? 1;
         $this->db->table('branches')->where('id', $branchId)->update(['billing_counter' => $counter + 1]);
         return $prefix . str_pad($counter, 5, '0', STR_PAD_LEFT);

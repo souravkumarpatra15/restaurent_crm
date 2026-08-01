@@ -158,6 +158,29 @@
     <a href="<?= base_url('admin/reports/sales') ?>" class="nav-item <?= active('admin/reports*') ?>">
       <i class="fa fa-chart-bar"></i><span>Reports</span>
     </a>
+    <div class="nav-section">BOOKINGS</div>
+    <a href="<?= base_url('admin/booking') ?>" class="nav-item <?= active('admin/booking') ?>">
+      <i class="fa fa-calendar-check"></i><span>Table Bookings</span>
+    </a>
+    <a href="<?= base_url('admin/booking/settings') ?>" class="nav-item <?= active('admin/booking/settings*') ?>">
+      <i class="fa fa-sliders"></i><span>Booking Settings</span>
+    </a>
+    <div class="nav-section">INTELLIGENCE</div>
+    <a href="<?= base_url('admin/insights') ?>" class="nav-item <?= active('admin/insights') ?>">
+      <i class="fa fa-brain"></i><span>Smart Insights</span>
+    </a>
+    <a href="<?= base_url('admin/staff-performance') ?>" class="nav-item <?= active('admin/staff-performance') ?>">
+      <i class="fa fa-ranking-star"></i><span>Staff Performance</span>
+    </a>
+    <a href="<?= base_url('admin/feedback') ?>" class="nav-item <?= active('admin/feedback*') ?>">
+      <i class="fa fa-star"></i><span>Feedback</span>
+    </a>
+    <a href="<?= base_url('admin/waste') ?>" class="nav-item <?= active('admin/waste*') ?>">
+      <i class="fa fa-trash-can-arrow-up"></i><span>Waste Tracker</span>
+    </a>
+    <a href="<?= base_url('admin/smart-close') ?>" class="nav-item <?= active('admin/smart-close*') ?>">
+      <i class="fa fa-moon"></i><span>Day Close</span>
+    </a>
     <div class="nav-section">SETTINGS</div>
     <a href="<?= base_url('admin/settings') ?>" class="nav-item <?= active('admin/settings*') ?>">
       <i class="fa fa-gear"></i><span>Settings</span>
