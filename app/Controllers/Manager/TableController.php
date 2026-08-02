@@ -1,12 +1,20 @@
 <?php
+
 namespace App\Controllers\Manager;
+
 use App\Controllers\BaseController;
 use App\Models\TableModel;
+use App\Models\TableAreaModel;
 
 class TableController extends BaseController
 {
     protected $model;
-    public function __construct() { $this->model = new TableModel(); }
+    protected $areaModel;
+    public function __construct()
+    {
+        $this->model = new TableModel();
+        $this->areaModel = new TableAreaModel();
+    }
 
     public function index()
     {
@@ -14,8 +22,8 @@ class TableController extends BaseController
         $bid = session('branch_id');
         return view('admin/tables/index', [
             'pageTitle'      => 'Table Management',
-            'tables'         => $this->model->where('branch_id', $bid)->orderBy('table_number','ASC')->findAll(),
-            'areas'          => $db->table('table_areas')->where('branch_id',$bid)->get()->getResultArray(),
+            'tables'         => $this->model->where('branch_id', $bid)->orderBy('table_number', 'ASC')->findAll(),
+            'areas'          => $db->table('table_areas')->where('branch_id', $bid)->get()->getResultArray(),
             'userName'       => session('user_name'),
             'userRole'       => session('role_slug'),
             'restaurantName' => session('restaurant_name'),
@@ -27,7 +35,7 @@ class TableController extends BaseController
         $bid   = session('branch_id');
         $count = $this->model->where('branch_id', $bid)->countAllResults();
         $check = $this->checkPlanLimit('tables', $count);
-        if (!$check['allowed']) return $this->response->setJSON(['success'=>false,'message'=>$check['message']]);
+        if (!$check['allowed']) return $this->response->setJSON(['success' => false, 'message' => $check['message']]);
 
         $token = bin2hex(random_bytes(20)); // auto-generate QR token on table creation
         $this->model->insert([
@@ -140,7 +148,7 @@ class TableController extends BaseController
 
         // If no areas at all, just get all tables
         if (empty($areas)) {
-            $allTables = $this->model->where('branch_id', $bid)->where('is_active', 1)->orderBy('sort_order','ASC')->findAll();
+            $allTables = $this->model->where('branch_id', $bid)->where('is_active', 1)->orderBy('sort_order', 'ASC')->findAll();
             $areas = [['id' => 0, 'name' => 'Tables', 'tables' => $allTables]];
         }
 
@@ -151,6 +159,68 @@ class TableController extends BaseController
             'areas'      => $areas,
             'userName'   => session('user_name'),
             'userRole'   => session('role_slug'),
+        ]);
+    }
+
+    public function storeArea()
+    {
+        $this->areaModel->insert([
+            'branch_id'   => session('branch_id'),
+            'name'        => trim($this->request->getPost('name')),
+            'description' => $this->request->getPost('description'),
+            'sort_order'  => $this->request->getPost('sort_order') ?? 0,
+            'is_active'   => 1,
+        ]);
+
+        return $this->response->setJSON([
+            'success' => true,
+            'message' => 'Area added successfully.'
+        ]);
+    }
+
+    public function updateArea($id)
+    {
+        $this->areaModel->update($id, [
+            'name'        => trim($this->request->getPost('name')),
+            'description' => $this->request->getPost('description'),
+            'sort_order'  => $this->request->getPost('sort_order'),
+        ]);
+
+        return $this->response->setJSON([
+            'success' => true
+        ]);
+    }
+
+    public function toggleArea($id)
+    {
+        $area = $this->areaModel->find($id);
+
+        $this->areaModel->update($id, [
+            'is_active' => $area['is_active'] ? 0 : 1
+        ]);
+
+        return $this->response->setJSON([
+            'success' => true
+        ]);
+    }
+
+    public function deleteArea($id)
+    {
+        $count = $this->model
+            ->where('area_id', $id)
+            ->countAllResults();
+
+        if ($count > 0) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Area contains tables. Move or delete them first.'
+            ]);
+        }
+
+        $this->areaModel->delete($id);
+
+        return $this->response->setJSON([
+            'success' => true
         ]);
     }
 }

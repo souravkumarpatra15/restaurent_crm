@@ -113,6 +113,12 @@ $routes->group('admin', ['filter' => 'auth:restaurant_admin,branch_manager,super
     $routes->get('tables/generate-qr/(:num)',       'Manager\TableController::generateQr/$1');
     $routes->get('tables/bulk-qr',                  'Manager\TableController::bulkQr');
 
+    // Table Areas
+    $routes->post('tables/areas/store', 'Manager\TableController::storeArea');
+    $routes->post('tables/areas/update/(:num)', 'Manager\TableController::updateArea/$1');
+    $routes->post('tables/areas/toggle/(:num)', 'Manager\TableController::toggleArea/$1');
+    $routes->post('tables/areas/delete/(:num)', 'Manager\TableController::deleteArea/$1');
+
     // Customers
     $routes->get('customers',                       'Manager\CustomerController::index');
     $routes->get('customers/view/(:num)',           'Manager\CustomerController::view/$1');

@@ -47,6 +47,21 @@ class AuthController extends BaseController
             return redirect()->back()->with('error', 'Account suspended. Please contact support.');
         }
 
+        // If branch_id is empty, get the restaurant's main (first) branch
+        if (empty($user['branch_id']) && !empty($user['restaurant_id'])) {
+            $mainBranch = \Config\Database::connect()
+                ->table('branches')
+                ->where('restaurant_id', $user['restaurant_id'])
+                ->orderBy('id', 'ASC')
+                ->get()
+                ->getRowArray();
+
+            if ($mainBranch) {
+                $user['branch_id'] = $mainBranch['id'];
+                $user['branch_name'] = $mainBranch['name'];
+            }
+        }
+
         // Set session
         $sessionData = [
             'user_id'         => $user['id'],

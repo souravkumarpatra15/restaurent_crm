@@ -1,4 +1,5 @@
-<?php $this->extend('layouts/main'); $this->section('content'); ?>
+<?php $this->extend('layouts/main');
+$this->section('content'); ?>
 <div style="padding:0 1rem">
 
   <!-- Header -->
@@ -13,71 +14,82 @@
       <button class="btn btn-primary" onclick="openModal('addTableModal')">
         <i class="fa fa-plus"></i> Add Table
       </button>
+      <button class="btn btn-outline" onclick="openModal('areaModal')">
+        <i class="fa fa-layer-group"></i> Manage Areas
+      </button>
     </div>
   </div>
 
   <!-- Table grid -->
   <?php if (empty($tables)): ?>
-  <div class="empty-state"><i class="fa fa-chair"></i><p>No tables yet. Add your first table.</p></div>
-  <?php else: ?>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.75rem">
-    <?php foreach ($tables as $t):
-      $statusColor = match($t['status']) {
-        'available' => '#15803D', 'occupied'  => '#B91C1C',
-        'booked'    => '#6D28D9', 'reserved'  => '#92400E',
-        default     => '#64748B'
-      };
-      $statusBg = match($t['status']) {
-        'available' => '#F0FDF4', 'occupied'  => '#FFF1F2',
-        'booked'    => '#F5F3FF', 'reserved'  => '#FFF7ED',
-        default     => '#F8FAFC'
-      };
-      $statusBorder = match($t['status']) {
-        'available' => '#86EFAC', 'occupied'  => '#FCA5A5',
-        'booked'    => '#A78BFA', 'reserved'  => '#FCD34D',
-        default     => '#E2E8F0'
-      };
-    ?>
-    <div style="background:<?= $statusBg ?>;border:1.5px solid <?= $statusBorder ?>;border-radius:14px;padding:.875rem;position:relative;<?= !$t['is_active'] ? 'opacity:.5' : '' ?>">
-      <!-- Status dot -->
-      <div style="position:absolute;top:.7rem;right:.7rem;width:8px;height:8px;border-radius:50%;background:<?= $statusColor ?>"></div>
-
-      <!-- Table number -->
-      <div style="font-weight:900;font-size:1.4rem;color:#0F172A;margin-bottom:.1rem"><?= esc($t['table_number']) ?></div>
-      <div style="font-size:.68rem;color:#94A3B8;display:flex;align-items:center;gap:.25rem;margin-bottom:.5rem">
-        <i class="fa fa-users"></i> <?= $t['capacity'] ?> pax
-        <?php if (!empty($t['booked_name'])): ?>
-        · <span style="color:#6D28D9;font-weight:700"><?= esc($t['booked_name']) ?></span>
-        <?php endif; ?>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.625rem">
-        <span style="font-size:.6rem;font-weight:800;color:<?= $statusColor ?>;background:<?= $statusBg ?>;padding:.15rem .45rem;border-radius:20px;border:1px solid <?= $statusBorder ?>">
-          <?= ucfirst($t['status']) ?>
-        </span>
-        <?php if (!empty($t['qr_token'])): ?>
-        <span style="font-size:.6rem;color:#2563EB;background:#EFF6FF;padding:.15rem .4rem;border-radius:8px">
-          <i class="fa fa-qrcode"></i> QR
-        </span>
-        <?php endif; ?>
-      </div>
-      <!-- Actions -->
-      <div style="display:flex;gap:.35rem">
-        <button onclick="showQr(<?= $t['id'] ?>,'<?= esc($t['table_number']) ?>','<?= $t['qr_token'] ?? '' ?>')"
-                style="flex:1;padding:.35rem;border:1px solid #E2E8F0;border-radius:8px;background:#fff;cursor:pointer;font-size:.7rem;color:#2563EB" title="QR Code">
-          <i class="fa fa-qrcode"></i>
-        </button>
-        <button onclick="editTable(<?= htmlspecialchars(json_encode($t),ENT_QUOTES) ?>)"
-                style="flex:1;padding:.35rem;border:1px solid #E2E8F0;border-radius:8px;background:#fff;cursor:pointer;font-size:.7rem;color:#64748B" title="Edit">
-          <i class="fa fa-pen"></i>
-        </button>
-        <button onclick="toggleTable(<?= $t['id'] ?>,<?= $t['is_active'] ?>)"
-                style="flex:1;padding:.35rem;border:1px solid #E2E8F0;border-radius:8px;background:#fff;cursor:pointer;font-size:.7rem;color:<?= $t['is_active']?'#B91C1C':'#15803D' ?>" title="<?= $t['is_active']?'Deactivate':'Activate' ?>">
-          <i class="fa <?= $t['is_active']?'fa-eye-slash':'fa-eye' ?>"></i>
-        </button>
-      </div>
+    <div class="empty-state"><i class="fa fa-chair"></i>
+      <p>No tables yet. Add your first table.</p>
     </div>
-    <?php endforeach; ?>
-  </div>
+  <?php else: ?>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.75rem">
+      <?php foreach ($tables as $t):
+        $statusColor = match ($t['status']) {
+          'available' => '#15803D',
+          'occupied'  => '#B91C1C',
+          'booked'    => '#6D28D9',
+          'reserved'  => '#92400E',
+          default     => '#64748B'
+        };
+        $statusBg = match ($t['status']) {
+          'available' => '#F0FDF4',
+          'occupied'  => '#FFF1F2',
+          'booked'    => '#F5F3FF',
+          'reserved'  => '#FFF7ED',
+          default     => '#F8FAFC'
+        };
+        $statusBorder = match ($t['status']) {
+          'available' => '#86EFAC',
+          'occupied'  => '#FCA5A5',
+          'booked'    => '#A78BFA',
+          'reserved'  => '#FCD34D',
+          default     => '#E2E8F0'
+        };
+      ?>
+        <div style="background:<?= $statusBg ?>;border:1.5px solid <?= $statusBorder ?>;border-radius:14px;padding:.875rem;position:relative;<?= !$t['is_active'] ? 'opacity:.5' : '' ?>">
+          <!-- Status dot -->
+          <div style="position:absolute;top:.7rem;right:.7rem;width:8px;height:8px;border-radius:50%;background:<?= $statusColor ?>"></div>
+
+          <!-- Table number -->
+          <div style="font-weight:900;font-size:1.4rem;color:#0F172A;margin-bottom:.1rem"><?= esc($t['table_number']) ?></div>
+          <div style="font-size:.68rem;color:#94A3B8;display:flex;align-items:center;gap:.25rem;margin-bottom:.5rem">
+            <i class="fa fa-users"></i> <?= $t['capacity'] ?> pax
+            <?php if (!empty($t['booked_name'])): ?>
+              · <span style="color:#6D28D9;font-weight:700"><?= esc($t['booked_name']) ?></span>
+            <?php endif; ?>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.625rem">
+            <span style="font-size:.6rem;font-weight:800;color:<?= $statusColor ?>;background:<?= $statusBg ?>;padding:.15rem .45rem;border-radius:20px;border:1px solid <?= $statusBorder ?>">
+              <?= ucfirst($t['status']) ?>
+            </span>
+            <?php if (!empty($t['qr_token'])): ?>
+              <span style="font-size:.6rem;color:#2563EB;background:#EFF6FF;padding:.15rem .4rem;border-radius:8px">
+                <i class="fa fa-qrcode"></i> QR
+              </span>
+            <?php endif; ?>
+          </div>
+          <!-- Actions -->
+          <div style="display:flex;gap:.35rem">
+            <button onclick="showQr(<?= $t['id'] ?>,'<?= esc($t['table_number']) ?>','<?= $t['qr_token'] ?? '' ?>')"
+              style="flex:1;padding:.35rem;border:1px solid #E2E8F0;border-radius:8px;background:#fff;cursor:pointer;font-size:.7rem;color:#2563EB" title="QR Code">
+              <i class="fa fa-qrcode"></i>
+            </button>
+            <button onclick="editTable(<?= htmlspecialchars(json_encode($t), ENT_QUOTES) ?>)"
+              style="flex:1;padding:.35rem;border:1px solid #E2E8F0;border-radius:8px;background:#fff;cursor:pointer;font-size:.7rem;color:#64748B" title="Edit">
+              <i class="fa fa-pen"></i>
+            </button>
+            <button onclick="toggleTable(<?= $t['id'] ?>,<?= $t['is_active'] ?>)"
+              style="flex:1;padding:.35rem;border:1px solid #E2E8F0;border-radius:8px;background:#fff;cursor:pointer;font-size:.7rem;color:<?= $t['is_active'] ? '#B91C1C' : '#15803D' ?>" title="<?= $t['is_active'] ? 'Deactivate' : 'Activate' ?>">
+              <i class="fa <?= $t['is_active'] ? 'fa-eye-slash' : 'fa-eye' ?>"></i>
+            </button>
+          </div>
+        </div>
+      <?php endforeach; ?>
+    </div>
   <?php endif; ?>
 </div>
 
@@ -114,15 +126,15 @@
         </div>
       </div>
       <?php if (!empty($areas)): ?>
-      <div class="form-group">
-        <label class="form-label">Area / Floor</label>
-        <select class="form-control" id="tArea">
-          <option value="">No Area</option>
-          <?php foreach ($areas as $a): ?>
-          <option value="<?= $a['id'] ?>"><?= esc($a['name']) ?></option>
-          <?php endforeach; ?>
-        </select>
-      </div>
+        <div class="form-group">
+          <label class="form-label">Area / Floor</label>
+          <select class="form-control" id="tArea">
+            <option value="">No Area</option>
+            <?php foreach ($areas as $a): ?>
+              <option value="<?= $a['id'] ?>"><?= esc($a['name']) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
       <?php endif; ?>
       <div style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:8px;padding:.625rem;font-size:.78rem;color:#15803D;margin-top:.25rem">
         <i class="fa fa-qrcode"></i> A unique QR code will be auto-generated for this table.
@@ -155,15 +167,15 @@
         </div>
       </div>
       <?php if (!empty($areas)): ?>
-      <div class="form-group">
-        <label class="form-label">Area / Floor</label>
-        <select class="form-control" id="etArea">
-          <option value="">No Area</option>
-          <?php foreach ($areas as $a): ?>
-          <option value="<?= $a['id'] ?>"><?= esc($a['name']) ?></option>
-          <?php endforeach; ?>
-        </select>
-      </div>
+        <div class="form-group">
+          <label class="form-label">Area / Floor</label>
+          <select class="form-control" id="etArea">
+            <option value="">No Area</option>
+            <?php foreach ($areas as $a): ?>
+              <option value="<?= $a['id'] ?>"><?= esc($a['name']) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
       <?php endif; ?>
     </div>
     <div class="modal-footer">
@@ -195,120 +207,441 @@
   </div>
 </div>
 
+<!-- ───────────── Area Management Modal ───────────── -->
+<div class="modal-overlay" id="areaModal">
+  <div class="modal" style="max-width:700px">
+
+    <div class="modal-header">
+      <span class="modal-title">
+        <i class="fa fa-layer-group"></i>
+        Table Areas
+      </span>
+
+      <button class="modal-close"
+        onclick="closeModal('areaModal')">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- Add Area -->
+
+      <div style="background:#F8FAFC;border:1px solid #E5E7EB;padding:15px;border-radius:12px;margin-bottom:20px">
+
+        <h4 style="margin:0 0 15px">
+          Add New Area
+        </h4>
+
+        <div class="form-row cols-2">
+
+          <div class="form-group">
+            <label>Name *</label>
+            <input
+              type="text"
+              class="form-control"
+              id="areaName"
+              placeholder="Ground Floor">
+          </div>
+
+          <div class="form-group">
+            <label>Sort Order</label>
+            <input
+              type="number"
+              class="form-control"
+              id="areaSort"
+              value="0">
+          </div>
+
+        </div>
+
+        <div class="form-group">
+
+          <label>Description</label>
+
+          <textarea
+            class="form-control"
+            id="areaDesc"
+            rows="2"
+            placeholder="Optional"></textarea>
+
+        </div>
+
+        <button
+          class="btn btn-primary"
+          onclick="saveArea()">
+
+          <i class="fa fa-plus"></i>
+
+          Add Area
+
+        </button>
+
+      </div>
+
+
+      <!-- Area List -->
+
+      <div id="areaList">
+
+        <?php if (empty($areas)): ?>
+
+          <div class="empty-state">
+
+            <i class="fa fa-layer-group"></i>
+
+            <p>No Areas Found</p>
+
+          </div>
+
+        <?php else: ?>
+
+          <?php foreach ($areas as $a): ?>
+
+            <div
+              style="
+                    display:flex;
+                    justify-content:space-between;
+                    align-items:center;
+                    padding:14px;
+                    border:1px solid #E5E7EB;
+                    border-radius:10px;
+                    margin-bottom:10px">
+
+              <div>
+
+                <div style="font-weight:700">
+
+                  <?= esc($a['name']) ?>
+
+                </div>
+
+                <?php if ($a['description']) : ?>
+
+                  <div style="font-size:.8rem;color:#64748B">
+
+                    <?= esc($a['description']) ?>
+
+                  </div>
+
+                <?php endif; ?>
+
+                <div
+                  style="font-size:.75rem;color:#94A3B8">
+
+                  Sort :
+                  <?= $a['sort_order'] ?>
+
+                </div>
+
+              </div>
+
+              <div
+                style="display:flex;gap:8px">
+
+                <button
+                  class="btn btn-outline"
+                  onclick='editArea(<?= json_encode($a) ?>)'>
+
+                  <i class="fa fa-pen"></i>
+
+                </button>
+
+                <button
+                  class="btn btn-outline"
+                  onclick="toggleArea(<?= $a['id'] ?>)">
+
+                  <?php if ($a['is_active']): ?>
+
+                    <i class="fa fa-eye-slash"></i>
+
+                  <?php else: ?>
+
+                    <i class="fa fa-eye"></i>
+
+                  <?php endif; ?>
+
+                </button>
+
+                <button
+                  class="btn btn-danger"
+                  onclick="deleteArea(<?= $a['id'] ?>)">
+
+                  <i class="fa fa-trash"></i>
+
+                </button>
+              </div>
+            </div>
+          <?php endforeach; ?>
+        <?php endif; ?>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
-const CN = '<?= csrf_token() ?>', CT = '<?= csrf_hash() ?>';
-const BASE = '<?= base_url() ?>';
-let currentQrTableId = null;
+  const CN = '<?= csrf_token() ?>',
+    CT = '<?= csrf_hash() ?>';
+  const BASE = '<?= base_url() ?>';
+  let currentQrTableId = null;
 
-function postApi(url, data={}) {
-  return fetch(url, {
-    method:'POST',
-    headers:{'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'},
-    body: new URLSearchParams({[CN]:CT,...data})
-  }).then(r=>r.json());
-}
-
-function addTable() {
-  postApi(BASE+'admin/tables/store', {
-    table_number: document.getElementById('tNum').value,
-    capacity:     document.getElementById('tCap').value,
-    shape:        document.getElementById('tShape').value,
-    sort_order:   document.getElementById('tSort').value,
-    area_id:      document.getElementById('tArea')?.value || '',
-  }).then(d => {
-    if (d.success) { closeModal('addTableModal'); location.reload(); }
-    else showToast(d.message||'Failed to add table','error');
-  });
-}
-
-function editTable(t) {
-  document.getElementById('etId').value  = t.id;
-  document.getElementById('etNum').value = t.table_number;
-  document.getElementById('etCap').value = t.capacity;
-  if (document.getElementById('etArea')) document.getElementById('etArea').value = t.area_id||'';
-  openModal('editTableModal');
-}
-
-function saveEdit() {
-  const id = document.getElementById('etId').value;
-  postApi(BASE+'admin/tables/update/'+id, {
-    table_number: document.getElementById('etNum').value,
-    capacity:     document.getElementById('etCap').value,
-    area_id:      document.getElementById('etArea')?.value || '',
-  }).then(d => {
-    if (d.success) { closeModal('editTableModal'); location.reload(); }
-    else showToast('Failed','error');
-  });
-}
-
-function toggleTable(id, active) {
-  if (!confirm(active ? 'Deactivate this table?' : 'Activate this table?')) return;
-  postApi(BASE+'admin/tables/toggle/'+id).then(d => { if(d.success) location.reload(); });
-}
-
-// ── QR Code ─────────────────────────────────────────────
-function showQr(tableId, tableNum, token) {
-  currentQrTableId = tableId;
-  document.getElementById('qrModalTitle').innerHTML = '<i class="fa fa-qrcode" style="color:var(--primary)"></i> Table ' + tableNum + ' — QR Code';
-  document.getElementById('qrBox').innerHTML = '';
-  document.getElementById('qrLink').textContent = '';
-  openModal('qrModal');
-
-  if (!token) {
-    // Generate one automatically
-    fetch(BASE+'admin/tables/generate-qr/'+tableId, {headers:{'X-Requested-With':'XMLHttpRequest'}})
-      .then(r=>r.json()).then(d => { if(d.success) renderQr(d.url); });
-  } else {
-    renderQr(BASE+'menu/table/'+token);
+  function postApi(url, data = {}) {
+    return fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: new URLSearchParams({
+        [CN]: CT,
+        ...data
+      })
+    }).then(r => r.json());
   }
-}
 
-function renderQr(url) {
-  document.getElementById('qrBox').innerHTML = '';
-  document.getElementById('qrLink').textContent = url;
-  new QRCode(document.getElementById('qrBox'), {
-    text: url, width:220, height:220,
-    colorDark:'#0F172A', colorLight:'#ffffff',
-    correctLevel: QRCode.CorrectLevel.M,
-  });
-}
-
-function regenerateQr() {
-  if (!currentQrTableId) return;
-  fetch(BASE+'admin/tables/generate-qr/'+currentQrTableId, {headers:{'X-Requested-With':'XMLHttpRequest'}})
-    .then(r=>r.json()).then(d => {
-      if (d.success) { renderQr(d.url); showToast('New QR generated','success'); }
+  function addTable() {
+    postApi(BASE + 'admin/tables/store', {
+      table_number: document.getElementById('tNum').value,
+      capacity: document.getElementById('tCap').value,
+      shape: document.getElementById('tShape').value,
+      sort_order: document.getElementById('tSort').value,
+      area_id: document.getElementById('tArea')?.value || '',
+    }).then(d => {
+      if (d.success) {
+        closeModal('addTableModal');
+        location.reload();
+      } else showToast(d.message || 'Failed to add table', 'error');
     });
-}
+  }
 
-function copyQrLink() {
-  const url = document.getElementById('qrLink').textContent;
-  navigator.clipboard?.writeText(url).then(() => showToast('Link copied!','success')).catch(() => {
-    const el = document.createElement('textarea');
-    el.value = url; document.body.appendChild(el); el.select();
-    document.execCommand('copy'); document.body.removeChild(el);
-    showToast('Copied!','success');
-  });
-}
+  function editTable(t) {
+    document.getElementById('etId').value = t.id;
+    document.getElementById('etNum').value = t.table_number;
+    document.getElementById('etCap').value = t.capacity;
+    if (document.getElementById('etArea')) document.getElementById('etArea').value = t.area_id || '';
+    openModal('editTableModal');
+  }
 
-function printQr() {
-  const qrBox = document.getElementById('qrBox');
-  const img   = qrBox.querySelector('img');
-  if (!img) return;
-  const w = window.open('','_blank','width=400,height=500');
-  w.document.write(`<html><head><title>Table QR</title><style>body{font-family:sans-serif;text-align:center;padding:1rem}img{width:240px;height:240px}h2{margin:.5rem 0 0;font-size:1.1rem}p{color:#64748B;font-size:.75rem}</style></head>
+  function saveEdit() {
+    const id = document.getElementById('etId').value;
+    postApi(BASE + 'admin/tables/update/' + id, {
+      table_number: document.getElementById('etNum').value,
+      capacity: document.getElementById('etCap').value,
+      area_id: document.getElementById('etArea')?.value || '',
+    }).then(d => {
+      if (d.success) {
+        closeModal('editTableModal');
+        location.reload();
+      } else showToast('Failed', 'error');
+    });
+  }
+
+  function toggleTable(id, active) {
+    if (!confirm(active ? 'Deactivate this table?' : 'Activate this table?')) return;
+    postApi(BASE + 'admin/tables/toggle/' + id).then(d => {
+      if (d.success) location.reload();
+    });
+  }
+
+  // ── QR Code ─────────────────────────────────────────────
+  function showQr(tableId, tableNum, token) {
+    currentQrTableId = tableId;
+    document.getElementById('qrModalTitle').innerHTML = '<i class="fa fa-qrcode" style="color:var(--primary)"></i> Table ' + tableNum + ' — QR Code';
+    document.getElementById('qrBox').innerHTML = '';
+    document.getElementById('qrLink').textContent = '';
+    openModal('qrModal');
+
+    if (!token) {
+      // Generate one automatically
+      fetch(BASE + 'admin/tables/generate-qr/' + tableId, {
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        })
+        .then(r => r.json()).then(d => {
+          if (d.success) renderQr(d.url);
+        });
+    } else {
+      renderQr(BASE + 'menu/table/' + token);
+    }
+  }
+
+  function renderQr(url) {
+    document.getElementById('qrBox').innerHTML = '';
+    document.getElementById('qrLink').textContent = url;
+    new QRCode(document.getElementById('qrBox'), {
+      text: url,
+      width: 220,
+      height: 220,
+      colorDark: '#0F172A',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+  }
+
+  function regenerateQr() {
+    if (!currentQrTableId) return;
+    fetch(BASE + 'admin/tables/generate-qr/' + currentQrTableId, {
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(r => r.json()).then(d => {
+        if (d.success) {
+          renderQr(d.url);
+          showToast('New QR generated', 'success');
+        }
+      });
+  }
+
+  function copyQrLink() {
+    const url = document.getElementById('qrLink').textContent;
+    navigator.clipboard?.writeText(url).then(() => showToast('Link copied!', 'success')).catch(() => {
+      const el = document.createElement('textarea');
+      el.value = url;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      showToast('Copied!', 'success');
+    });
+  }
+
+  function printQr() {
+    const qrBox = document.getElementById('qrBox');
+    const img = qrBox.querySelector('img');
+    if (!img) return;
+    const w = window.open('', '_blank', 'width=400,height=500');
+    w.document.write(`<html><head><title>Table QR</title><style>body{font-family:sans-serif;text-align:center;padding:1rem}img{width:240px;height:240px}h2{margin:.5rem 0 0;font-size:1.1rem}p{color:#64748B;font-size:.75rem}</style></head>
   <body><img src="${img.src}"><h2>${document.getElementById('qrModalTitle').textContent.replace('QR Code','').trim()}</h2><p>Scan to view menu</p><script>window.onload=()=>window.print()<\/script></body></html>`);
-  w.document.close();
-}
+    w.document.close();
+  }
 
-function showToast(msg, type='info') {
-  const clr = {success:'#22C55E',error:'#EF4444',warning:'#F59E0B',info:'#3B82F6'};
-  const t = document.createElement('div');
-  t.style.cssText = `position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:${clr[type]||clr.info};color:#fff;padding:.5rem 1.2rem;border-radius:24px;font-weight:700;font-size:.82rem;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2)`;
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(()=>{t.style.transition='opacity .3s';t.style.opacity='0';setTimeout(()=>t.remove(),300);},2500);
-}
+  function showToast(msg, type = 'info') {
+    const clr = {
+      success: '#22C55E',
+      error: '#EF4444',
+      warning: '#F59E0B',
+      info: '#3B82F6'
+    };
+    const t = document.createElement('div');
+    t.style.cssText = `position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:${clr[type]||clr.info};color:#fff;padding:.5rem 1.2rem;border-radius:24px;font-weight:700;font-size:.82rem;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2)`;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => {
+      t.style.transition = 'opacity .3s';
+      t.style.opacity = '0';
+      setTimeout(() => t.remove(), 300);
+    }, 2500);
+  }
+
+  function saveArea() {
+
+    postApi(BASE + 'admin/tables/areas/store', {
+
+      name: document.getElementById('areaName').value,
+
+      description: document.getElementById('areaDesc').value,
+
+      sort_order: document.getElementById('areaSort').value
+
+    }).then(d => {
+
+      if (d.success) {
+
+        showToast('Area Added', 'success');
+
+        location.reload();
+
+      } else {
+
+        showToast(d.message, 'error');
+
+      }
+
+    });
+
+  }
+
+  function editArea(a) {
+
+    document.getElementById('areaName').value = a.name;
+
+    document.getElementById('areaDesc').value = a.description;
+
+    document.getElementById('areaSort').value = a.sort_order;
+
+    document.querySelector('#areaModal .btn-primary').innerHTML = '<i class="fa fa-save"></i> Update Area';
+
+    document.querySelector('#areaModal .btn-primary').onclick = function() {
+
+      updateArea(a.id);
+
+    };
+
+  }
+
+  function updateArea(id) {
+
+    postApi(BASE + 'admin/tables/areas/update/' + id, {
+
+      name: document.getElementById('areaName').value,
+
+      description: document.getElementById('areaDesc').value,
+
+      sort_order: document.getElementById('areaSort').value
+
+    }).then(d => {
+
+      if (d.success) {
+
+        showToast('Updated', 'success');
+
+        location.reload();
+
+      }
+
+    });
+
+  }
+
+  function toggleArea(id) {
+
+    postApi(BASE + 'admin/tables/areas/toggle/' + id)
+
+      .then(d => {
+
+        if (d.success)
+
+          location.reload();
+
+      });
+
+  }
+
+  function deleteArea(id) {
+
+    if (!confirm("Delete this Area?"))
+
+      return;
+
+    postApi(BASE + 'admin/tables/areas/delete/' + id)
+
+      .then(d => {
+
+        if (d.success) {
+
+          location.reload();
+
+        } else {
+
+          showToast(d.message, 'error');
+
+        }
+
+      });
+
+  }
 </script>
 <?php $this->endSection(); ?>

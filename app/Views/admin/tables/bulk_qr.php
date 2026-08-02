@@ -316,91 +316,65 @@ $withQr      = count(array_filter($allTables, fn($t) => !empty($t['qr_token'])))
      ══════════════════════════════════════════════════════════ */
   @media print {
 
-    /* Hide everything except the print cards */
     body * {
-      visibility: hidden !important;
+      visibility: hidden;
     }
 
     #printArea,
     #printArea * {
-      visibility: visible !important;
+      visibility: visible;
     }
 
-    /* Pin to the page regardless of how much (now-invisible)
-       layout space the rest of the app still reserves above it —
-       this is what previously caused the leading blank page(s). */
     #printArea {
-      position: fixed !important;
-      inset: 0 !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      background: #fff !important;
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      display: block !important;
+      background: #fff;
     }
 
     #printGrid {
-      display: block !important;
+
+      display: grid !important;
+
+      grid-template-columns: repeat(2, 1fr);
+
+      gap: 10mm;
+
+      padding: 10mm;
+
     }
 
-    /* Each card fills the entire page and forces a new page after it */
-    #printGrid .qr-card {
-      width: 100% !important;
-      height: 100% !important;
-      margin: 0 !important;
-      display: flex !important;
-      flex-direction: column !important;
-      align-items: center !important;
-      justify-content: center !important;
-      box-sizing: border-box !important;
-      border: none !important;
-      border-radius: 0 !important;
-      box-shadow: none !important;
-      page-break-after: always !important;
-      break-after: page !important;
-      page-break-inside: avoid !important;
-      break-inside: avoid !important;
-    }
+    .qr-card {
 
-    /* Don't leave a trailing blank page after the last card */
-    #printGrid .qr-card:last-child {
-      page-break-after: auto !important;
-      break-after: auto !important;
+      width: 90mm;
+
+      height: 130mm;
+
+      border: 1px solid #ccc;
+
+      page-break-inside: avoid;
+
+      break-inside: avoid;
+
+      box-shadow: none;
+
     }
 
     .qr-card-header {
-      background: <?= esc($themeColor) ?> !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-      width: 100% !important;
-      padding: 1rem !important;
-    }
-
-    .qr-box {
-      padding: 14px !important;
-    }
-
-    .qr-table-num {
-      font-size: 2.1rem !important;
-    }
-
-    .qr-card-body {
-      padding: 1.5rem !important;
-      gap: 1rem !important;
-    }
-
-    .qr-cta {
-      font-size: .78rem !important;
-    }
-
-    .qr-card-footer {
-      padding: .6rem 1rem !important;
-      width: 100% !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
 
     @page {
-      size: 80mm 120mm;
-      /* table-card size — adjust to your printer/paper stock */
-      margin: 0;
+
+      size: A4 portrait;
+
+      margin: 8mm;
+
     }
+
   }
 </style>
 
