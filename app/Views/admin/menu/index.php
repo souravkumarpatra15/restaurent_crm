@@ -76,7 +76,7 @@
           <!-- Image -->
           <div style="width:70px;height:70px;border-radius:10px;overflow:hidden;flex-shrink:0;background:var(--bg)">
             <?php if ($item['image']): ?>
-              <img src="<?= base_url('public/images/uploads/'.$item['image']) ?>" style="width:100%;height:100%;object-fit:cover">
+              <img src="<?= base_url('images/uploads/'.$item['image']) ?>" style="width:100%;height:100%;object-fit:cover">
             <?php else: ?>
               <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:1.75rem">🍽</div>
             <?php endif; ?>
@@ -164,7 +164,7 @@
             <td>
               <div style="display:flex;align-items:center;gap:.6rem">
                 <?php if ($cat['image']): ?>
-                  <img src="<?= base_url('public/images/uploads/'.$cat['image']) ?>" style="width:32px;height:32px;border-radius:6px;object-fit:cover">
+                  <img src="<?= base_url('images/uploads/'.$cat['image']) ?>" style="width:32px;height:32px;border-radius:6px;object-fit:cover">
                 <?php else: ?>
                   <div style="width:32px;height:32px;border-radius:6px;background:var(--primary-light);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700"><?= substr($cat['name'],0,1) ?></div>
                 <?php endif; ?>

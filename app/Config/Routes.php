@@ -223,7 +223,7 @@ $routes->get('admin/feedback',              'Manager\FeedbackController::index',
 $routes->get('feedback/(:segment)',         'Public\FeedbackController::index/$1');
 $routes->post('feedback/(:segment)/submit', 'Public\FeedbackController::store/$1');
 
-// ── PUBLIC TABLE BOOKING (DinoViX) ────────────────────────
+// ── PUBLIC TABLE BOOKING (DinoviX) ────────────────────────
 $routes->get('book',                          'Booking\DiscoverController::index');
 $routes->post('book/slots',                   'Booking\DiscoverController::slots');
 $routes->post('book/reserve',                 'Booking\DiscoverController::book');

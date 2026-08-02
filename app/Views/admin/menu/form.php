@@ -35,7 +35,16 @@
         <div class="form-group"><label class="form-label">Description</label>
           <textarea class="form-control" name="description" rows="2"><?= esc($item['description'] ?? '') ?></textarea></div>
         <div class="form-group"><label class="form-label">Image</label>
-          <input type="file" class="form-control" name="image" accept="image/*"></div>
+          <input type="file" class="form-control" name="image" accept="image/*" onchange="previewImg(this)">
+          <div id="imgPreview" style="margin-top:.5rem;display:none">
+            <img id="imgPreviewEl" src="" style="max-width:120px;max-height:120px;border-radius:8px;object-fit:cover;border:2px solid var(--border)">
+          </div>
+          <?php if (!empty($item['image'])): ?>
+          <div style="margin-top:.4rem">
+            <img src="<?= base_url('images/uploads/'.$item['image']) ?>" style="max-width:120px;max-height:120px;border-radius:8px;object-fit:cover;border:2px solid var(--border)">
+            <div style="font-size:.72rem;color:var(--text-muted);margin-top:.25rem">Current image — upload new to replace</div>
+          </div>
+          <?php endif; ?></div>
         <div style="display:flex;gap:1.5rem;margin-bottom:1rem;flex-wrap:wrap">
           <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer">
             <input type="checkbox" name="is_recommended" value="1" <?= ($item['is_recommended'] ?? 0) ? 'checked' : '' ?>> ⭐ Recommended</label>

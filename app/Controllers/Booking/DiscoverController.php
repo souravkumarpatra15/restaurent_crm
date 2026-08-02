@@ -110,10 +110,20 @@ class DiscoverController extends BaseController
             ->where('is_active', 1)
             ->get()->getResultArray();
 
+        // Menu photos for the strip — items with images
+        $menuPhotos = $db->query(
+            'SELECT name, image FROM menu_items
+             WHERE restaurant_id = ? AND image IS NOT NULL AND image != "" AND is_active = 1
+             ORDER BY is_bestseller DESC, is_recommended DESC
+             LIMIT 15',
+            [$rest['id']]
+        )->getResultArray();
+
         return view('booking/restaurant', [
             'rest'       => $rest,
             'availDates' => $availDates,
             'branches'   => $branches,
+            'menuPhotos' => $menuPhotos,
         ]);
     }
 
@@ -311,6 +321,10 @@ class DiscoverController extends BaseController
             )->getRowArray();
         }
 
-        return view('booking/status', ['booking' => $booking]);
+        return view('booking/status', [
+            'booking'      => $booking,
+            'numInput'     => $num ? strtoupper(trim($num)) : '',
+            'showNotFound' => ($num && !$booking),
+        ]);
     }
 }

@@ -30,7 +30,7 @@
 <header class="mobile-header" id="mobileHeader">
   <button class="sidebar-toggle" id="sidebarToggle"><span></span><span></span><span></span></button>
   <div class="mobile-logo">
-    <img src="<?= base_url('images/logo.png') ?>" alt="DinoviX" style="height:28px">
+    <img src="<?= base_url('images/logo2.png') ?>" alt="DinoviX" style="height:28px">
   </div>
   <div class="mobile-actions">
     <?php if (in_array($userRole, ['restaurant_admin','branch_manager','cashier','waiter'])): ?>

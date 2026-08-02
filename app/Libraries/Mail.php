@@ -80,11 +80,11 @@ class Mail
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com.';
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'info.dinovix@gmail.com';
+        $mail->Username   = 'info.DinoviX@gmail.com';
         $mail->Password   = 'oeqgtnnxntjhhnxy';
         $mail->SMTPSecure = 'tls';
         $mail->Port       = 587;
-        $mail->setFrom('info.dinovix@gmail.com', 'DinoviX - Run Your Restaurant Smarter');
+        $mail->setFrom('info.DinoviX@gmail.com', 'DinoviX - Run Your Restaurant Smarter');
         $mail->addAddress($to, $toName);
         $mail->isHTML(true);
         $mail->Subject = $subject;
@@ -114,7 +114,7 @@ class Mail
                     <!-- Header -->
                     <tr>
                         <td style='background:linear-gradient(135deg,#0F172A,#1E293B);padding:1.5rem;text-align:center'>
-                        <div style='font-size:1.5rem;font-weight:900;color:#fff;letter-spacing:-.01em'><img src='https://www.dinovix.ngwebd.com/images/favicon.png' alt='{$appName}' style='vertical-align:middle;margin-right:1rem'> {$appName}</div>
+                        <div style='font-size:1.5rem;font-weight:900;color:#fff;letter-spacing:-.01em'><img src='https://www.DinoviX.ngwebd.com/images/favicon.png' alt='{$appName}' style='vertical-align:middle;margin-right:1rem'> {$appName}</div>
                         </td>
                     </tr>
 

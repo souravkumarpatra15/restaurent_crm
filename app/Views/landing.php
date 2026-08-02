@@ -1575,7 +1575,7 @@
   <!-- ── NAV ──────────────────────────────────────────── -->
   <nav id="nav">
     <div class="nav-brand">
-      <img src="https://www.dinovix.ngwebd.com/images/logo2.png" alt="DinoviX Logo" class="nav-logo-img" style="width:120px;">
+      <img src="https://www.DinoviX.ngwebd.com/images/logo2.png" alt="DinoviX Logo" class="nav-logo-img" style="width:120px;">
     </div>
 
     <div class="nav-links">
@@ -2220,7 +2220,7 @@
   <footer>
     <div class="footer-inner">
       <div class="footer-brand">
-        <img src="https://www.dinovix.ngwebd.com/images/logo2.png" alt="DinoviX Logo" class="nav-logo-img" style="width:120px;">
+        <img src="https://www.DinoviX.ngwebd.com/images/logo2.png" alt="DinoviX Logo" class="nav-logo-img" style="width:120px;">
         <p>Modern restaurant management for the Indian food industry. QR ordering, live kitchen display, POS, and
           billing in one platform.</p>
       </div>
@@ -2234,8 +2234,8 @@
       </div>
       <div class="footer-col">
         <h4>Support</h4>
-        <a href="mailto:info.dinovix@gmail.com">Email Support</a>
-        <a href="https://wa.me/919593026451?text=Hello%20DinoViX%2C%20I%20want%20to%20know%20more%20about%20your%20Restaurant%20ERP.">WhatsApp</a>
+        <a href="mailto:info.DinoviX@gmail.com">Email Support</a>
+        <a href="https://wa.me/919593026451?text=Hello%20DinoviX%2C%20I%20want%20to%20know%20more%20about%20your%20Restaurant%20ERP.">WhatsApp</a>
         <a href="#">Documentation</a>
         <a href="#">Setup Guide</a>
       </div>
@@ -2248,8 +2248,8 @@
     </div>
     <div class="footer-bottom">
       <p>© 2026 DinoviX · Made with ❤️ in India</p>
-      <p style="color:var(--t3);font-size:.75rem">Contact: <a href="mailto:info.dinovix@gmail.com"
-          style="color:var(--p)">info.dinovix@gmail.com</a></p>
+      <p style="color:var(--t3);font-size:.75rem">Contact: <a href="mailto:info.DinoviX@gmail.com"
+          style="color:var(--p)">info.DinoviX@gmail.com</a></p>
     </div>
   </footer>
 

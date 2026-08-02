@@ -40,7 +40,7 @@
           <label style="display:flex;align-items:center;gap:.625rem;padding:.875rem;border:1.5px solid var(--border);border-radius:var(--radius);cursor:pointer">
             <input type="checkbox" name="listed_on_platform" value="1" <?= ($s['listed_on_platform']??0)?'checked':'' ?> style="accent-color:var(--primary);width:18px;height:18px">
             <div>
-              <div style="font-weight:700;font-size:.875rem">List on DinoViX</div>
+              <div style="font-weight:700;font-size:.875rem">List on DinoviX</div>
               <div style="font-size:.72rem;color:var(--text-muted)">Show on discovery page</div>
             </div>
           </label>

@@ -507,7 +507,7 @@
       </form>
 
       <!-- Demo Accounts -->
-      <div class="demo-accounts">
+      <!-- <div class="demo-accounts">
         <div class="demo-title">— Quick Demo Access —</div>
         <div class="demo-grid">
           <button class="demo-btn" onclick="fillLogin('superadmin@dinovix.in','admin@123')">
@@ -527,7 +527,7 @@
             <span class="email">Billing only</span>
           </button>
         </div>
-      </div>
+      </div> -->
 
       <div class="saas-badge">
         <span><strong>DinoviX</strong> • Powered by <a style="color:#FF6B35; font-weight:500;" href="https://www.ngwebd.com" target="_blank">NGWebD</a></span>
