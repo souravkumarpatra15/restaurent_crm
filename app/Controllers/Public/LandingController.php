@@ -31,6 +31,15 @@ class LandingController extends BaseController
             ->get()
             ->getResultArray();
 
-        return view('landing', $data);
+        // Keep the production landing page markup/styles intact; only route the
+        // existing hero Start Free Trial CTA to the new lead form.
+        $html = view('landing', $data);
+        $html = str_replace(
+            '<a href="#pricing" class="btn-hero-p">',
+            '<a href="' . base_url('register') . '" class="btn-hero-p">',
+            $html
+        );
+
+        return $html;
     }
 }
