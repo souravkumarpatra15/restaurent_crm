@@ -62,6 +62,29 @@ class LandingController extends BaseController
 </style>
 CSS;
 
+        $compactCss = <<<'CSS'
+<style id="dinovix-home-compact-v1">
+/* Compact premium homepage system — visual only */
+body{font-size:.91rem;line-height:1.52}
+nav{padding:.65rem 1.5rem;gap:1.25rem}
+.nav-logo{font-size:1.15rem}.nav-links{gap:1.2rem}.nav-links a{font-size:.78rem}.nav-cta{font-size:.76rem;padding:.48rem 1rem}
+section{padding:4.25rem 1.5rem}.sec-inner{max-width:1120px}
+.sec-h{font-size:clamp(1.8rem,3vw,2.55rem);line-height:1.12;letter-spacing:-.025em}.sec-sub{font-size:.88rem;line-height:1.62;max-width:620px}.eyebrow{font-size:.65rem;margin-bottom:.6rem}
+.strip{padding:1.2rem 1.5rem}.strip-inner{max-width:1120px}.stats-grid{gap:.7rem}.stat-big{padding:.4rem .75rem}.stat-big-val{font-size:1.35rem}.stat-big-lbl{font-size:.62rem}
+.feat-grid{gap:.85rem;margin-top:2.15rem}.feat-card{padding:1rem;border-radius:13px}.feat-icon{width:38px;height:38px;border-radius:10px;font-size:.9rem;margin-bottom:.75rem}.feat-card h3{font-size:.95rem;margin-bottom:.35rem}.feat-card p{font-size:.77rem;line-height:1.58}
+.qr-grid{gap:1.5rem}.qr-copy h2{font-size:clamp(1.8rem,3vw,2.45rem)}.qr-copy p{font-size:.82rem}.qr-points{gap:.55rem}.qr-point{padding:.65rem .75rem;font-size:.74rem}
+.hiw-grid{gap:1rem;margin-top:2.15rem}.hiw-card{padding:1rem}.hiw-num{font-size:1.3rem}.hiw-card h3{font-size:.9rem}.hiw-card p{font-size:.75rem;line-height:1.55}
+.pricing-section{padding-top:4.25rem;padding-bottom:4.25rem}.price-grid{gap:.85rem;margin-top:2.1rem}.price-card{padding:1.1rem;border-radius:14px}.price-card h3{font-size:1rem}.price-value{font-size:1.75rem}.price-card p,.price-features li{font-size:.74rem}.price-features{gap:.45rem;margin-top:1rem}.price-btn{padding:.6rem .8rem;font-size:.76rem}
+.faq-list{margin-top:2rem;max-width:760px;gap:.55rem}.faq-item{border-radius:11px}.faq-q{padding:.8rem .95rem;font-size:.78rem}.faq-a{padding:0 .95rem;font-size:.74rem;line-height:1.6}
+.cta-section{padding:4.25rem 1.5rem}.cta-section h2{font-size:clamp(1.8rem,3vw,2.5rem)}.cta-section p{font-size:.82rem;margin-top:.55rem}.cta-section .btn-hero-p{padding:.68rem 1.1rem;font-size:.8rem}
+footer{padding:2.25rem 1.5rem}.footer-grid{gap:1.5rem}.footer-brand p,.footer-links a,.footer-col h4{font-size:.72rem}.footer-bottom{margin-top:1.5rem;padding-top:1rem}.footer-bottom p{font-size:.68rem}
+/* keep the redesigned hero compact without changing its functionality */
+.hero-v2{min-height:84vh;padding:6.35rem 1.5rem 3rem}.hero-v2-grid{gap:2.6rem}.hero-v2-title{font-size:clamp(2.25rem,4vw,3.35rem)}.hero-v2-sub{font-size:.86rem;line-height:1.62;margin-bottom:1.25rem}.hero-v2-actions{margin-bottom:1rem}.hero-v2-primary,.hero-v2-secondary{min-height:43px;padding:.58rem .95rem;font-size:.78rem}.hero-v2-proof{font-size:.63rem}.hero-v2-visual{min-height:450px}.hero-v2-photo{border-radius:24px}.hero-v2-food{width:118px;height:118px}.hero-v2-dashboard{border-radius:15px}.hero-v2-topbar{height:36px}.hero-v2-dashboard-body{padding:.58rem}
+@media(max-width:1024px){section{padding:3.75rem 1.25rem}.hero-v2{padding-top:6.5rem}.hero-v2-visual{min-height:410px}.feat-grid,.hiw-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){nav{padding:.6rem 1rem}.nav-links,.nav-cta{display:none}.nav-mob{display:block}section{padding:3.25rem 1rem}.strip{padding:1rem}.strip-inner{gap:.5rem}.stats-grid{grid-template-columns:repeat(2,1fr)}.feat-grid,.hiw-grid,.price-grid{grid-template-columns:1fr;gap:.7rem}.sec-h{font-size:1.8rem}.sec-sub{font-size:.8rem}.feat-card,.hiw-card,.price-card{padding:.9rem}.qr-grid{gap:1rem}.hero-v2{padding:6rem 1rem 2.5rem}.hero-v2-title{font-size:clamp(2rem,9vw,2.8rem)}.hero-v2-sub{font-size:.82rem}.hero-v2-visual{min-height:340px}.hero-v2-food{width:82px;height:82px}.hero-v2-dashboard{width:91%}.hero-v2-revenue{min-width:100px;padding:.58rem .65rem}.hero-v2-qr{padding:.45rem .55rem}.cta-section{padding:3.5rem 1rem}footer{padding:2rem 1rem}}
+</style>
+CSS;
+
         $heroHtml = <<<HTML
   <section class="hero-v2">
     <div class="hero-v2-grid">
@@ -122,7 +145,7 @@ CSS;
 HTML;
 
         $html = preg_replace('/<section class="hero">.*?<\/section>/s', $heroHtml, $html, 1);
-        $html = preg_replace('/<\/style>/', $heroCss . "\n</style>", $html, 1);
+        $html = preg_replace('/<\/style>/', $heroCss . $compactCss . "\n</style>", $html, 1);
 
         return $html;
     }
