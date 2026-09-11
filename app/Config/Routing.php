@@ -53,8 +53,8 @@ class Routing extends BaseRouting
 
     /**
      * For Defined Routes and Auto Routing.
-     * The default method to call on the controller when no other method
-     * has been set in the route.
+     * The default method to call on the controller when no other
+     * method has been set in the route.
      *
      * Default: 'index'
      */
@@ -71,34 +71,67 @@ class Routing extends BaseRouting
 
     /**
      * Sets the class/method that should be called if routing doesn't
-     * find a match. It can be the controller/method name like `Users::list`.
+     * find a match. It can be the controller/method name like: Users::index
+     *
+     * This setting is passed to the Router class and handled there.
+     *
+     * If you want to use a closure, you will have to set it in the
+     * routes file by calling:
+     *
+     * $routes->set404Override(function() {
+     *    // Do something here
+     * });
+     *
+     * Example:
+     *  public $override404 = 'App\\Errors::show404';
      */
     public ?string $override404 = null;
 
     /**
-     * If TRUE, the system will attempt to match the URI against Controllers
-     * when a match wasn't found against defined routes.
+     * If TRUE, the system will attempt to match the URI against
+     * Controllers by matching each segment against folders/files
+     * in APPPATH/Controllers, when a match wasn't found against
+     * defined routes.
+     *
+     * If FALSE, will stop searching and do NO automatic routing.
      */
     public bool $autoRoute = false;
 
     /**
-     * If TRUE, the system will look for attributes on controller class and
-     * methods that can run before and after the controller action.
+     * If TRUE, the system will look for attributes on controller
+     * class and methods that can run before and after the
+     * controller/method.
+     *
+     * If FALSE, will ignore any attributes.
      */
     public bool $useControllerAttributes = true;
 
     /**
      * For Defined Routes.
+     * If TRUE, will enable the use of the 'prioritize' option
+     * when defining routes.
+     *
+     * Default: false
      */
     public bool $prioritize = false;
 
     /**
      * For Defined Routes.
+     * If TRUE, matched multiple URI segments will be passed as one parameter.
+     *
+     * Default: false
      */
     public bool $multipleSegmentsOneParam = false;
 
     /**
      * For Auto Routing (Improved).
+     * Map of URI segments and namespaces.
+     *
+     * The key is the first URI segment. The value is the controller namespace.
+     * E.g.,
+     *   [
+     *       'blog' => 'Acme\\Blog\\Controllers',
+     *   ]
      *
      * @var array<string, string>
      */
@@ -106,6 +139,12 @@ class Routing extends BaseRouting
 
     /**
      * For Auto Routing (Improved).
+     * Whether to translate dashes in URIs for controller/method to CamelCase.
+     * E.g., blog-controller -> BlogController
+     *
+     * If you enable this, $translateURIDashes is ignored.
+     *
+     * Default: false
      */
     public bool $translateUriToCamelCase = true;
 }
