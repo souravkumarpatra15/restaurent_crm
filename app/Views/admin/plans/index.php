@@ -1,6 +1,7 @@
 <?php $this->extend('layouts/main'); $this->section('content'); ?>
 <div style="padding:0 1rem">
-  <div style="display:flex;justify-content:flex-end;margin-bottom:1rem">
+  <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-bottom:1rem">
+    <a href="<?= base_url('super/trial-leads') ?>" class="btn btn-outline"><i class="fa fa-user-plus"></i> Trial Leads</a>
     <a href="<?= base_url('super/plans/create') ?>" class="btn btn-primary"><i class="fa fa-plus"></i> New Plan</a>
   </div>
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.75rem">
