@@ -472,12 +472,12 @@
         <?= csrf_field() ?>
 
         <div class="form-group">
-          <label class="form-label" for="email">Email Address</label>
+          <label class="form-label" for="email">Email or Mobile Number</label>
           <div class="input-wrap">
             <i class="fa fa-envelope input-icon"></i>
-            <input type="email" class="form-control" id="email" name="email"
-              placeholder="you@restaurant.com"
-              value="<?= old('email') ?>" autocomplete="email" required>
+            <input type="text" class="form-control" id="email" name="email"
+              placeholder="you@restaurant.com or 98765 43210"
+              value="<?= old('email') ?>" autocomplete="username" required>
           </div>
         </div>
 

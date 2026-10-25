@@ -55,8 +55,15 @@ class UserController extends BaseController
     public function edit($id)
     {
         $db = \Config\Database::connect();
+        $user = $db->table('users')
+            ->where('id', $id)
+            ->where('restaurant_id', session('restaurant_id'))
+            ->get()->getRowArray();
+        if (!$user) {
+            return redirect()->to(base_url('admin/users'))->with('error', 'Staff member not found');
+        }
         return view('admin/users/form', [
-            'pageTitle' => 'Edit Staff', 'user' => $this->model->find($id),
+            'pageTitle' => 'Edit Staff', 'user' => $user,
             'roles'     => $db->table('roles')->where('is_system',1)->whereNotIn('slug',['super_admin'])->get()->getResultArray(),
             'branches'  => $db->table('branches')->where('restaurant_id',session('restaurant_id'))->get()->getResultArray(),
             'userName'  => session('user_name'), 'userRole' => session('role_slug'),
@@ -66,6 +73,11 @@ class UserController extends BaseController
 
     public function update($id)
     {
+        // Tenant guard — do not touch another restaurant's staff
+        $target = $this->model->where('id', $id)->where('restaurant_id', session('restaurant_id'))->first();
+        if (!$target) {
+            return redirect()->to(base_url('admin/users'))->with('error', 'Staff member not found');
+        }
         $data = [
             'branch_id'     => $this->request->getPost('branch_id') ?: null,
             'role_id'       => $this->request->getPost('role_id'),
@@ -83,7 +95,9 @@ class UserController extends BaseController
 
     public function toggle($id)
     {
-        $u = $this->model->find($id);
+        // Tenant guard
+        $u = $this->model->where('id', $id)->where('restaurant_id', session('restaurant_id'))->first();
+        if (!$u) return $this->response->setJSON(['success' => false, 'message' => 'Staff member not found']);
         $this->model->update($id, ['is_active' => $u['is_active'] ? 0 : 1]);
         return $this->response->setJSON(['success' => true]);
     }

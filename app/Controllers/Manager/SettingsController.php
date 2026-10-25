@@ -11,10 +11,16 @@ class SettingsController extends BaseController
         $restaurant = $db->table('restaurants')->where('id',$rid)->get()->getRowArray();
         $branches   = $db->table('branches')->where('restaurant_id',$rid)->get()->getResultArray();
 
+        $autoKot = $db->table('settings')
+            ->where('restaurant_id',$rid)
+            ->where('`key`','auto_print_kot')
+            ->get()->getRowArray();
+
         return view('admin/settings/index', [
             'pageTitle'  => 'Settings',
             'restaurant' => $restaurant,
             'branches'   => $branches,
+            'autoKot'    => $autoKot ? $autoKot['value'] === '1' : false,
             'userName'   => session('user_name'),
             'userRole'   => session('role_slug'),
             'restaurantName' => session('restaurant_name'),
@@ -45,6 +51,20 @@ class SettingsController extends BaseController
             'theme_color'          => $this->request->getPost('theme_color') ?? '#FF6B35',
             'updated_at'           => date('Y-m-d H:i:s'),
         ]);
+
+        // Operational preference: auto-print KOT when an order is created
+        $exists = $db->table('settings')->where('restaurant_id',$rid)->where('`key`','auto_print_kot')->countAllResults();
+        $value  = $this->request->getPost('auto_print_kot') ? '1' : '0';
+        if ($exists) {
+            $db->table('settings')->where('restaurant_id',$rid)->where('`key`','auto_print_kot')
+               ->update(['value'=>$value,'updated_at'=>date('Y-m-d H:i:s')]);
+        } else {
+            $db->table('settings')->insert([
+                'restaurant_id'=>$rid,'branch_id'=>null,'key'=>'auto_print_kot',
+                'value'=>$value,'type'=>'boolean','updated_at'=>date('Y-m-d H:i:s'),
+            ]);
+        }
+
         return redirect()->to(base_url('admin/settings'))->with('success','Settings saved');
     }
 }

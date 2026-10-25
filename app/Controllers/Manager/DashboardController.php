@@ -138,8 +138,21 @@ class DashboardController extends BaseController
 
     public function switchBranch()
     {
-        $branchId = $this->request->getGet('branch_id');
-        if ($branchId) session()->set('branch_id', $branchId);
-        return $this->response->setJSON(['success' => true]);
+        $branchId = (int)$this->request->getGet('branch_id');
+        if (!$branchId) return $this->response->setJSON(['success' => false]);
+
+        // Tenant guard: the branch must belong to the logged-in restaurant.
+        // (This used to let any user switch into another restaurant's branch.)
+        $branch = \Config\Database::connect()->table('branches')
+            ->where('id', $branchId)
+            ->where('restaurant_id', session('restaurant_id'))
+            ->get()->getRowArray();
+
+        if (!$branch) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Branch not found for your restaurant']);
+        }
+
+        session()->set('branch_id', $branch['id']);
+        return $this->response->setJSON(['success' => true, 'branch_id' => $branch['id']]);
     }
 }

@@ -15,13 +15,31 @@ class AuthController extends BaseController
 
     public function doLogin()
     {
-        if (!$this->validate(['email' => 'required|valid_email', 'password' => 'required|min_length[6]'])) {
+        // Accept either an email address OR a mobile number in the same field
+        if (!$this->validate(['email' => 'required', 'password' => 'required|min_length[6]'])) {
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
-        $email    = $this->request->getPost('email');
+        $identity = trim($this->request->getPost('email'));
         $password = $this->request->getPost('password');
         $remember = $this->request->getPost('remember');
+
+        $isValidEmail  = filter_var($identity, FILTER_VALIDATE_EMAIL);
+        // Accept 10-digit numbers, +country code, spaces/dashes
+        $isValidMobile = preg_match('/^[0-9+\-\s.()]{6,20}$/', $identity) && preg_match('/\d{6,}/', str_replace([' ', '-'], ['', ''], $identity));
+
+        if (!$isValidEmail && !$isValidMobile) {
+            return redirect()->back()->withInput()->with('error', 'Please enter a valid email address or mobile number');
+        }
+
+        // Normalise mobile: keep digits, strip "0"/"91" prefixes for +91 numbers
+        $mobile = null;
+        if ($isValidMobile) {
+            $mobile = preg_replace('/\D/', '', $identity);
+            if (strlen($mobile) > 10) {           // 91XXXXXXXX10 digits → drop country code
+                $mobile = substr($mobile, -10);
+            }
+        }
 
         try {
             $db   = \Config\Database::connect();
@@ -32,15 +50,26 @@ class AuthController extends BaseController
                 ->join('roles r', 'r.id = u.role_id')
                 ->join('restaurants res', 'res.id = u.restaurant_id', 'left')
                 ->join('branches b', 'b.id = u.branch_id', 'left')
-                ->where('u.email', $email)
                 ->where('u.is_active', 1)
-                ->get()->getRowArray();
+                ->where('u.email !=', '');
+            if ($isValidEmail) {
+                $user->where('u.email', $identity);
+            } else {
+                // Match the typed number, and also its 10-digit normalised form
+                $user->groupStart()
+                        ->where('u.phone', $identity)
+                        ->orGroupStart()
+                            ->where('RIGHT(REPLACE(REPLACE(u.phone, " ", ""), "-", ""), 10)', $mobile)
+                        ->groupEnd()
+                     ->groupEnd();
+            }
+            $user = $user->get()->getRowArray();
         } catch (\Exception $e) {
             return redirect()->back()->withInput()->with('error', 'Database error: ' . $e->getMessage());
         }
 
         if (!$user || !password_verify($password, $user['password'])) {
-            return redirect()->back()->withInput()->with('error', 'Invalid email or password');
+            return redirect()->back()->withInput()->with('error', 'Invalid email/mobile or password');
         }
 
         if ($user['restaurant_name'] && in_array($user['subscription_status'] ?? '', ['suspended', 'cancelled', 'expired'])) {

@@ -136,16 +136,39 @@
             <div style="font-weight:600;font-size:.875rem"><?= esc($b['name']) ?></div>
             <div style="font-size:.72rem;color:var(--text-muted)"><?= esc($b['city'] ?? '') ?> <?= $b['printer_ip'] ? '· Printer: '.$b['printer_ip'] : '' ?></div>
           </div>
-          <a href="<?= base_url('admin/branches/edit/'.$b['id']) ?>" class="btn btn-sm btn-outline"><i class="fa fa-edit"></i></a>
+          <div style="display:flex;gap:.35rem">
+            <button type="button" class="btn btn-sm btn-outline" onclick="testPrintRow(<?= $b['id'] ?>)" title="Test print"><i class="fa fa-print"></i></button>
+            <a href="<?= base_url('admin/branches/edit/'.$b['id']) ?>" class="btn btn-sm btn-outline"><i class="fa fa-edit"></i></a>
+          </div>
         </div>
         <?php endforeach; ?>
       </div>
     </div>
     <?php endif; ?>
 
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-header"><span class="card-title"><i class="fa fa-fire-burner" style="color:var(--primary)"></i> Operational Preferences</span></div>
+      <div class="card-body">
+        <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;font-size:.9rem">
+          <input type="checkbox" name="auto_print_kot" value="1" <?= $autoKot ? 'checked' : '' ?>>
+          <span>
+            <strong>Auto-print KOT</strong>
+            <span style="display:block;font-size:.75rem;color:var(--text-muted)">Send a KOT to the kitchen automatically the moment an order is created (no printer = saved to file, order never blocked)</span>
+          </span>
+        </label>
+      </div>
+    </div>
+
     <div style="display:flex;gap:.5rem;padding-bottom:2rem">
       <button type="submit" class="btn btn-primary btn-lg" style="flex:1"><i class="fa fa-save"></i> Save Settings</button>
     </div>
   </form>
 </div>
+<script>
+function testPrintRow(id){
+  fetch('<?= base_url('admin/branches/test-print') ?>/'+id,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'<?= csrf_token() ?>=<?= csrf_hash() ?>'})
+    .then(r=>r.json()).then(d=>alert(d.success?'Test ticket sent to the printer ✔':(d.message||'Test print failed')))
+    .catch(()=>alert('Network error'));
+}
+</script>
 <?php $this->endSection(); ?>

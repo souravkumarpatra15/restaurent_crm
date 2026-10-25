@@ -74,11 +74,14 @@ class ExpenseController extends BaseController
 
     public function approve($id)
     {
-        \Config\Database::connect()->table('expenses')->where('id',$id)->update([
-            'is_approved' => 1,
-            'approved_by' => session('user_id'),
-            'approved_at' => date('Y-m-d H:i:s'),
-        ]);
+        \Config\Database::connect()->table('expenses')
+            ->where('id',$id)
+            ->where('restaurant_id', session('restaurant_id'))
+            ->update([
+                'is_approved' => 1,
+                'approved_by' => session('user_id'),
+                'approved_at' => date('Y-m-d H:i:s'),
+            ]);
         return $this->response->setJSON(['success'=>true]);
     }
 }

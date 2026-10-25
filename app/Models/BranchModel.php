@@ -11,7 +11,7 @@ class BranchModel extends BaseModel
         'opening_time','closing_time','is_24_hours','working_days',
         'has_dine_in','has_takeaway','has_delivery',
         'printer_ip','printer_port','printer_type','kot_printer_ip','kot_printer_port',
-        'billing_prefix','billing_counter','is_active'
+        'billing_prefix','billing_counter','kot_prefix','kot_counter','is_active'
     ];
     public function getByRestaurant($restaurantId)
     {

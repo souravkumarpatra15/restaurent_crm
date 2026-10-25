@@ -76,9 +76,43 @@
   <?php endif; ?>
 
   <?php if ($order['status'] !== 'cancelled' && $order['status'] !== 'completed'): ?>
-  <button onclick="if(confirm('Cancel this order?'))fetch('<?= base_url('admin/orders/cancel/'.$order['id']) ?>',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'<?= csrf_token() ?>=<?= csrf_hash() ?>'}).then(()=>location.reload())" class="btn btn-danger btn-block">
+  <button onclick="cancelOrderAdmin(<?= $order['id'] ?>)" class="btn btn-danger btn-block">
     <i class="fa fa-times"></i> Cancel Order
   </button>
+  <script>
+  function cancelOrderAdmin(id) {
+    const reason = prompt('Reason for cancelling this order?', 'Cancelled by manager');
+    if (reason === null) return;
+    fetch('<?= base_url('admin/orders/cancel') ?>/' + id, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: '<?= csrf_token() ?>=<?= csrf_hash() ?>&reason=' + encodeURIComponent(reason)
+    }).then(r => r.json()).then(d => {
+      if (d.success) location.reload();
+      else alert(d.message || 'Could not cancel this order');
+    }).catch(() => alert('Network error while cancelling the order'));
+  }
+  </script>
+  <?php endif; ?>
+
+  <?php if ($order['payment_status'] === 'paid' && $order['status'] !== 'refunded'): ?>
+  <button onclick="refundOrderAdmin(<?= $order['id'] ?>)" class="btn btn-warning btn-block" style="margin-top:.5rem">
+    <i class="fa fa-rotate-left"></i> Refund Order
+  </button>
+  <script>
+  function refundOrderAdmin(id) {
+    const reason = prompt('Reason for refunding this order?', 'Refunded by manager');
+    if (reason === null) return;
+    fetch('<?= base_url('admin/orders/refund') ?>/' + id, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: '<?= csrf_token() ?>=<?= csrf_hash() ?>&reason=' + encodeURIComponent(reason)
+    }).then(r => r.json()).then(d => {
+      if (d.success) location.reload();
+      else alert(d.message || 'Could not refund this order');
+    }).catch(() => alert('Network error while refunding the order'));
+  }
+  </script>
   <?php endif; ?>
 <?php endif; ?>
 </div>

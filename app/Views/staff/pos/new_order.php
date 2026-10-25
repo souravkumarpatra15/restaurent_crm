@@ -125,6 +125,7 @@ $typeIcons = ['dine_in'=>'fa-chair','takeaway'=>'fa-bag-shopping','delivery'=>'f
         <option value="flat">₹ Flat</option>
       </select>
       <input type="number" id="discVal" placeholder="0" min="0" oninput="calcDiscount()">
+      <button class="disc-coupon-btn" onclick="redeemPoints()" title="Redeem Loyalty Points" style="background:#F5F3FF;color:#6366F1"><i class="fa fa-star"></i></button>
       <button class="disc-coupon-btn" onclick="openSheet('sCoupon')" title="Coupon"><i class="fa fa-ticket"></i></button>
     </div>
     <div class="cart-totals" id="cartTotals">
@@ -615,7 +616,7 @@ function searchCust(){
     .then(r=>r.json()).then(d=>{
       const el=document.getElementById('custResult');
       if(d.found){
-        el.innerHTML=`<div class="cust-result"><div class="cust-result-info"><div class="cust-result-name">${d.name}</div><div class="cust-result-phone">${d.phone}</div>${d.points>0?`<div class="cust-result-pts">⭐ ${d.points} loyalty pts</div>`:''}</div><button class="cust-pick-btn" onclick="pickCust('${d.id}','${d.name}','${d.phone}')">Select</button></div>`;
+        el.innerHTML=`<div class="cust-result"><div class="cust-result-info"><div class="cust-result-name">${d.name}</div><div class="cust-result-phone">${d.phone}</div>${d.points>0?`<div class="cust-result-pts">⭐ ${d.points} loyalty pts</div>`:''}</div><button class="cust-pick-btn" onclick="pickCust('${d.id}','${d.name}','${d.phone}',${d.points||0})">Select</button></div>`;
         document.getElementById('custName').value=d.name;
         document.getElementById('custPhone').value=d.phone;
       } else {
@@ -624,9 +625,28 @@ function searchCust(){
       }
     });
 }
-function pickCust(id,name,phone){ cust={id,name,phone}; updateCustChip(); closeSheet('sCustomer','bgCustomer'); toast('Customer: '+name,'success'); }
-function setCust(){ const n=document.getElementById('custName').value.trim(); const p=document.getElementById('custPhone').value.trim(); cust={id:cust.id||null,name:n,phone:p}; updateCustChip(); closeSheet('sCustomer','bgCustomer'); if(n)toast('Customer set','success'); }
-function clearCust(){ cust={id:null,name:'',phone:''}; updateCustChip(); }
+function pickCust(id,name,phone,points){ cust={id,name,phone,points:points||0}; updateCustChip(); closeSheet('sCustomer','bgCustomer'); toast('Customer: '+name,'success'); }
+function setCust(){ const n=document.getElementById('custName').value.trim(); const p=document.getElementById('custPhone').value.trim(); cust={id:cust.id||null,name:n,phone:p,points:cust.points||0}; updateCustChip(); closeSheet('sCustomer','bgCustomer'); if(n)toast('Customer set','success'); }
+function clearCust(){ cust={id:null,name:'',phone:'',points:0}; if(disc.type==='loyalty'){disc={type:'',val:0,amt:0,coupon:''};} updateCustChip(); renderAll?.(); }
+
+// ── Loyalty points redemption ─────────────────────────────
+function redeemPoints(){
+  if(!(cust.id&&cust.id!=='')){ toast('Select a customer first','error'); openSheet('sCustomer','bgCustomer'); return; }
+  const pts=prompt('Redeem how many points?',cust.points>0?String(Math.min(cust.points,1000)):'50');
+  if(pts===null)return;
+  const n=parseFloat(pts); if(!n||n<=0)return;
+  if(n>cust.points){ toast('Customer only has '+cust.points+' points','error'); return; }
+  const sub=cart.reduce((s,i)=>s+(i.price+i.addons.reduce((a,b)=>a+b.price,0))*i.qty,0);
+  postF(BASE+'pos/order/loyalty-preview',{points:n,subtotal:sub,customer_id:cust.id||''}).then(d=>{
+    if(d.success&&d.discount>0){
+      disc={type:'loyalty',val:n,amt:d.discount,coupon:''};
+      renderAll();
+      toast('Redeemed '+n+' points — saving '+SYM+d.discount.toFixed(2),'success');
+    } else {
+      toast(d.message||'Cannot redeem those points','error');
+    }
+  }).catch(()=>toast('Network error','error'));
+}
 function updateCustChip(){ const c=document.getElementById('chipCustomer'); if(!c)return; if(cust.name){c.innerHTML=`<i class="fa fa-user"></i> ${cust.name}`;c.classList.add('on');}else{c.innerHTML=`<i class="fa fa-user-plus"></i> Customer`;c.classList.remove('on');} }
 
 // ── Guests ────────────────────────────────────────────────
@@ -697,7 +717,7 @@ async function createOrder(){
     // Add Round mode — append to existing order
     return postF(BASE+'pos/order/add-round',{order_id:ADD_TO_ORDER,items:JSON.stringify(items)});
   }
-  return postF(BASE+'pos/order/create',{order_type:OMODE,table_id:TABLEID,customer_id:cust.id||'',customer_name:cust.name||'',customer_phone:cust.phone||'',no_of_guests:guests,discount_type:disc.type||'flat',discount_value:disc.amt||0,kitchen_notes:note,items:JSON.stringify(items)});
+  return postF(BASE+'pos/order/create',{order_type:OMODE,table_id:TABLEID,customer_id:cust.id||'',customer_name:cust.name||'',customer_phone:cust.phone||'',no_of_guests:guests,discount_type:disc.type||'flat',discount_value:disc.type==='loyalty'?(disc.val||0):(disc.amt||0),coupon_code:disc.coupon||'',kitchen_notes:note,items:JSON.stringify(items)});
 }
 
 function showSuccess(data,paid,total){

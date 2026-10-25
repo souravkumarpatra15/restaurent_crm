@@ -103,15 +103,36 @@ class PosController extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'No items in order']);
         }
 
-        // Build item details from DB
+        // Build item details from DB (tenant-guarded: only this restaurant's
+        // menu items and variants may be added)
         $itemDetails = [];
         foreach ($items as $item) {
-            $menuItem = $this->menuModel->find($item['menu_item_id']);
+            $menuItem = $this->menuModel
+                ->where('id', $item['menu_item_id'])
+                ->where('restaurant_id', $restaurantId)
+                ->first();
             if (!$menuItem) continue;
 
-            $price = $item['variant_id']
-                ? $this->menuModel->getVariantPrice($item['variant_id'])
-                : $menuItem['base_price'];
+            $variantPrice = null;
+            if ($item['variant_id']) {
+                $variant = $this->menuModel->db->table('menu_variants')
+                    ->where('id', $item['variant_id'])
+                    ->where('menu_item_id', $menuItem['id'])
+                    ->get()->getRowArray();
+                if (!$variant) {
+                    return $this->response->setJSON(['success' => false, 'message' => 'Invalid variant for ' . $menuItem['name']]);
+                }
+                $variantPrice = $variant['price'];
+            }
+
+            $price = $variantPrice ?? $menuItem['base_price'];
+
+            // Addons must be priced into the bill — they were silently free before
+            $addonTotal = 0;
+            foreach ($item['addons'] ?? [] as $addon) {
+                $addonTotal += (float)($addon['price'] ?? 0);
+            }
+            $price = round($price + $addonTotal, 2);
 
             $itemDetails[] = [
                 'menu_item_id' => $menuItem['id'],
@@ -129,7 +150,8 @@ class PosController extends BaseController
         // Calculate totals
         $discountType  = $this->request->getPost('discount_type') ?: 'flat';
         $discountValue = (float)($this->request->getPost('discount_value') ?? 0);
-        $totals = $this->orderModel->calculateTotals($itemDetails, $this->restaurant, $discountType, $discountValue, true);
+        $couponCode    = strtoupper(trim($this->request->getPost('coupon_code') ?? ''));
+        $totals = $this->orderModel->calculateTotals($itemDetails, $this->restaurant, $discountType, $discountValue, true, $couponCode);
 
         $db = \Config\Database::connect();
         $db->transStart();
@@ -147,10 +169,11 @@ class PosController extends BaseController
             'status'          => 'pending',
             'customer_name'   => $this->request->getPost('customer_name') ?: null,
             'customer_phone'  => $this->request->getPost('customer_phone') ?: null,
-            'no_of_guests'    => (int)($this->request->getPost('guests') ?? 1),
+            'no_of_guests'    => (int)($this->request->getPost('no_of_guests') ?? $this->request->getPost('guests') ?? 1),
             'subtotal'        => $totals['subtotal'],
             'discount_type'   => $discountType,
             'discount_amount' => $totals['discount_amount'],
+            'coupon_code'     => $totals['coupon_code'] ?? null,
             'tax_amount'      => $totals['tax_amount'],
             'cgst_amount'     => $totals['cgst_amount'],
             'sgst_amount'     => $totals['sgst_amount'],
@@ -202,16 +225,72 @@ class PosController extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Order creation failed']);
         }
 
-        // Auto-print KOT if enabled
-        if ($this->session->get('auto_kot')) {
-            $this->_printKot($orderId);
+        // Coupon redemption: record usage so limits keep working
+        if (!empty($totals['coupon_code'])) {
+            $db->table('coupons')
+                ->where('code', $totals['coupon_code'])
+                ->where('restaurant_id', $restaurantId)
+                ->set('usage_count', 'usage_count + 1', false)
+                ->update();
         }
+
+        // Loyalty redemption: deduct points from the customer and log the
+        // transaction (points purchase never used to go anywhere)
+        $redeemedPoints = 0;
+        if ($discountType === 'loyalty' && (float)$totals['discount_amount'] > 0
+            && ($customerId = (int)($this->request->getPost('customer_id') ?: 0))) {
+            $rule = $db->table('loyalty_rules')->where('restaurant_id', $restaurantId)->where('is_active', 1)->orderBy('id','ASC')->get()->getRowArray();
+            $customerRow = $db->table('customers')
+                ->where('id', $customerId)->where('restaurant_id', $restaurantId)->get()->getRowArray();
+            $rule = $rule ?: ['min_redeem_points' => 0, 'redeem_value' => 0, 'max_redeem_percent' => 0];
+
+            $points = (float)$discountValue;
+            $cap    = round((float)$totals['subtotal'] * (float)$rule['max_redeem_percent'] / 100, 2);
+            $value  = min($points * (float)$rule['redeem_value'], $cap, (float)$totals['subtotal']);
+
+            if ($customerRow && $points >= (float)$rule['min_redeem_points'] && $points > 0
+                && (float)$customerRow['loyalty_points'] >= $points && $value > 0) {
+                $newBalance = (float)$customerRow['loyalty_points'] - $points;
+                // Guarded decrement — do not race another terminal's deduction
+                $db->query('UPDATE customers SET loyalty_points = loyalty_points - ? WHERE id = ? AND loyalty_points >= ?',
+                    [$points, $customerId, $points]);
+                $db->table('loyalty_transactions')->insert([
+                    'restaurant_id' => $restaurantId,
+                    'customer_id'   => $customerId,
+                    'order_id'      => $orderId,
+                    'transaction_type' => 'redeem',
+                    'points'        => $points,
+                    'balance_after' => $newBalance,
+                    'notes'         => 'Redeemed on order ' . $orderNumber,
+                    'created_at'    => date('Y-m-d H:i:s'),
+                ]);
+                $redeemedPoints = $points;
+            } else {
+                // Redemption was invalid — recalculate without the discount
+                $totals = $this->orderModel->calculateTotals($itemDetails, $this->restaurant, 'flat', 0, true);
+                $this->orderModel->update($orderId, [
+                    'discount_type'   => 'flat',
+                    'discount_amount' => 0,
+                    'tax_amount'      => $totals['tax_amount'],
+                    'cgst_amount'     => $totals['cgst_amount'],
+                    'sgst_amount'     => $totals['sgst_amount'],
+                    'service_charge'  => $totals['service_charge'],
+                    'round_off'       => $totals['round_off'],
+                    'total_amount'    => $totals['total_amount'],
+                ]);
+            }
+        }
+
+        // Auto-print KOT if enabled (never blocks order creation)
+        $kotPrintResult = $this->settingOn('auto_print_kot') ? $this->_printKot($orderId) : null;
 
         return $this->response->setJSON([
             'success'      => true,
             'order_id'     => $orderId,
             'order_number' => $orderNumber,
+            'redeemed_points' => $redeemedPoints,
             'total'        => $totals['total_amount'],
+            'kot_print'    => $kotPrintResult,
             'redirect'     => base_url('pos/order/' . $orderId),
         ]);
     }
@@ -223,19 +302,45 @@ class PosController extends BaseController
     {
         $orderId    = (int)$this->request->getPost('order_id');
         $order      = $this->orderModel->find($orderId);
-        if (!$order) return $this->response->setJSON(['success' => false, 'message' => 'Order not found']);
+        if (!$order || $order['branch_id'] != $this->session->get('branch_id')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Order not found']);
+        }
 
-        $payments   = json_decode($this->request->getPost('payments'), true);
-        $totalPaid  = array_sum(array_column($payments, 'amount'));
+        // Prevent double billing — an already-paid order crashes on the
+        // invoice UNIQUE(order_id) constraint and returns 500 at the till
+        if ($order['payment_status'] === 'paid' || $order['status'] === 'completed') {
+            return $this->response->setJSON(['success' => false, 'message' => 'This order has already been billed']);
+        }
+
+        $payments = json_decode($this->request->getPost('payments'), true);
+        if (!is_array($payments) || empty($payments)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid payment data']);
+        }
+
+        // Validate each payment against real methods — an arbitrary string
+        // used to hit a MySQL enum error and kill the whole transaction
+        $allowedMethods = ['cash', 'card', 'upi', 'wallet', 'online', 'credit'];
+        foreach ($payments as $payment) {
+            if (empty($payment['method']) || !in_array($payment['method'], $allowedMethods, true)
+                || !isset($payment['amount']) || (float)$payment['amount'] <= 0) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Invalid payment method or amount']);
+            }
+        }
+
+        $totalPaid = array_sum(array_column($payments, 'amount'));
 
         if ($totalPaid < $order['total_amount']) {
             return $this->response->setJSON(['success' => false, 'message' => 'Insufficient payment amount']);
         }
 
+        $change = max(0, $totalPaid - $order['total_amount']);
+
         $db = \Config\Database::connect();
         $db->transStart();
 
         foreach ($payments as $payment) {
+            // Change is returned against the first payment (usually cash),
+            // not duplicated onto every split-payment row
             $db->table('payments')->insert([
                 'order_id'         => $orderId,
                 'branch_id'        => $order['branch_id'],
@@ -243,7 +348,7 @@ class PosController extends BaseController
                 'amount'           => $payment['amount'],
                 'payment_method'   => $payment['method'],
                 'payment_reference'=> $payment['reference'] ?? null,
-                'change_returned'  => max(0, $totalPaid - $order['total_amount']),
+                'change_returned'  => $change,
                 'status'           => 'completed',
             ]);
         }
@@ -278,9 +383,17 @@ class PosController extends BaseController
             'total_amount'   => $order['total_amount'],
         ]);
 
-        // Free table
+        // Free table — only when no OTHER active order is still open on it
+        // (multi-order-per-table is supported via "add round")
         if ($order['table_id']) {
-            $db->table('tables')->where('id', $order['table_id'])->update(['status' => 'available']);
+            $remaining = $db->table('orders')
+                ->where('table_id', $order['table_id'])
+                ->where('id !=', $orderId)
+                ->whereIn('status', ['pending', 'confirmed', 'preparing', 'ready', 'served'])
+                ->countAllResults();
+            if ($remaining === 0) {
+                $db->table('tables')->where('id', $order['table_id'])->update(['status' => 'available']);
+            }
         }
 
         // Loyalty points
@@ -290,17 +403,24 @@ class PosController extends BaseController
 
         $db->transComplete();
 
-        // Auto print bill
-        $this->_printBill($orderId);
+        if ($db->transStatus() === false) {
+            log_message('error', "Checkout transaction failed for order #$orderId");
+            return $this->response->setJSON(['success' => false, 'message' => 'Payment could not be saved — please try again']);
+        }
+
+        // Auto print bill (result is reported back to the UI; a printer
+        // failure must never silently swallow the bill print)
+        $printResult = $this->_printBill($orderId);
 
         return $this->response->setJSON([
             'success'        => true,
             'invoice_number' => $invoiceNumber,
-            'change'         => max(0, $totalPaid - $order['total_amount']),
+            'change'         => $change,
             'bill_slip_url'  => base_url('pos/slip/bill/' . $orderId),
             'kot_slip_url'   => base_url('pos/slip/kot/'  . $orderId),
             'print_url'      => base_url('pos/slip/bill/' . $orderId),
             'feedback_url'   => base_url('feedback/' . $feedbackToken),
+            'print'          => $printResult,
         ]);
     }
 
@@ -317,14 +437,19 @@ class PosController extends BaseController
     private function _printKot($orderId)
     {
         $order = $this->orderModel->getOrderWithDetails($orderId);
-        if (!$order) return ['success' => false];
+        if (!$order || $order['branch_id'] != $this->session->get('branch_id')) {
+            return ['success' => false, 'error' => 'Order not found'];
+        }
 
-        // Generate KOT number
-        $kotCounter = (int)$this->branch['kot_counter'];
-        $kotNumber  = ($this->branch['billing_prefix'] ?: 'KOT') . str_pad($kotCounter, 4, '0', STR_PAD_LEFT);
-        $this->db->table('branches')->where('id', $this->branch['id'])->update(['kot_counter' => $kotCounter + 1]);
+        // Generate KOT number — atomic read-and-increment, and the dedicated
+        // KOT prefix (not the invoice prefix)
+        $this->db->transStart();
 
-        $kotId = $this->db->table('kots')->insert([
+        $this->db->query('UPDATE branches SET kot_counter = LAST_INSERT_ID(kot_counter) + 1 WHERE id = ?', [$this->branch['id']]);
+        $kotCounter = (int)$this->db->query('SELECT LAST_INSERT_ID() AS n')->getRowArray()['n'];
+        $kotNumber  = (($this->branch['kot_prefix'] ?? null) ?: 'KOT') . str_pad($kotCounter, 4, '0', STR_PAD_LEFT);
+
+        $this->db->table('kots')->insert([
             'order_id'    => $orderId,
             'branch_id'   => $this->branch['id'],
             'kot_number'  => $kotNumber,
@@ -334,10 +459,36 @@ class PosController extends BaseController
             'printed_by'  => $this->session->get('user_id'),
             'printed_at'  => date('Y-m-d H:i:s'),
         ]);
+        $kotId = $this->db->insertID();
 
-        // Print via Thermal Printer
+        // Without these rows the Kitchen Display shows every KOT empty —
+        // the kitchen never sees what to cook
+        foreach ($order['items'] as $item) {
+            if (in_array($item['status'], ['cancelled'])) continue;
+
+            $this->db->table('kot_items')->insert([
+                'kot_id'        => $kotId,
+                'order_item_id' => $item['id'],
+                'name'          => $item['name'],
+                'quantity'      => $item['quantity'],
+                'status'        => 'pending',
+            ]);
+        }
+
+        $this->db->transComplete();
+
+        if ($this->db->transStatus() === false) {
+            return ['success' => false, 'error' => 'Could not save KOT record'];
+        }
+
+        // Print via Thermal Printer; on failure return the web slip so the
+        // cashier can print the same KOT from the browser
         $printer = new ThermalPrinter($this->branch);
-        return $printer->printKOT($order, $kotNumber);
+        $result  = $printer->printKOT($order, $kotNumber);
+        if (empty($result['success'])) {
+            $result['slip_url'] = base_url('pos/slip/kot/' . $orderId);
+        }
+        return $result;
     }
 
     // ----------------------------------------------------------------
@@ -352,20 +503,31 @@ class PosController extends BaseController
 
     private function _printBill($orderId)
     {
-        $order      = $this->orderModel->getOrderWithDetails($orderId);
+        $order = $this->orderModel->getOrderWithDetails($orderId);
+        if (!$order || $order['branch_id'] != $this->session->get('branch_id')) {
+            return ['success' => false, 'error' => 'Order not found'];
+        }
+
         $restaurant = $this->restaurant;
         $branch     = $this->branch;
 
         $printer = new ThermalPrinter($branch);
-        return $printer->printBill($order, $restaurant, $branch);
+        $result  = $printer->printBill($order, $restaurant, $branch);
+        if (empty($result['success'])) {
+            $result['slip_url'] = base_url('pos/slip/bill/' . $orderId);
+        }
+        return $result;
     }
 
     private function _generateInvoiceNumber($restaurantId, $branchId)
     {
         $restaurant = $this->restaurantModel->find($restaurantId);
         $prefix     = $restaurant['billing_prefix'] ?: 'INV';
-        $counter    = (int)$restaurant['billing_counter'];
-        $this->restaurantModel->update($restaurantId, ['billing_counter' => $counter + 1]);
+
+        // Atomic read-and-increment on the restaurant billing counter
+        $this->db->query('UPDATE restaurants SET billing_counter = LAST_INSERT_ID(billing_counter) + 1 WHERE id = ?', [$restaurantId]);
+        $counter = (int)$this->db->query('SELECT LAST_INSERT_ID() AS n')->getRowArray()['n'];
+
         return $prefix . '/' . date('Y') . '/' . str_pad($counter, 5, '0', STR_PAD_LEFT);
     }
 
@@ -457,7 +619,12 @@ class PosController extends BaseController
     {
         $orderId = (int)$this->request->getPost('order_id');
         $order   = $this->orderModel->find($orderId);
-        if (!$order) return $this->response->setJSON(['success'=>false,'message'=>'Order not found']);
+        if (!$order || $order['branch_id'] != $this->session->get('branch_id')) {
+            return $this->response->setJSON(['success'=>false,'message'=>'Order not found']);
+        }
+        if (in_array($order['status'], ['cancelled', 'completed']) || $order['payment_status'] === 'paid') {
+            return $this->response->setJSON(['success'=>false,'message'=>'Items cannot be added to a billed or cancelled order']);
+        }
 
         $items = json_decode($this->request->getPost('items'), true);
         if (empty($items)) return $this->response->setJSON(['success'=>false,'message'=>'No items in cart']);
@@ -465,14 +632,36 @@ class PosController extends BaseController
         $db = \Config\Database::connect();
         $db->transStart();
 
+        $exclusive = ($this->restaurant['tax_type'] ?? 'inclusive') === 'exclusive';
+
         foreach ($items as $item) {
-            $menuItem = $this->menuModel->find($item['menu_item_id']);
+            $menuItem = $this->menuModel
+                ->where('id', $item['menu_item_id'])
+                ->where('restaurant_id', $order['restaurant_id'])
+                ->first();
             if (!$menuItem) continue;
-            $price = $item['variant_id']
-                ? $this->menuModel->getVariantPrice($item['variant_id'])
-                : $menuItem['base_price'];
+
+            $variantPrice = null;
+            if ($item['variant_id']) {
+                $variant = $this->menuModel->db->table('menu_variants')
+                    ->where('id', $item['variant_id'])
+                    ->where('menu_item_id', $menuItem['id'])
+                    ->get()->getRowArray();
+                if (!$variant) continue;
+                $variantPrice = $variant['price'];
+            }
+            $price = $variantPrice ?? $menuItem['base_price'];
+
+            // Addon pricing must match createOrder and the cart total
+            $addonTotal = 0;
+            foreach ($item['addons'] ?? [] as $addon) {
+                $addonTotal += (float)($addon['price'] ?? 0);
+            }
+            $price    = round($price + $addonTotal, 2);
             $qty      = max(1, (float)$item['quantity']);
-            $taxAmt   = round($price * $qty * $menuItem['tax_percent'] / 100, 2);
+            $taxPct   = (float)$menuItem['tax_percent'];
+            $taxAmt   = $exclusive ? round($price * $qty * $taxPct / 100, 2)
+                                   : round($price * $qty - ($price * $qty / (1 + $taxPct / 100)), 2);
 
             $db->table('order_items')->insert([
                 'order_id'     => $orderId,
@@ -484,25 +673,39 @@ class PosController extends BaseController
                 'unit_price'   => $price,
                 'tax_percent'  => $menuItem['tax_percent'],
                 'tax_amount'   => $taxAmt,
-                'total_price'  => round($price * $qty, 2),
+                'total_price'  => round($price * $qty + ($exclusive ? $taxAmt : 0), 2),
                 'notes'        => $item['notes'] ?? '',
                 'status'       => 'pending',
             ]);
         }
 
-        // Recalculate totals from all items
-        $allItems    = $db->table('order_items')->where('order_id', $orderId)->get()->getResultArray();
-        $subtotal    = array_sum(array_column($allItems, 'total_price'));
-        $taxAmount   = array_sum(array_column($allItems, 'tax_amount'));
-        $svcCharge   = round($subtotal * ((float)($this->restaurant['service_charge_percent'] ?? 0) / 100), 2);
-        $grandTotal  = round($subtotal + $taxAmount + $svcCharge - (float)$order['discount_amount'], 2);
+        // Recalculate totals from all items — respecting the restaurant's
+        // tax type (inclusive tax must NOT be added on top again)
+        $allItems  = $db->table('order_items')->where('order_id', $orderId)->get()->getResultArray();
+        $subtotal  = 0;
+        $taxAmount = 0;
+        foreach ($allItems as $it) {
+            $line = (float)$it['unit_price'] * (float)$it['quantity'];
+            $subtotal  += $line;
+            $pct        = (float)($it['tax_percent'] ?? 0);
+            $taxAmount += $exclusive
+                ? round($line * $pct / 100, 2)
+                : round($line - ($line / (1 + $pct / 100)), 2);
+        }
+        $cgst      = round($taxAmount / 2, 2);
+        $sgst      = round($taxAmount - $cgst, 2);
+        $svcCharge = round(($subtotal - (float)$order['discount_amount']) * ((float)($this->restaurant['service_charge_percent'] ?? 0) / 100), 2);
+        $grandTotal = round($subtotal + ($exclusive ? $taxAmount : 0) + $svcCharge - (float)$order['discount_amount']);
 
         $this->orderModel->update($orderId, [
-            'subtotal'       => $subtotal,
-            'tax_amount'     => $taxAmount,
+            'subtotal'       => round($subtotal, 2),
+            'tax_amount'     => round($taxAmount, 2),
+            'cgst_amount'    => $cgst,
+            'sgst_amount'    => $sgst,
             'service_charge' => $svcCharge,
             'total_amount'   => $grandTotal,
-            'status'         => 'pending',
+            // Status deliberately NOT reset to pending — adding a round
+            // must not downgrade a confirmed/preparing/ready order
         ]);
 
         $db->transComplete();
@@ -512,11 +715,12 @@ class PosController extends BaseController
         }
 
         // Print new KOT for this round
-        $this->_printKot($orderId);
+        $printResult = $this->_printKot($orderId);
 
         return $this->response->setJSON([
             'success'  => true,
             'order_id' => $orderId,
+            'print'    => $printResult,
             'redirect' => base_url('pos/order/' . $orderId),
         ]);
     }
@@ -524,6 +728,9 @@ class PosController extends BaseController
     // ── Book a table from POS ─────────────────────────────────
     public function bookTable($tableId)
     {
+        if (!$this->ownedTable($tableId)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Table not found']);
+        }
         $this->db->table('tables')->where('id', $tableId)->update([
             'status'       => 'booked',
             'booked_name'  => $this->request->getPost('name'),
@@ -537,6 +744,9 @@ class PosController extends BaseController
     // ── Cancel booking from POS ───────────────────────────────
     public function cancelTableBooking($tableId)
     {
+        if (!$this->ownedTable($tableId)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Table not found']);
+        }
         $this->db->table('tables')->where('id', $tableId)->update([
             'status'       => 'available',
             'booked_name'  => null,
@@ -545,6 +755,54 @@ class PosController extends BaseController
             'booked_note'  => null,
         ]);
         return $this->response->setJSON(['success' => true]);
+    }
+
+    /**
+     * Read a boolean operational preference from the settings table.
+     */
+    private function settingOn(string $key): bool
+    {
+        $row = $this->db->table('settings')
+            ->where('restaurant_id', $this->session->get('restaurant_id'))
+            ->where('`key`', $key)
+            ->get()->getRowArray();
+        return $row && $row['value'] === '1';
+    }
+
+    /**
+     * Tenant guard — a table is "ours" when its branch belongs to the
+     * session restaurant.
+     */    private function ownedTable($tableId)
+    {
+        return $this->db->table('tables t')
+            ->join('branches b', 'b.id = t.branch_id')
+            ->where('t.id', $tableId)
+            ->where('b.restaurant_id', $this->session->get('restaurant_id'))
+            ->countAllResults() > 0;
+    }
+
+    // ── Regenerate a table QR token from the POS (redesigned so
+    //    cashiers no longer hit the admin-only route) ──────────
+    public function generateTableQr($tableId)
+    {
+        $table = $this->db->table('tables t')
+            ->select('t.id')
+            ->join('branches b', 'b.id = t.branch_id')
+            ->where('t.id', $tableId)
+            ->where('b.restaurant_id', $this->session->get('restaurant_id'))
+            ->get()->getRowArray();
+        if (!$table) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Table not found']);
+        }
+
+        $token = bin2hex(random_bytes(20));
+        $this->db->table('tables')->where('id', $tableId)->update(['qr_token' => $token]);
+
+        return $this->response->setJSON([
+            'success' => true,
+            'token'   => $token,
+            'url'     => base_url('menu/table/' . $token),
+        ]);
     }
 
     // ── Pending customer (QR) orders — for POS notification ───
@@ -579,13 +837,31 @@ class PosController extends BaseController
     public function confirmCustomerOrder($orderId)
     {
         $order = $this->orderModel->find($orderId);
-        if (!$order) return $this->response->setJSON(['success' => false, 'message' => 'Order not found']);
+        if (!$order || $order['branch_id'] != $this->session->get('branch_id')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Order not found']);
+        }
+        if ($order['status'] !== 'pending') {
+            return $this->response->setJSON(['success' => false, 'message' => 'This order is already ' . $order['status']]);
+        }
 
-        // Update order status to confirmed
+        $db = \Config\Database::connect();
+        $db->transStart();
+
         $this->orderModel->update($orderId, [
             'status'     => 'confirmed',
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
+
+        // Occupation: a confirmed dine-in QR order marks its table occupied
+        if ($order['table_id'] && in_array($order['order_type'], ['dine_in'])) {
+            $db->table('tables')->where('id', $order['table_id'])->update(['status' => 'occupied']);
+        }
+
+        $db->transComplete();
+
+        if ($db->transStatus() === false) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Could not confirm order']);
+        }
 
         // Print / create KOT
         $this->_printKot($orderId);
@@ -600,33 +876,133 @@ class PosController extends BaseController
     // ── Reject a customer QR order ────────────────────────────
     public function rejectCustomerOrder($orderId)
     {
+        $order = $this->orderModel->find($orderId);
+        if (!$order || $order['branch_id'] != $this->session->get('branch_id')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Order not found']);
+        }
+        if ($order['status'] !== 'pending') {
+            return $this->response->setJSON(['success' => false, 'message' => 'Only pending orders can be rejected']);
+        }
+
+        $db = \Config\Database::connect();
+        $db->transStart();
+
         $this->orderModel->update($orderId, [
             'status'           => 'cancelled',
             'cancelled_reason' => 'Rejected by cashier',
             'cancelled_by'     => $this->session->get('user_id'),
             'updated_at'       => date('Y-m-d H:i:s'),
         ]);
+
+        // Release the table unless another active order still sits on it
+        if ($order['table_id']) {
+            $remaining = $db->table('orders')
+                ->where('table_id', $order['table_id'])
+                ->where('id !=', $orderId)
+                ->whereIn('status', ['pending', 'confirmed', 'preparing', 'ready', 'served'])
+                ->countAllResults();
+            if ($remaining === 0) {
+                $db->table('tables')->where('id', $order['table_id'])->update(['status' => 'available']);
+            }
+        }
+
+        $db->transComplete();
+
+        if ($db->transStatus() === false) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Could not reject order']);
+        }
+
         return $this->response->setJSON(['success' => true]);
     }
 
     public function cancelOrder($id)
     {
         $order = $this->orderModel->find($id);
-        if (!$order) return $this->response->setJSON(['success'=>false]);
+
+        // Ownership: only orders of the cashier's own branch can be cancelled
+        if (!$order || $order['branch_id'] != $this->session->get('branch_id')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Order not found']);
+        }
+        if ($order['status'] === 'cancelled') {
+            return $this->response->setJSON(['success' => false, 'message' => 'This order is already cancelled']);
+        }
+        if ($order['payment_status'] === 'paid') {
+            return $this->response->setJSON(['success' => false, 'message' => 'Paid orders cannot be cancelled — use a refund instead.']);
+        }
+        if ($order['status'] === 'completed') {
+            return $this->response->setJSON(['success' => false, 'message' => 'Completed/billed orders cannot be cancelled.']);
+        }
+
+        $reason = $this->request->getPost('reason') ?: 'Cancelled at POS';
+
+        $db = \Config\Database::connect();
+        $db->transStart();
+
         $this->orderModel->update($id, [
             'status'           => 'cancelled',
-            'cancelled_reason' => $this->request->getPost('reason') ?? 'Cancelled at POS',
+            'cancelled_reason' => $reason,
             'cancelled_by'     => $this->session->get('user_id'),
         ]);
-        if ($order['table_id']) {
-            $this->db->table('tables')->where('id', $order['table_id'])->update(['status'=>'available']);
+
+        // Stop the kitchen: cancel any still-open KOTs for this order
+        $db->table('kots')
+            ->where('order_id', $id)
+            ->whereIn('status', ['pending', 'in_progress'])
+            ->update(['status' => 'cancelled']);
+
+        // Return redeemed loyalty points — customers lose points only while
+        // the order is valid
+        if ($order['customer_id'] && $order['discount_type'] === 'loyalty') {
+            $redeem = $db->table('loyalty_transactions')
+                ->where('order_id', $id)->where('transaction_type', 'redeem')
+                ->orderBy('id','DESC')->get()->getRowArray();
+            if ($redeem) {
+                $points = (float)$redeem['points'];
+                $db->query('UPDATE customers SET loyalty_points = loyalty_points + ? WHERE id = ?', [$points, $order['customer_id']]);
+                $bal = (float)($db->table('customers')->select('loyalty_points')->where('id', $order['customer_id'])->get()->getRowArray()['loyalty_points'] ?? 0);
+                $db->table('loyalty_transactions')->insert([
+                    'restaurant_id'    => $order['restaurant_id'],
+                    'customer_id'      => $order['customer_id'],
+                    'order_id'         => $id,
+                    'transaction_type' => 'adjust',
+                    'points'           => $points,
+                    'balance_after'    => $bal,
+                    'notes'            => 'Points returned — order ' . $order['order_number'] . ' cancelled',
+                    'created_at'       => date('Y-m-d H:i:s'),
+                ]);
+            }
         }
-        return $this->response->setJSON(['success' => true]);
+
+        // Free the table ONLY if this was the last active order on it —
+        // cancelling one order must not release a table other guests use
+        if ($order['table_id']) {
+            $remaining = $db->table('orders')
+                ->where('table_id', $order['table_id'])
+                ->where('id !=', $id)
+                ->whereIn('status', ['pending', 'confirmed', 'preparing', 'ready', 'served'])
+                ->countAllResults();
+            if ($remaining === 0) {
+                $db->table('tables')->where('id', $order['table_id'])->update(['status' => 'available']);
+            }
+        }
+
+        $db->transComplete();
+
+        if ($db->transStatus() === false) {
+            log_message('error', "Order cancellation transaction failed for order #$id");
+            return $this->response->setJSON(['success' => false, 'message' => 'Failed to cancel order — please try again']);
+        }
+
+        return $this->response->setJSON([
+            'success'  => true,
+            'message'  => 'Order #' . $order['order_number'] . ' cancelled',
+            'order_id' => (int)$id,
+            'table_id' => $order['table_id'] ? (int)$order['table_id'] : null,
+        ]);
     }
 
     public function applyCoupon()
-    {
-        $code     = $this->request->getPost('coupon_code');
+    {        $code     = $this->request->getPost('coupon_code');
         $subtotal = (float)$this->request->getPost('subtotal');
         $coupon   = $this->db->table('coupons')
             ->where('code', $code)
@@ -635,10 +1011,66 @@ class PosController extends BaseController
             ->get()->getRowArray();
 
         if (!$coupon) return $this->response->setJSON(['success'=>false,'message'=>'Invalid coupon']);
+
+        // Enforce validity rules that were previously ignored
+        $today = date('Y-m-d');
+        if (!empty($coupon['valid_from']) && $today < $coupon['valid_from']) {
+            return $this->response->setJSON(['success'=>false,'message'=>'Coupon is not active yet']);
+        }
+        if (!empty($coupon['valid_to']) && $today > $coupon['valid_to']) {
+            return $this->response->setJSON(['success'=>false,'message'=>'Coupon has expired']);
+        }
+        if (!empty($coupon['min_order_amount']) && $subtotal < (float)$coupon['min_order_amount']) {
+            return $this->response->setJSON(['success'=>false,'message'=>'Minimum order amount is ₹'.number_format((float)$coupon['min_order_amount'], 0)]);
+        }
+        if (!empty($coupon['usage_limit']) && (int)$coupon['usage_count'] >= (int)$coupon['usage_limit']) {
+            return $this->response->setJSON(['success'=>false,'message'=>'Coupon usage limit reached']);
+        }
+
         $discount = $coupon['discount_type'] === 'percent'
             ? min($subtotal * $coupon['discount_value'] / 100, $coupon['max_discount_amount'] ?: PHP_INT_MAX)
             : $coupon['discount_value'];
         return $this->response->setJSON(['success'=>true,'discount'=>round($discount,2)]);
+    }
+
+    /**
+     * Preview a loyalty redemption — same rule engine the order creation
+     * uses, so the POS shows the exact rupee value the customer gets.
+     */
+    public function loyaltyPreview()
+    {
+        $points = (float)$this->request->getPost('points');
+        $sub    = (float)$this->request->getPost('subtotal');
+        $custId = (int)($this->request->getPost('customer_id') ?: 0);
+
+        if ($points <= 0) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Enter a valid number of points']);
+        }
+
+        $rule = $this->db->table('loyalty_rules')
+            ->where('restaurant_id', $this->session->get('restaurant_id'))
+            ->where('is_active', 1)
+            ->orderBy('id','ASC')->get()->getRowArray();
+        if (!$rule) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Loyalty program is not active. Contact admin.']);
+        }
+        if ($points < (float)$rule['min_redeem_points']) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Minimum redeemable points is ' . (int)$rule['min_redeem_points']]);
+        }
+        if ($custId) {
+            $row = $this->db->table('customers')->select('loyalty_points')->where('id', $custId)->where('restaurant_id', $this->session->get('restaurant_id'))->get()->getRowArray();
+            if (!$row || (float)$row['loyalty_points'] < $points) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Customer does not have enough points']);
+            }
+        }
+
+        $cap = round($sub * (float)$rule['max_redeem_percent'] / 100, 2);
+        $amt = max(0, min($points * (float)$rule['redeem_value'], $cap, $sub));
+        if ($amt <= 0) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Points value is not applicable to this order']);
+        }
+
+        return $this->response->setJSON(['success' => true, 'discount' => $amt, 'points' => $points]);
     }
 
     // ── Web-based KOT Slip (fallback when no thermal printer) ──

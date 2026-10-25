@@ -22,12 +22,16 @@ class OrderModel extends BaseModel
     {
         $branch = $this->db->table('branches')->where('id', $branchId)->get()->getRowArray();
         $prefix = $branch['billing_prefix'] ?? 'ORD';
-        $counter = $branch['billing_counter'] ?? 1;
-        $this->db->table('branches')->where('id', $branchId)->update(['billing_counter' => $counter + 1]);
+
+        // Atomic read-and-increment (LAST_INSERT_ID trick) — two simultaneous
+        // orders can no longer receive the same number
+        $this->db->query('UPDATE branches SET billing_counter = LAST_INSERT_ID(billing_counter) + 1 WHERE id = ?', [$branchId]);
+        $counter = (int)$this->db->query('SELECT LAST_INSERT_ID() AS n')->getRowArray()['n'];
+
         return $prefix . str_pad($counter, 5, '0', STR_PAD_LEFT);
     }
 
-    public function calculateTotals($items, $restaurant, $discountType = null, $discountValue = 0, $serviceChargeApply = false)
+    public function calculateTotals($items, $restaurant, $discountType = null, $discountValue = 0, $serviceChargeApply = false, $couponCode = null)
     {
         $subtotal = 0;
         $taxTotal = 0;
@@ -49,18 +53,41 @@ class OrderModel extends BaseModel
             $taxTotal += $lineTax;
         }
 
+        // 'coupon' discounts arrive as a flat amount pre-computed by
+        // applyCoupon() — it used to fall through BOTH branches and the
+        // customer was silently charged full price
+        if (!in_array($discountType, ['percent', 'flat', 'coupon', 'loyalty'], true)) {
+            $discountType = 'flat';
+        }
+
         $discountAmount = 0;
         if ($discountType === 'percent') {
             $discountAmount = round($subtotal * $discountValue / 100, 2);
-        } elseif ($discountType === 'flat') {
+        } elseif ($discountType === 'flat' || $discountType === 'coupon') {
             $discountAmount = min($discountValue, $subtotal);
+        } elseif ($discountType === 'loyalty') {
+            // $discountValue carries the POINTS the customer wants to redeem.
+            // Real rules are looked up so the value can never be forged client-side.
+            $rule = $this->db->table('loyalty_rules')
+                ->where('restaurant_id', $restaurant['id'])
+                ->where('is_active', 1)
+                ->orderBy('id','ASC')
+                ->get()->getRowArray();
+            $points = (float)$discountValue;
+            if ($rule && $points >= (float)$rule['min_redeem_points'] && $points > 0) {
+                $loyaltyDiscount = $points * (float)$rule['redeem_value'];
+                $cap             = round($subtotal * (float)$rule['max_redeem_percent'] / 100, 2);
+                $discountAmount  = max(0, min($loyaltyDiscount, $cap, $subtotal));
+            }
         }
 
         $serviceCharge = $serviceChargeApply
             ? round(($subtotal - $discountAmount) * ($restaurant['service_charge_percent'] / 100), 2)
             : 0;
 
-        $netTotal    = $subtotal - $discountAmount + $taxTotal + $serviceCharge;
+        // Inclusive tax is ALREADY inside the subtotal — adding $taxTotal
+        // again overcharged every inclusive-tax restaurant
+        $netTotal    = $subtotal - $discountAmount + ($restaurant['tax_type'] === 'exclusive' ? $taxTotal : 0) + $serviceCharge;
         $roundOff    = round($netTotal) - $netTotal;
         $finalTotal  = round($netTotal);
 
@@ -71,6 +98,7 @@ class OrderModel extends BaseModel
         return [
             'subtotal'        => round($subtotal, 2),
             'discount_amount' => $discountAmount,
+            'coupon_code'     => ($discountType === 'coupon' && $discountAmount > 0) ? strtoupper(trim((string)$couponCode)) : null,
             'tax_amount'      => round($taxTotal, 2),
             'cgst_amount'     => $cgst,
             'sgst_amount'     => $sgst,

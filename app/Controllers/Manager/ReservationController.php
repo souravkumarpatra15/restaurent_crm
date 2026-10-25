@@ -54,7 +54,24 @@ class ReservationController extends BaseController
     public function updateStatus($id)
     {
         $status = $this->request->getPost('status');
-        \Config\Database::connect()->table('reservations')->where('id',$id)->update(['status'=>$status]);
+        // Validate against the DB enum + tenant guard (reservations join via branch)
+        if (!in_array($status, ['pending','confirmed','seated','completed','cancelled','no_show'], true)) {
+            return $this->response->setJSON(['success'=>false,'message'=>'Invalid status']);
+        }
+        $db = \Config\Database::connect();
+        $scoped = $db->table('reservations r')
+            ->join('branches b','b.id = r.branch_id')
+            ->where('r.id', $id)
+            ->where('b.restaurant_id', session('restaurant_id'))
+            ->countAllResults();
+        if (!$scoped) {
+            return $this->response->setJSON(['success'=>false,'message'=>'Reservation not found']);
+        }
+        $update = ['status'=>$status];
+        if (in_array($status, ['confirmed','cancelled'])) {
+            $update[ ($status === 'confirmed' ? 'confirmed_at' : 'cancelled_at') ] = date('Y-m-d H:i:s');
+        }
+        $db->table('reservations')->where('id',$id)->update($update);
         return $this->response->setJSON(['success'=>true]);
     }
 }

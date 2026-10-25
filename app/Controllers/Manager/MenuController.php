@@ -70,9 +70,13 @@ class MenuController extends BaseController
 
     public function editItem($id)
     {
+        $item = $this->scopedMenuItem($id);
+        if (!$item) {
+            return redirect()->to(base_url('admin/menu/items'))->with('error', 'Item not found');
+        }
         return view('admin/menu/form', [
             'pageTitle'  => 'Edit Menu Item',
-            'item'       => $this->menuModel->find($id),
+            'item'       => $item,
             'categories' => $this->menuModel->getCategories(session('restaurant_id')),
             'userName'   => session('user_name'),
             'userRole'   => session('role_slug'),
@@ -82,6 +86,9 @@ class MenuController extends BaseController
 
     public function updateItem($id)
     {
+        if (!$this->scopedMenuItem($id)) {
+            return redirect()->to(base_url('admin/menu/items'))->with('error', 'Item not found');
+        }
         $data = [
             'category_id'   => $this->request->getPost('category_id'),
             'name'          => $this->request->getPost('name'),
@@ -106,23 +113,67 @@ class MenuController extends BaseController
 
     public function toggleItem($id)
     {
-        $item = $this->menuModel->find($id);
+        $item = $this->scopedMenuItem($id);
+        if (!$item) return $this->response->setJSON(['success' => false, 'message' => 'Item not found']);
         $this->menuModel->update($id, ['is_active' => $item['is_active'] ? 0 : 1]);
         return $this->response->setJSON(['success' => true]);
     }
 
+    private function scopedMenuItem($id)
+    {
+        return $this->menuModel->where('id', $id)->where('restaurant_id', session('restaurant_id'))->first();
+    }
+
     public function deleteItem($id)
     {
-        $this->menuModel->delete($id);
-        return $this->response->setJSON(['success' => true]);
+        $item = $this->scopedMenuItem($id);
+        if (!$item) return $this->response->setJSON(['success' => false, 'message' => 'Item not found']);
+        // Soft-disable instead of a hard delete — hard deletes orphaned past
+        // order_items and destroyed revenue history
+        $this->menuModel->update($id, ['is_active' => 0]);
+        return $this->response->setJSON(['success' => true, 'message' => 'Item deactivated (order history preserved)']);
     }
 
     public function duplicateItem($id)
     {
-        $item = $this->menuModel->find($id);
+        $db      = \Config\Database::connect();
+        $orig    = $this->scopedMenuItem($id);
+        if (!$orig) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Item not found']);
+        }
+
+        // Plan limit respected before inserting the copy
+        $count = $this->menuModel->where('restaurant_id', session('restaurant_id'))->countAllResults();
+        $check = $this->checkPlanLimit('menu_items', $count);
+        if (!$check['allowed']) return $this->response->setJSON(['success' => false, 'message' => $check['message']]);
+
+        $db->transStart();
+
+        $item = $orig;
         unset($item['id'], $item['created_at'], $item['updated_at']);
         $item['name'] = $item['name'] . ' (Copy)';
-        $this->menuModel->insert($item);
+        $newId = $this->menuModel->insert($item, true);
+
+        // Copy variants and addon-group links (they used to be dropped)
+        if ($newId) {
+            $variants = $db->table('menu_variants')->where('menu_item_id', $id)->get()->getResultArray();
+            foreach ($variants as $v) {
+                unset($v['id']);
+                $v['menu_item_id'] = $newId;
+                $db->table('menu_variants')->insert($v);
+            }
+            $links = $db->table('menu_item_addon_groups')->where('menu_item_id', $id)->get()->getResultArray();
+            foreach ($links as $l) {
+                $l['menu_item_id'] = $newId;
+                $db->table('menu_item_addon_groups')->insert($l);
+            }
+        }
+
+        $db->transComplete();
+
+        if ($db->transStatus() === false) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Could not duplicate item']);
+        }
         return $this->response->setJSON(['success' => true]);
     }
 
@@ -141,6 +192,7 @@ class MenuController extends BaseController
 
     public function updateCategory($id)
     {
+        if (!$this->scopedCategory($id)) return $this->response->setJSON(['success'=>false,'message'=>'Category not found']);
         \Config\Database::connect()->table('menu_categories')->where('id',$id)->update([
             'name'        => $this->request->getPost('name'),
             'description' => $this->request->getPost('description'),
@@ -150,9 +202,15 @@ class MenuController extends BaseController
         return $this->response->setJSON(['success' => true]);
     }
 
+    private function scopedCategory($id)
+    {
+        return \Config\Database::connect()->table('menu_categories')->where('id',$id)->where('restaurant_id',session('restaurant_id'))->countAllResults();
+    }
+
     public function toggleCategory($id)
     {
         $db  = \Config\Database::connect();
+        if (!$this->scopedCategory($id)) return $this->response->setJSON(['success'=>false,'message'=>'Category not found']);
         $cat = $db->table('menu_categories')->where('id',$id)->get()->getRowArray();
         $db->table('menu_categories')->where('id',$id)->update(['is_active' => $cat['is_active'] ? 0 : 1]);
         return $this->response->setJSON(['success' => true]);
@@ -161,6 +219,7 @@ class MenuController extends BaseController
     public function deleteCategory($id)
     {
         $db    = \Config\Database::connect();
+        if (!$this->scopedCategory($id)) return $this->response->setJSON(['success'=>false,'message'=>'Category not found']);
         $count = $db->table('menu_items')->where('category_id',$id)->countAllResults();
         if ($count > 0) return $this->response->setJSON(['success'=>false,'message'=>'Remove all items first']);
         $db->table('menu_categories')->where('id',$id)->delete();
@@ -182,14 +241,24 @@ class MenuController extends BaseController
     public function deleteAddonGroup($id)
     {
         $db = \Config\Database::connect();
+        // Tenant guard — group must belong to this restaurant
+        if (!$db->table('menu_addon_groups')->where('id',$id)->where('restaurant_id',session('restaurant_id'))->countAllResults()) {
+            return $this->response->setJSON(['success'=>false,'message'=>'Addon group not found']);
+        }
         $db->table('menu_addons')->where('addon_group_id',$id)->delete();
+        $db->table('menu_item_addon_groups')->where('addon_group_id',$id)->delete();
         $db->table('menu_addon_groups')->where('id',$id)->delete();
         return $this->response->setJSON(['success' => true]);
     }
 
     public function storeAddon()
     {
-        \Config\Database::connect()->table('menu_addons')->insert([
+        $db = \Config\Database::connect();
+        // Parent group must belong to this restaurant
+        if (!$db->table('menu_addon_groups')->where('id',$this->request->getPost('addon_group_id'))->where('restaurant_id',session('restaurant_id'))->countAllResults()) {
+            return $this->response->setJSON(['success'=>false,'message'=>'Addon group not found']);
+        }
+        $db->table('menu_addons')->insert([
             'addon_group_id' => $this->request->getPost('addon_group_id'),
             'name'           => $this->request->getPost('name'),
             'price'          => $this->request->getPost('price') ?? 0,
@@ -200,7 +269,15 @@ class MenuController extends BaseController
 
     public function deleteAddon($id)
     {
-        \Config\Database::connect()->table('menu_addons')->where('id',$id)->delete();
+        $db = \Config\Database::connect();
+        // Tenant guard — join through the addon group
+        $ok = $db->table('menu_addons a')
+            ->join('menu_addon_groups g','g.id = a.addon_group_id')
+            ->where('a.id',$id)
+            ->where('g.restaurant_id',session('restaurant_id'))
+            ->countAllResults();
+        if (!$ok) return $this->response->setJSON(['success'=>false,'message'=>'Addon not found']);
+        $db->table('menu_addons')->where('id',$id)->delete();
         return $this->response->setJSON(['success' => true]);
     }
 

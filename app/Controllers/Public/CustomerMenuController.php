@@ -80,6 +80,7 @@ class CustomerMenuController extends BaseController
 
         // Get a system user for this branch (required for orders.user_id NOT NULL)
         $sysUser = $db->table('users')
+            ->where('restaurant_id', $rid)
             ->where('branch_id', $bid)
             ->where('is_active', 1)
             ->orderBy('id', 'ASC')
@@ -91,16 +92,27 @@ class CustomerMenuController extends BaseController
                 ->orderBy('id', 'ASC')
                 ->get()->getRowArray();
         }
-        $userId = $sysUser['id'] ?? 1;
+        // Never attach a foreign restaurant's user to the order — if the restaurant
+        // has no active staff user, jump to the owner account (restaurant's first user)
+        $userId = $sysUser['id']
+            ?? ($db->table('users')->where('restaurant_id', $rid)->orderBy('id', 'ASC')->get()->getRowArray()['id'] ?? null);
 
-        // Build item details
+        if (!$userId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'This restaurant is not accepting orders right now']);
+        }
+
+        // Build item details — tenant guard: only menu items of THIS restaurant
         $orderModel = new OrderModel();
         $menuModel  = new MenuModel();
 
         $itemDetails = [];
         foreach ($items as $item) {
-            $menuItem = $menuModel->find((int)$item['id']);
-            if (!$menuItem || !$menuItem['is_active']) continue;
+            $menuItem = $orderModel->db->table('menu_items')
+                ->where('id', (int)$item['id'])
+                ->where('restaurant_id', $rid)
+                ->where('is_active', 1)
+                ->get()->getRowArray();
+            if (!$menuItem) continue;
             $itemDetails[] = [
                 'menu_item_id' => $menuItem['id'],
                 'variant_id'   => null,
@@ -123,11 +135,11 @@ class CustomerMenuController extends BaseController
 
         $db->transStart();
 
-        // Generate order number
-        $branch  = $db->table('branches')->where('id', $bid)->get()->getRowArray();
-        $prefix  = $branch['billing_prefix'] ?: 'ORD';
-        $counter = (int)($branch['billing_counter'] ?? 1);
-        $db->table('branches')->where('id', $bid)->update(['billing_counter' => $counter + 1]);
+        // Generate order number — atomic read-and-increment
+        $branch = $db->table('branches')->where('id', $bid)->get()->getRowArray();
+        $prefix = $branch['billing_prefix'] ?: 'ORD';
+        $db->query('UPDATE branches SET billing_counter = LAST_INSERT_ID(billing_counter) + 1 WHERE id = ?', [$bid]);
+        $counter = (int)$db->query('SELECT LAST_INSERT_ID() AS n')->getRowArray()['n'];
         $orderNumber = $prefix . str_pad($counter, 5, '0', STR_PAD_LEFT);
 
         // Estimate prep time (5 min base + 3 min per item)
@@ -189,6 +201,29 @@ class CustomerMenuController extends BaseController
 
         if ($db->transStatus() === false) {
             return $this->response->setJSON(['success' => false, 'message' => 'Failed to place order. Please try again.']);
+        }
+
+        // Real notifications for the restaurant's admin/manager users
+        // (the POS bell previously never got anything to show)
+        $notifyUsers = $db->table('users u')
+            ->join('roles r', 'r.id = u.role_id')
+            ->select('u.id')
+            ->where('u.restaurant_id', $rid)
+            ->where('u.is_active', 1)
+            ->whereIn('r.slug', ['restaurant_admin', 'branch_manager'])
+            ->get()->getResultArray();
+        foreach ($notifyUsers as $nu) {
+            $db->table('notifications')->insert([
+                'restaurant_id' => $rid,
+                'user_id'       => $nu['id'],
+                'type'          => 'new_order',
+                'title'         => 'New QR order #' . $orderNumber,
+                'message'       => 'Table ' . ($table['table_number'] ?? '-') . ' placed an order of ' .
+                    $restaurant['currency_symbol'] . number_format((float)$totals['total_amount'], 2) .
+                    ' — confirm it in the POS screen.',
+                'data_json'     => json_encode(['order_id' => $orderId]),
+                'created_at'    => date('Y-m-d H:i:s'),
+            ]);
         }
 
         return $this->response->setJSON([

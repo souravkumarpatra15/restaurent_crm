@@ -91,6 +91,8 @@ class ReportController extends BaseController
             ->select('p.payment_method, COUNT(*) as count, SUM(p.amount) as total')
             ->join('orders o','o.id = p.order_id')
             ->where('o.restaurant_id', $rid)
+            // cancelled/refunded orders must not count as revenue
+            ->whereNotIn('o.status', ['cancelled','refunded'])
             ->where('DATE(p.created_at) >=', $from)
             ->where('DATE(p.created_at) <=', $to)
             ->groupBy('p.payment_method')
@@ -101,6 +103,7 @@ class ReportController extends BaseController
             ->select('DATE(p.created_at) as date, SUM(p.amount) as total')
             ->join('orders o','o.id = p.order_id')
             ->where('o.restaurant_id', $rid)
+            ->whereNotIn('o.status', ['cancelled','refunded'])
             ->where('DATE(p.created_at) >=', $from)
             ->where('DATE(p.created_at) <=', $to)
             ->groupBy('DATE(p.created_at)')
@@ -133,6 +136,53 @@ class ReportController extends BaseController
 
         return view('admin/reports/expenses', array_merge($this->baseData('Expense Report'), [
             'expenses' => $expenses, 'total' => $total, 'from' => $from, 'to' => $to,
+        ]));
+    }
+
+    /**
+     * Incomplete Orders report — everything that never completed properly:
+     * unpaid open orders, cancelled orders (with reasons) and refunds.
+     */
+    public function incomplete()
+    {
+        $db   = \Config\Database::connect();
+        $rid  = session('restaurant_id');
+        $bid  = session('branch_id');
+        $from = $this->request->getGet('from') ?? date('Y-m-01');
+        $to   = $this->request->getGet('to')   ?? date('Y-m-d');
+
+        $orders = $db->table('orders o')
+            ->select('o.id, o.order_number, o.status, o.order_type, o.payment_status,
+                      o.total_amount, o.cancelled_reason, o.table_id, o.created_at,
+                      t.table_number, u.name as staff_name')
+            ->join('tables t', 't.id = o.table_id', 'left')
+            ->join('users u', 'u.id = o.user_id', 'left')
+            ->where('o.restaurant_id', $rid)
+            ->where('o.branch_id', $bid)
+            ->whereNotIn('o.status', ['completed'])
+            ->groupStart()
+                ->where('DATE(o.created_at) >=', $from)
+                ->where('DATE(o.created_at) <=', $to)
+            ->groupEnd()
+            ->orderBy('o.created_at','DESC')
+            ->limit(300)
+            ->get()->getResultArray();
+
+        $unpaid    = array_filter($orders, fn($o) => $o['payment_status'] !== 'paid' && !in_array($o['status'], ['cancelled','refunded'], true));
+        $cancelled = array_filter($orders, fn($o) => $o['status'] === 'cancelled');
+        $refunded  = array_filter($orders, fn($o) => $o['status'] === 'refunded');
+
+        $stats = [
+            'unpaid_count'    => count($unpaid),
+            'unpaid_amount'   => array_sum(array_column($unpaid, 'total_amount')),
+            'cancelled_count' => count($cancelled),
+            'cancelled_amount'=> array_sum(array_column($cancelled, 'total_amount')),
+            'refunded_count'  => count($refunded),
+            'refunded_amount' => array_sum(array_column($refunded, 'total_amount')),
+        ];
+
+        return view('admin/reports/incomplete', array_merge($this->baseData('Incomplete Orders Report'), [
+            'orders' => $orders, 'stats' => $stats, 'from' => $from, 'to' => $to,
         ]));
     }
 }

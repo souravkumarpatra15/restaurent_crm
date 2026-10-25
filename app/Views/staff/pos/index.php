@@ -1085,6 +1085,7 @@ foreach ($tables as $area) {
           <div style="display:flex;gap:.3rem">
             <a href="${BASE}pos/order/${o.id}" style="padding:.35rem .6rem;background:var(--primary);color:#fff;border-radius:8px;font-size:.72rem;font-weight:800;text-decoration:none">Open</a>
             <a href="${BASE}pos/new-order/dine_in?table=${t.id}&add_to=${o.id}" style="padding:.35rem .6rem;background:#F5F3FF;color:#6D28D9;border-radius:8px;font-size:.72rem;font-weight:800;text-decoration:none;border:1px solid #DDD6FE" title="Add more items to this order">+Round</a>
+            ${isPaid ? '' : `<button onclick="cancelPosOrder(${o.id})" style="padding:.35rem .6rem;background:#FFF1F2;color:#B91C1C;border:1px solid #FCA5A5;border-radius:8px;font-size:.72rem;font-weight:800;cursor:pointer;align-self:center" title="Cancel this order"><i class="fa fa-ban"></i></button>`}
           </div>
         </div>`;
         }).join('');
@@ -1099,6 +1100,23 @@ foreach ($tables as $area) {
       }).catch(() => {
         document.getElementById('sOrdersBody').innerHTML = '<div style="color:#EF4444;text-align:center;padding:1.5rem">Failed to load orders</div>';
       });
+  }
+
+  // ── Cancel a POS order (occupied table) ───────────────────
+  function cancelPosOrder(orderId) {
+    const reason = prompt('Reason for cancelling this order?', 'Walk-in cancelled');
+    if (reason === null) return;
+    postApi(BASE + 'pos/order/cancel/' + orderId, { reason: reason })
+      .then(d => {
+        if (d.success) {
+          showToast(d.message || 'Order cancelled', 'warning');
+          closeSheet('sOrders', 'bgOrders');
+          setTimeout(() => location.reload(), 700);
+        } else {
+          showToast(d.message || 'Could not cancel order', 'error');
+        }
+      })
+      .catch(() => showToast('Something went wrong.', 'error'));
   }
 
   function cancelTableBooking(tableId) {
@@ -1280,7 +1298,7 @@ foreach ($tables as $area) {
 
   function refreshQr() {
     if (!currentQrTableId) return;
-    fetch(BASE + 'admin/tables/generate-qr/' + currentQrTableId, {
+    fetch(BASE + 'pos/table/generate-qr/' + currentQrTableId, {
         headers: {
           'X-Requested-With': 'XMLHttpRequest'
         }

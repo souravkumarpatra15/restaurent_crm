@@ -158,6 +158,9 @@
     <a href="<?= base_url('admin/reports/sales') ?>" class="nav-item <?= active('admin/reports*') ?>">
       <i class="fa fa-chart-bar"></i><span>Reports</span>
     </a>
+    <a href="<?= base_url('admin/reports/incomplete') ?>" class="nav-item <?= active('admin/reports/incomplete*') ?>">
+      <i class="fa fa-triangle-exclamation"></i><span>Incomplete Orders</span>
+    </a>
     <div class="nav-section">BOOKINGS</div>
     <a href="<?= base_url('admin/booking') ?>" class="nav-item <?= active('admin/booking') ?>">
       <i class="fa fa-calendar-check"></i><span>Table Bookings</span>

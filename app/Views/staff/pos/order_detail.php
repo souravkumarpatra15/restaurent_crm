@@ -26,7 +26,7 @@ $this->section('content'); ?>
     <div class="card">
       <div class="card-header">
         <span class="card-title"><i class="fa fa-list" style="color:var(--primary)"></i> Items (<?= count($order['items']) ?>)</span>
-        <a href="<?= base_url('pos/new-order/' . $order['order_type']) ?>?table=<?= $order['table_id'] ?>&edit=<?= $order['id'] ?>" class="btn btn-sm btn-outline">
+        <a href="<?= base_url('pos/new-order/' . $order['order_type']) ?>?table=<?= $order['table_id'] ?>&add_to=<?= $order['id'] ?>" class="btn btn-sm btn-outline">
           <i class="fa fa-plus"></i> Add More
         </a>
       </div>
@@ -102,6 +102,9 @@ $this->section('content'); ?>
   <!-- Action Footer -->
   <?php if ($order['payment_status'] !== 'paid' && $order['status'] !== 'cancelled'): ?>
     <div style="padding:.875rem;background:#fff;border-top:1px solid var(--border);display:flex;gap:.5rem;flex-shrink:0">
+      <button onclick="cancelOrderAction()" class="btn btn-outline" style="flex:1;border-color:#FCA5A5;color:#B91C1C" title="Cancel this order">
+        <i class="fa fa-ban"></i> Cancel
+      </button>
       <button onclick="printKotAction()" class="btn btn-outline" style="flex:1">
         <i class="fa fa-fire-burner"></i> KOT
       </button>
@@ -111,6 +114,15 @@ $this->section('content'); ?>
       <button onclick="openCheckoutModal()" class="btn btn-primary" style="flex:2">
         <i class="fa fa-cash-register"></i> Checkout — ₹<?= number_format($order['total_amount'], 2) ?>
       </button>
+    </div>
+  <?php elseif ($order['status'] === 'cancelled'): ?>
+    <div style="padding:.875rem;background:#FFF5F5;border-top:1px solid var(--border);display:flex;align-items:center;gap:.5rem;flex-shrink:0">
+      <i class="fa fa-ban" style="color:#B91C1C"></i>
+      <div style="flex:1">
+        <div style="font-weight:800;color:#B91C1C;font-size:.875rem">Order cancelled</div>
+        <div style="font-size:.75rem;color:#7F1D1D"><?= esc($order['cancelled_reason'] ?? '') ?></div>
+      </div>
+      <a href="<?= base_url('pos') ?>" class="btn btn-outline">Back to POS</a>
     </div>
   <?php elseif ($order['payment_status'] === 'paid'): ?>
     <div style="padding:.875rem;background:#fff;border-top:1px solid var(--border);display:flex;gap:.5rem;flex-shrink:0">
@@ -270,7 +282,41 @@ $this->section('content'); ?>
 function openBillSlip() {
   window.open('<?= base_url('pos/slip/bill/'.$order['id']) ?>','bill_slip','width=380,height=750,scrollbars=yes');
 }
-function printKotAction() {
+  function handlePrintResult(d, okMsg) {
+    if (d.success) { showToast(okMsg, 'success'); return; }
+    const fullError = d.error || 'Printer error';
+    // Network/IP print failed — offer the exact same receipt as a browser slip
+    if (d.slip_url && confirm(fullError + '\n\nPrint via browser slip instead?')) {
+      window.open(d.slip_url, '_blank', 'width=420,height=760,scrollbars=yes');
+      return;
+    }
+    showToast(fullError, 'error');
+  }
+
+  function cancelOrderAction() {
+    const reason = prompt('Reason for cancelling this order?', 'Walk-in cancelled');
+    if (reason === null) return;
+    fetch('<?= base_url('pos/order/cancel/' . $order['id']) ?>', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: new URLSearchParams({
+          [CSRF_NAME]: CSRF_TOKEN,
+          reason: reason
+        })
+      }).then(r => r.json()).then(d => {
+        if (d.success) {
+          showToast(d.message || 'Order cancelled', 'warning');
+          setTimeout(() => location.reload(), 700);
+        } else {
+          showToast(d.message || 'Could not cancel order', 'error');
+        }
+      }).catch(e => showToast(e.message || 'Network error', 'error'));
+  }
+
+  function printKotAction() {
     fetch('<?= base_url('pos/order/print-kot') ?>', {
         method: 'POST',
         headers: {
@@ -286,7 +332,7 @@ function printKotAction() {
           throw new Error('Redirected to: ' + r.url);
         }
         return r.json();
-      }).then(d => showToast(d.success ? 'KOT sent to kitchen!' : (d.error || 'Printer error'), d.success ? 'success' : 'error'))
+      }).then(d => handlePrintResult(d, 'KOT sent to kitchen!'))
       .catch(e => showToast(e.message || 'Network error', 'error'));
   }
 
@@ -306,7 +352,7 @@ function printKotAction() {
           throw new Error('Redirected to: ' + r.url);
         }
         return r.json();
-      }).then(d => showToast(d.success ? 'Bill printed!' : (d.error || 'Printer error'), d.success ? 'success' : 'error'))
+      }).then(d => handlePrintResult(d, 'Bill printed!'))
       .catch(e => showToast(e.message || 'Network error', 'error'));
   }
 
@@ -326,7 +372,7 @@ function printKotAction() {
           throw new Error('Redirected to: ' + r.url);
         }
         return r.json();
-      }).then(d => showToast(d.success ? 'Reprinted!' : (d.error || 'Error'), d.success ? 'success' : 'error'))
+      }).then(d => handlePrintResult(d, 'Reprinted!'))
       .catch(e => showToast(e.message || 'Network error', 'error'));
   }
 </script>

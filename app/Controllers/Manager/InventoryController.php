@@ -72,10 +72,27 @@ class InventoryController extends BaseController
         $qty   = (float)$this->request->getPost('quantity');
         $cost  = (float)$this->request->getPost('unit_cost');
 
-        // Update stock
-        $stock = $db->table('inventory_stock')->where('inventory_item_id',$itemId)->where('branch_id',$bid)->get()->getRowArray();
+        // Validate the type against the DB enum — an arbitrary value used to
+        // silently SUBTRACT stock
+        if (!in_array($type, ['purchase','sale','transfer_in','transfer_out','adjustment','waste','return'], true)) {
+            return $this->response->setJSON(['success'=>false,'message'=>'Invalid transaction type']);
+        }
+        if ($qty <= 0) {
+            return $this->response->setJSON(['success'=>false,'message'=>'Quantity must be greater than 0']);
+        }
+        // Tenant guard — item must belong to this restaurant
+        $item = $db->table('inventory_items')->where('id',$itemId)->where('restaurant_id',session('restaurant_id'))->get()->getRowArray();
+        if (!$item) {
+            return $this->response->setJSON(['success'=>false,'message'=>'Inventory item not found']);
+        }
+
+        $db->transStart();
+
+        // Types that ADD stock; everything else consumes it
+        $adding  = in_array($type, ['purchase','transfer_in','adjustment']);
+        $stock   = $db->table('inventory_stock')->where('inventory_item_id',$itemId)->where('branch_id',$bid)->get()->getRowArray();
         $currentQty = $stock['current_stock'] ?? 0;
-        $newQty = in_array($type,['purchase','transfer_in','adjustment']) ? $currentQty + $qty : max(0, $currentQty - $qty);
+        $newQty     = $adding ? $currentQty + $qty : max(0, $currentQty - $qty);
 
         if ($stock) {
             $db->table('inventory_stock')->where('inventory_item_id',$itemId)->where('branch_id',$bid)
@@ -94,6 +111,12 @@ class InventoryController extends BaseController
             'notes'             => $this->request->getPost('notes'),
             'created_at'        => date('Y-m-d H:i:s'),
         ]);
+
+        $db->transComplete();
+
+        if ($db->transStatus() === false) {
+            return $this->response->setJSON(['success'=>false,'message'=>'Could not save transaction — please try again']);
+        }
 
         return $this->response->setJSON(['success'=>true,'new_stock'=>$newQty]);
     }

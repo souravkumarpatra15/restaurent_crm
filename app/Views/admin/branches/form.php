@@ -45,14 +45,41 @@
           <div class="form-group"><label class="form-label">Printer Port</label>
             <input type="number" class="form-control" name="printer_port" value="<?= $branch['printer_port'] ?? 9100 ?>"></div>
         </div>
-        <div class="form-group"><label class="form-label">Bill Prefix</label>
-          <input type="text" class="form-control" name="billing_prefix" placeholder="INV" value="<?= esc($branch['billing_prefix'] ?? 'INV') ?>"></div>
+        <div class="form-row cols-2">
+          <div class="form-group"><label class="form-label">KOT Printer IP <span style="font-size:.72rem;color:var(--text-muted)">(blank = same printer)</span></label>
+            <input type="text" class="form-control" name="kot_printer_ip" placeholder="Same as bill printer" value="<?= esc($branch['kot_printer_ip'] ?? '') ?>"></div>
+          <div class="form-group"><label class="form-label">KOT Printer Port</label>
+            <input type="number" class="form-control" name="kot_printer_port" value="<?= $branch['kot_printer_port'] ?? 9100 ?>"></div>
+        </div>
+        <div class="form-row cols-2">
+          <div class="form-group"><label class="form-label">Bill Prefix</label>
+            <input type="text" class="form-control" name="billing_prefix" placeholder="INV" value="<?= esc($branch['billing_prefix'] ?? 'INV') ?>"></div>
+          <div class="form-group"><label class="form-label">KOT Prefix</label>
+            <input type="text" class="form-control" name="kot_prefix" placeholder="KOT" value="<?= esc($branch['kot_prefix'] ?? 'KOT') ?>"></div>
+        </div>
       </div>
       <div class="modal-footer">
         <a href="<?= base_url('admin/branches') ?>" class="btn btn-outline">Cancel</a>
+        <?php if ($branch): ?>
+        <button type="button" class="btn btn-outline" id="testPrintBtn" onclick="testPrint(<?= $branch['id'] ?>)"><i class="fa fa-print"></i> Test Print</button>
+        <?php endif; ?>
         <button type="submit" class="btn btn-primary"><i class="fa fa-save"></i> Save Branch</button>
       </div>
     </div>
   </form>
 </div>
+<?php if ($branch): ?>
+<script>
+function testPrint(id) {
+  const b = document.getElementById('testPrintBtn');
+  if (b) b.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Printing…';
+  fetch('<?= base_url('admin/branches/test-print') ?>/' + id, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'<?= csrf_token() ?>=<?= csrf_hash() ?>' })
+    .then(r => r.json()).then(d => {
+      if (d.success) alert('Test ticket sent to the printer ✔');
+      else alert(d.message || 'Test print failed');
+      if (b) b.innerHTML = '<i class="fa fa-print"></i> Test Print';
+    }).catch(() => { alert('Network error'); if (b) b.innerHTML = '<i class="fa fa-print"></i> Test Print'; });
+}
+</script>
+<?php endif; ?>
 <?php $this->endSection(); ?>

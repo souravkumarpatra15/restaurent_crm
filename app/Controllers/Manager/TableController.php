@@ -54,6 +54,9 @@ class TableController extends BaseController
 
     public function update($id)
     {
+        if (!$this->scopedTable($id)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Table not found']);
+        }
         $this->model->update($id, [
             'table_number' => $this->request->getPost('table_number'),
             'capacity'     => $this->request->getPost('capacity'),
@@ -64,14 +67,44 @@ class TableController extends BaseController
 
     public function toggle($id)
     {
-        $t = $this->model->find($id);
+        $t = $this->scopedTable($id);
+        if (!$t) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Table not found']);
+        }
         $this->model->update($id, ['is_active' => $t['is_active'] ? 0 : 1]);
         return $this->response->setJSON(['success' => true]);
+    }
+
+    /**
+     * Ownership guard: only tables belonging to the session restaurant
+     * (through its branches) may be modified.
+     */
+    private function scopedTable($id)
+    {
+        return \Config\Database::connect()->table('tables t')
+            ->select('t.*')
+            ->join('branches b', 'b.id = t.branch_id')
+            ->where('t.id', $id)
+            ->where('b.restaurant_id', session('restaurant_id'))
+            ->get()->getRowArray();
+    }
+
+    private function scopedArea($id)
+    {
+        return \Config\Database::connect()->table('table_areas a')
+            ->select('a.*')
+            ->join('branches b', 'b.id = a.branch_id')
+            ->where('a.id', $id)
+            ->where('b.restaurant_id', session('restaurant_id'))
+            ->get()->getRowArray();
     }
 
     // ── Generate / refresh QR token for a table ──────────────
     public function generateQr($id)
     {
+        if (!$this->scopedTable($id)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Table not found']);
+        }
         $token = bin2hex(random_bytes(20));
         $this->model->update($id, ['qr_token' => $token]);
         return $this->response->setJSON([
@@ -84,6 +117,9 @@ class TableController extends BaseController
     // ── Book a table ──────────────────────────────────────────
     public function book($id)
     {
+        if (!$this->scopedTable($id)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Table not found']);
+        }
         $this->model->update($id, [
             'status'       => 'booked',
             'booked_name'  => $this->request->getPost('name'),
@@ -97,6 +133,9 @@ class TableController extends BaseController
     // ── Cancel a booking ──────────────────────────────────────
     public function cancelBooking($id)
     {
+        if (!$this->scopedTable($id)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Table not found']);
+        }
         $this->model->update($id, [
             'status'       => 'available',
             'booked_name'  => null,
@@ -180,6 +219,9 @@ class TableController extends BaseController
 
     public function updateArea($id)
     {
+        if (!$this->scopedArea($id)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Area not found']);
+        }
         $this->areaModel->update($id, [
             'name'        => trim($this->request->getPost('name')),
             'description' => $this->request->getPost('description'),
@@ -193,7 +235,10 @@ class TableController extends BaseController
 
     public function toggleArea($id)
     {
-        $area = $this->areaModel->find($id);
+        $area = $this->scopedArea($id);
+        if (!$area) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Area not found']);
+        }
 
         $this->areaModel->update($id, [
             'is_active' => $area['is_active'] ? 0 : 1
@@ -206,6 +251,10 @@ class TableController extends BaseController
 
     public function deleteArea($id)
     {
+        if (!$this->scopedArea($id)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Area not found']);
+        }
+
         $count = $this->model
             ->where('area_id', $id)
             ->countAllResults();

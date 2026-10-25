@@ -75,6 +75,7 @@ $routes->group('admin', ['filter' => 'auth:restaurant_admin,branch_manager,super
     $routes->get('branches/edit/(:num)',            'Manager\BranchController::edit/$1');
     $routes->post('branches/update/(:num)',         'Manager\BranchController::update/$1');
     $routes->post('branches/toggle/(:num)',         'Manager\BranchController::toggle/$1');
+    $routes->post('branches/test-print/(:num)',     'Manager\BranchController::testPrint/$1');
 
     // Users
     $routes->get('users',                           'Manager\UserController::index');
@@ -129,12 +130,14 @@ $routes->group('admin', ['filter' => 'auth:restaurant_admin,branch_manager,super
     $routes->get('orders',                          'Manager\OrderController::index');
     $routes->get('orders/view/(:num)',              'Manager\OrderController::view/$1');
     $routes->post('orders/cancel/(:num)',           'Manager\OrderController::cancel/$1');
+    $routes->post('orders/refund/(:num)',           'Manager\OrderController::refund/$1');
 
     // Reports
     $routes->get('reports/sales',                   'Manager\ReportController::sales');
     $routes->get('reports/items',                   'Manager\ReportController::items');
     $routes->get('reports/payments',                'Manager\ReportController::payments');
     $routes->get('reports/expenses',                'Manager\ReportController::expenses');
+    $routes->get('reports/incomplete',              'Manager\ReportController::incomplete');
 
     // Expenses
     $routes->get('expenses',                        'Manager\ExpenseController::index');
@@ -191,14 +194,18 @@ $routes->group('pos', ['filter' => 'auth:cashier,waiter,branch_manager,restauran
     $routes->post('order/reject-customer/(:num)',         'Staff\PosController::rejectCustomerOrder/$1');
     $routes->post('order/cancel/(:num)',            'Staff\PosController::cancelOrder/$1');
     $routes->post('order/apply-coupon',             'Staff\PosController::applyCoupon');
+    $routes->post('order/loyalty-preview',          'Staff\PosController::loyaltyPreview');
     $routes->post('order/add-round',                'Staff\PosController::addRound');
     $routes->post('table/book/(:num)',              'Staff\PosController::bookTable/$1');
     $routes->post('table/cancel-booking/(:num)',    'Staff\PosController::cancelTableBooking/$1');
+    $routes->get('table/generate-qr/(:num)',        'Staff\PosController::generateTableQr/$1');
     $routes->get('active-orders',                   'Staff\PosController::activeOrders');
     $routes->get('table-orders/(:num)',             'Staff\PosController::tableOrders/$1');
     $routes->get('kitchen',                         'Staff\KitchenController::index');
     $routes->post('kitchen/update-status',          'Staff\KitchenController::updateStatus');
     $routes->get('shift/summary',                   'Staff\ShiftController::summary');
+    $routes->post('shift/open',                     'Staff\ShiftController::open');
+    $routes->post('shift/close',                    'Staff\ShiftController::close');
 });
 
 // Slip print routes (web-based fallback when no thermal printer)

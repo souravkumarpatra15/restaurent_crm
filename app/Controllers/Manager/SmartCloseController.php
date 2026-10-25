@@ -103,6 +103,15 @@ class SmartCloseController extends BaseController
         $cashHand = (float)$this->request->getPost('cash_in_hand');
         $notes    = $this->request->getPost('notes');
 
+        if ($cashHand < 0) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Cash in hand cannot be negative']);
+        }
+
+        // Double-close guard — the day can only be closed once
+        if ($db->table('day_close_logs')->where('branch_id', $bid)->where('close_date', $today)->countAllResults() > 0) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Today is already closed']);
+        }
+
         // Calculate expected cash
         $cashIn = (float)($db->table('payments p')
             ->join('orders o','o.id=p.order_id')

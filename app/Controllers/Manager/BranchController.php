@@ -51,6 +51,9 @@ class BranchController extends BaseController
             'has_delivery'  => $this->request->getPost('has_delivery') ? 1 : 0,
             'printer_ip'    => $this->request->getPost('printer_ip'),
             'printer_port'  => $this->request->getPost('printer_port') ?? 9100,
+            'kot_printer_ip'   => $this->request->getPost('kot_printer_ip'),
+            'kot_printer_port' => $this->request->getPost('kot_printer_port') ?? 9100,
+            'kot_prefix'       => $this->request->getPost('kot_prefix') ?: 'KOT',
             'billing_prefix'=> $this->request->getPost('billing_prefix') ?? 'INV',
             'is_active'     => 1,
         ]);
@@ -59,8 +62,12 @@ class BranchController extends BaseController
 
     public function edit($id)
     {
+        $branch = $this->model->where('id', $id)->where('restaurant_id', session('restaurant_id'))->first();
+        if (!$branch) {
+            return redirect()->to(base_url('admin/branches'))->with('error', 'Branch not found');
+        }
         return view('admin/branches/form', [
-            'pageTitle' => 'Edit Branch', 'branch' => $this->model->find($id),
+            'pageTitle' => 'Edit Branch', 'branch' => $branch,
             'userName'  => session('user_name'), 'userRole' => session('role_slug'),
             'restaurantName' => session('restaurant_name'),
         ]);
@@ -68,6 +75,10 @@ class BranchController extends BaseController
 
     public function update($id)
     {
+        // Tenant guard
+        if (!$this->model->where('id', $id)->where('restaurant_id', session('restaurant_id'))->countAllResults()) {
+            return redirect()->to(base_url('admin/branches'))->with('error', 'Branch not found');
+        }
         $this->model->update($id, [
             'name'         => $this->request->getPost('name'),
             'code'         => $this->request->getPost('code'),
@@ -85,6 +96,9 @@ class BranchController extends BaseController
             'has_delivery' => $this->request->getPost('has_delivery') ? 1 : 0,
             'printer_ip'   => $this->request->getPost('printer_ip'),
             'printer_port' => $this->request->getPost('printer_port') ?? 9100,
+            'kot_printer_ip'   => $this->request->getPost('kot_printer_ip'),
+            'kot_printer_port' => $this->request->getPost('kot_printer_port') ?? 9100,
+            'kot_prefix'       => $this->request->getPost('kot_prefix') ?: 'KOT',
             'billing_prefix'=> $this->request->getPost('billing_prefix'),
         ]);
         return redirect()->to(base_url('admin/branches'))->with('success', 'Branch updated');
@@ -92,8 +106,32 @@ class BranchController extends BaseController
 
     public function toggle($id)
     {
-        $b = $this->model->find($id);
+        $b = $this->model->where('id', $id)->where('restaurant_id', session('restaurant_id'))->first();
+        if (!$b) return $this->response->setJSON(['success' => false, 'message' => 'Branch not found']);
         $this->model->update($id, ['is_active' => $b['is_active'] ? 0 : 1]);
         return $this->response->setJSON(['success' => true]);
+    }
+
+    /**
+     * Print a small test ticket to the branch's thermal printer — validates
+     * IP/port wiring from the branch settings screen.
+     */
+    public function testPrint($id)
+    {
+        $branch = $this->model->where('id', $id)->where('restaurant_id', session('restaurant_id'))->first();
+        if (!$branch) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Branch not found']);
+        }
+        if (empty($branch['printer_ip'])) {
+            return $this->response->setJSON(['success' => false, 'message' => 'No printer IP is configured for this branch']);
+        }
+
+        $printer = new \App\Libraries\ThermalPrinter();
+        $result  = $printer->printTest([
+            'printer_ip'   => $branch['printer_ip'],
+            'printer_port' => $branch['printer_port'] ?: 9100,
+        ], $branch['name'] ?? 'DinoviX');
+
+        return $this->response->setJSON(['success' => $result['success'], 'message' => $result['message']]);
     }
 }

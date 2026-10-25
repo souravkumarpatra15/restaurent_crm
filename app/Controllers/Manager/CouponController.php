@@ -43,7 +43,8 @@ class CouponController extends BaseController
     public function toggle($id)
     {
         $db = \Config\Database::connect();
-        $c  = $db->table('coupons')->where('id',$id)->get()->getRowArray();
+        $c  = $db->table('coupons')->where('id',$id)->where('restaurant_id',session('restaurant_id'))->get()->getRowArray();
+        if (!$c) return $this->response->setJSON(['success'=>false,'message'=>'Coupon not found']);
         $db->table('coupons')->where('id',$id)->update(['is_active'=> $c['is_active'] ? 0 : 1]);
         return $this->response->setJSON(['success'=>true]);
     }

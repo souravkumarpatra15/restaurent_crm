@@ -53,12 +53,15 @@ class ThermalPrinter
     // ----------------------------------------------------------------
     public function printBill($order, $restaurant, $branch)
     {
+        if (!$order) {
+            return ['success' => false, 'error' => 'Order not found — nothing to print'];
+        }
         $data = '';
         $data .= self::INIT;
         $data .= self::ALIGN_CENTER;
 
         // Logo text (if no image printer)
-        if ($restaurant['receipt_show_logo']) {
+        if ($restaurant['receipt_show_logo'] ?? true) {
             $data .= self::FONT_DOUBLE . self::BOLD_ON;
             $data .= $this->centerText(strtoupper($restaurant['name'])) . self::LF;
             $data .= self::FONT_NORMAL . self::BOLD_OFF;
@@ -76,7 +79,7 @@ class ThermalPrinter
         if ($restaurant['gst_number']) $data .= $this->centerText('GSTIN: ' . $restaurant['gst_number']) . self::LF;
 
         // Custom header
-        if ($restaurant['receipt_header']) {
+        if ($restaurant['receipt_header'] ?? null) {
             $data .= self::LF;
             foreach (explode("\n", $restaurant['receipt_header']) as $line) {
                 $data .= $this->centerText(trim($line)) . self::LF;
@@ -178,7 +181,7 @@ class ThermalPrinter
         $data .= $this->dashedLine() . self::LF;
         $data .= self::ALIGN_CENTER;
 
-        if ($restaurant['receipt_footer']) {
+        if ($restaurant['receipt_footer'] ?? null) {
             foreach (explode("\n", $restaurant['receipt_footer']) as $line) {
                 $data .= $this->centerText(trim($line)) . self::LF;
             }
@@ -187,11 +190,43 @@ class ThermalPrinter
             $data .= $this->centerText('Powered by DinoviX') . self::LF;
         }
 
-        // QR code placeholder for UPI payment
+        // Feedback QR — customer scans to rate without any printed link
+        if (!empty($order['feedback_token'])) {
+            $feedbackUrl = base_url('feedback/' . $order['feedback_token']);
+            $data .= $this->dashedLine() . self::LF;
+            $data .= self::ALIGN_CENTER;
+            $data .= self::BOLD_ON . 'STAR Rate Your Experience' . self::LF . self::BOLD_OFF;
+            $data .= 'Scan the QR - takes 30 seconds' . self::LF;
+            $data .= $this->escPosQr($feedbackUrl, 6);
+            $data .= self::LF;
+        }
+
         $data .= self::LF . self::LF . self::LF;
         $data .= self::CUT_PAPER;
 
         return $this->send($data);
+    }
+
+    /**
+     * Build an ESC/POS QR code command block (printer generates the QR itself).
+     * Uses QR Model 2, module size 4-8, ECC level M — supported by practically
+     * all Epson-compliant thermal printers.
+     */
+    private function escPosQr($data, $moduleSize = 6)
+    {
+        // 1: Select QR model 2  —  GS ( k pL pH cn fn n1 n2
+        $cmd  = "\x1D\x28\x6B\x04\x00\x31\x41\x32\x00";
+        // 2: Select module size  —  GS ( k pL pH cn fn n
+        $cmd .= "\x1D\x28\x6B\x03\x00\x31\x43" . chr(max(1, min(8, $moduleSize)));
+        // 3: Select error correction level M  —  GS ( k pL pH cn fn n
+        $cmd .= "\x1D\x28\x6B\x03\x00\x31\x45\x31";
+        // 4: Store data  —  GS ( k pL pH cn fm m d1..dk  (pL,pH = len(data)+3)
+        $len  = strlen($data) + 3;
+        $cmd .= "\x1D\x28\x6B" . chr($len % 256) . chr(intdiv($len, 256)) . "\x31\x50\x30" . $data;
+        // 5: Print  —  GS ( k pL pH cn fn m
+        $cmd .= "\x1D\x28\x6B\x03\x00\x31\x51\x30";
+        $cmd .= self::LF;
+        return $cmd;
     }
 
     // ----------------------------------------------------------------
@@ -260,7 +295,26 @@ class ThermalPrinter
         return $this->sendTo($this->printerIp, $this->printerPort, $data);
     }
 
-    private function sendTo($ip, $port, $data)
+    /**
+     * Print a small test ticket to a printer (used by Branch Settings
+     * "Test Print" to validate IP/port wiring).
+     */
+    public function printTest(array $printer, string $branchName = 'DinoviX')
+    {
+        $data  = self::INIT;
+        $data .= self::ALIGN_CENTER;
+        $data .= self::BOLD_ON . 'Printer Test' . self::LF . self::BOLD_OFF;
+        $data .= $branchName . self::LF;
+        $data .= date('d M Y, h:i A') . self::LF;
+        $data .= $this->dashedLine() . self::LF;
+        $data .= self::ALIGN_LEFT;
+        $data .= 'If you can read this, POS printing works.' . self::LF;
+        $data .= self::LF . self::LF . self::CUT_PAPER;
+
+        return $this->sendTo($printer['printer_ip'], $printer['printer_port'], $data);
+    }
+
+    private function sendTo($ip, $port, $data, $attempts = 2)
     {
         if (empty($ip)) {
             $dir = WRITEPATH . 'uploads/receipts/';
@@ -268,7 +322,10 @@ class ThermalPrinter
                 mkdir($dir, 0777, true);
             }
             $path = $dir . 'receipt_' . time() . '.bin';
-            file_put_contents($path, $data);
+            if (file_put_contents($path, $data) === false) {
+                log_message('error', "Printer file fallback failed: could not write $path");
+                return ['success' => false, 'error' => 'No printer IP configured and fallback receipt file could not be saved'];
+            }
             return [
                 'success' => true,
                 'method'  => 'file',
@@ -276,16 +333,77 @@ class ThermalPrinter
             ];
         }
 
-        $socket = @fsockopen($ip, $port, $errno, $errstr, 3);
-        if (!$socket) {
-            log_message('error', "Printer connection failed: $errstr ($errno) to $ip:$port");
-            return ['success' => false, 'error' => "Cannot connect to printer at $ip:$port - $errstr"];
+        if (!filter_var($ip, FILTER_VALIDATE_IP) && !filter_var($ip, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
+            return ['success' => false, 'error' => "Printer IP '$ip' is not a valid IP address or hostname — check Branch Settings"];
         }
 
-        fwrite($socket, $data);
+        // Retry: transient network blips are the #1 cause of "print IP fail"
+        $errno  = 0;
+        $errstr = '';
+        $socket = null;
+        for ($attempt = 1; $attempt <= $attempts; $attempt++) {
+            $socket = @fsockopen($ip, $port, $errno, $errstr, 5);
+            if ($socket) break;
+            if ($attempt < $attempts) usleep(300000); // brief pause before retry
+        }
+
+        if (!$socket) {
+            log_message('error', "Printer connection failed: $errstr ($errno) to $ip:$port");
+            return [
+                'success' => false,
+                'error'   => "Cannot connect to printer at $ip:$port — {$this->friendlySocketError($errno, $errstr)}"
+            ];
+        }
+
+        // Stream must not hang forever if the printer stalls mid-job
+        stream_set_timeout($socket, 10);
+
+        // Write ALL bytes — fwrite() may partial-write, which used to be
+        // silently treated as "printed!"
+        $written = 0;
+        $total   = strlen($data);
+        while ($written < $total) {
+            $n = @fwrite($socket, substr($data, $written));
+            if ($n === false || $n <= 0) {
+                $meta = stream_get_meta_data($socket);
+                fclose($socket);
+                $why = !empty($meta['timed_out']) ? 'printer stopped accepting data (timed out)' : 'printer closed the connection';
+                log_message('error', "Printer write failed to $ip:$port after $written/$total bytes ($why)");
+                return [
+                    'success' => false,
+                    'error'   => "Print job failed at $ip:$port — only $written of $total bytes sent ($why). Check paper and cable/connection."
+                ];
+            }
+            $written += $n;
+        }
+
+        fflush($socket);
         fclose($socket);
 
-        return ['success' => true, 'method' => 'network'];
+        log_message('info', "Printer job sent: $written bytes to $ip:$port with " . strlen($data) . " bytes payload");
+
+        return ['success' => true, 'method' => 'network', 'bytes' => $written];
+    }
+
+    /**
+     * Human-readable explanation for common socket failures so the POS
+     * cashier can actually act on the message instead of "print failed".
+     */
+    private function friendlySocketError($errno, $errstr)
+    {
+        switch ((int)$errno) {
+            case 111:
+                return 'connection refused. The printer is reachable but nothing is listening on that port — check the printer port (usually 9100) and that the printer is powered on.';
+            case 110:
+            case 10060:
+                return 'connection timed out. The printer is off, unplugged, on a different network/subnet, or the IP is wrong.';
+            case 104:
+                return 'connection reset by the printer. The printer rejected the job — power-cycle it and retry.';
+            case 113:
+                return 'host not found. The IP address in Branch Settings is invalid for this network.';
+            default:
+                return trim($errstr) . " (code $errno). Check that the printer is powered on, on the same network, and its IP is set in Branch Settings.";
+        }
     }
 
     // ----------------------------------------------------------------

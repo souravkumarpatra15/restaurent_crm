@@ -210,9 +210,13 @@ body {
     <?php if ($order['discount_amount'] > 0): ?>
     <div class="tot-r disc"><span>Discount</span><span>-<?= $sym ?><?= number_format($order['discount_amount'],2) ?></span></div>
     <?php endif; ?>
-    <?php if ($order['cgst_amount'] > 0): ?>
-    <div class="tot-r"><span>CGST (<?= $order['cgst_percent']??2.5 ?>%)</span><span><?= $sym ?><?= number_format($order['cgst_amount'],2) ?></span></div>
-    <div class="tot-r"><span>SGST (<?= $order['sgst_percent']??2.5 ?>%)</span><span><?= $sym ?><?= number_format($order['sgst_amount'],2) ?></span></div>
+    <?php
+    // Derive the half-rate labels from the real item tax percentages
+    $maxItemTaxRate = 0;
+    foreach ($order['items'] as $it) { $maxItemTaxRate = max($maxItemTaxRate, (float)($it['tax_percent'] ?? 0)); }
+    if ($order['cgst_amount'] > 0): ?>
+    <div class="tot-r"><span>CGST (<?= number_format($maxItemTaxRate / 2, 2) ?>%)</span><span><?= $sym ?><?= number_format($order['cgst_amount'],2) ?></span></div>
+    <div class="tot-r"><span>SGST (<?= number_format($maxItemTaxRate / 2, 2) ?>%)</span><span><?= $sym ?><?= number_format($order['sgst_amount'],2) ?></span></div>
     <?php elseif ($order['tax_amount'] > 0): ?>
     <div class="tot-r"><span>GST</span><span><?= $sym ?><?= number_format($order['tax_amount'],2) ?></span></div>
     <?php endif; ?>
@@ -249,23 +253,26 @@ body {
   <div class="paid-stamp">✓ PAID</div>
   <?php endif; ?>
 
-  <!-- UPI QR hint -->
-  <?php if (!empty($restaurant['upi_id'])): ?>
-  <div class="upi-box">
-    Scan to Pay / Review
-    <div class="uid"><?= esc($restaurant['upi_id']) ?></div>
-  </div>
-  <?php endif; ?>
-
   <div class="div-d"></div>
 
   <!-- Feedback QR -->
   <?php if (!empty($order['feedback_token'])): ?>
   <div class="upi-box" style="border:1.5px dashed #6366F1;background:#F5F3FF">
     <div style="font-size:10px;font-weight:700;color:#6366F1;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.3rem">⭐ Rate Your Experience</div>
-    <div style="font-size:10.5px;font-weight:700;color:#4F46E5"><?= rtrim(base_url('feedback/'.$order['feedback_token']),'/') ?></div>
-    <div style="font-size:9px;color:#888;margin-top:.15rem">Scan QR or visit link · Takes 30 seconds</div>
+    <div id="fbQrBox" style="display:flex;justify-content:center"></div>
+    <div style="font-size:9px;color:#888;margin-top:.15rem">Scan the QR · Takes 30 seconds</div>
   </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    new QRCode(document.getElementById('fbQrBox'), {
+      text: '<?= base_url('feedback/' . $order['feedback_token']) ?>',
+      width: 110,
+      height: 110,
+      colorDark: '#4F46E5',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  </script>
   <?php endif; ?>
 
   <div class="div-d"></div>
