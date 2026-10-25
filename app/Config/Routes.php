@@ -144,6 +144,10 @@ $routes->group('admin', ['filter' => 'auth:restaurant_admin,branch_manager,super
     $routes->get('reports/payments',                'Manager\ReportController::payments');
     $routes->get('reports/expenses',                'Manager\ReportController::expenses');
     $routes->get('reports/incomplete',              'Manager\ReportController::incomplete');
+    $routes->get('reports/gst',                     'Manager\ReportController::gst');
+    $routes->get('reports/consolidated',            'Manager\ReportController::consolidated');
+    $routes->get('reports/export/(:segment)',       'Manager\ReportController::export/$1');
+    $routes->get('reports/print/(:segment)',        'Manager\ReportController::printReport/$1');
 
     // Expenses
     $routes->get('expenses',                        'Manager\ExpenseController::index');

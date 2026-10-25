@@ -161,6 +161,12 @@
     <a href="<?= base_url('admin/reports/sales') ?>" class="nav-item <?= active('admin/reports*') ?>">
       <i class="fa fa-chart-bar"></i><span>Reports</span>
     </a>
+    <a href="<?= base_url('admin/reports/consolidated') ?>" class="nav-item <?= active('admin/reports/consolidated*') ?>">
+      <i class="fa fa-sitemap"></i><span>Consolidated</span>
+    </a>
+    <a href="<?= base_url('admin/reports/gst') ?>" class="nav-item <?= active('admin/reports/gst*') ?>">
+      <i class="fa fa-file-invoice"></i><span>GSTR-1</span>
+    </a>
     <a href="<?= base_url('admin/reports/incomplete') ?>" class="nav-item <?= active('admin/reports/incomplete*') ?>">
       <i class="fa fa-triangle-exclamation"></i><span>Incomplete Orders</span>
     </a>
@@ -229,6 +235,21 @@
 
 <!-- Main Content -->
 <main class="main-content" id="mainContent">
+
+  <!-- Subscription banner (every tenant sees plan state) -->
+  <?php
+    $subState  = session('subscription_state');
+    $trialEnd  = session('trial_ends_at');
+    $daysLeft  = $trialEnd ? (int)ceil((strtotime($trialEnd) - time()) / 86400) : null;
+  ?>
+  <?php if (in_array($subState, ['trial', 'active']) && !empty($trialEnd) && $daysLeft !== null && $daysLeft <= 7): ?>
+  <div style="padding:.5rem 1rem 0">
+    <div style="background:<?= $daysLeft <= 3 ? '#FEF2F2' : '#FFFBEB' ?>;border:1px solid <?= $daysLeft <= 3 ? '#FECACA' : '#FDE68A' ?>;color:<?= $daysLeft <= 3 ? '#B91C1C' : '#92400E' ?>;border-radius:10px;padding:.5rem .9rem;font-size:.78rem;font-weight:700;display:flex;gap:.6rem;align-items:center">
+      <i class="fa fa-hourglass-half"></i>
+      <?= $subState === 'trial' ? 'Free trial' : 'Subscription' ?> expires in <strong><?= max(0, $daysLeft) ?> day(s)</strong> (<?= date('d M Y', strtotime($trialEnd)) ?>) — renew to avoid interruption.
+    </div>
+  </div>
+  <?php endif; ?>
 
   <!-- Page Header -->
   <?php if (isset($pageTitle)): ?>

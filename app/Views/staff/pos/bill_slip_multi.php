@@ -213,7 +213,7 @@ body {
   <div class="div-d"></div>
   <div class="footer">
     <div class="big">Thank You! Visit Again!</div>
-    <div>Powered by DinoviX POS</div>
+    <div><?= empty($whitelabel) ? 'Powered by DinoviX POS' : 'Thank you!' ?></div>
   </div>
 </div>
 

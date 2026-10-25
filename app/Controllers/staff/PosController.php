@@ -248,7 +248,8 @@ class PosController extends BaseController
         // Loyalty redemption: deduct points from the customer and log the
         // transaction (points purchase never used to go anywhere)
         $redeemedPoints = 0;
-        if ($discountType === 'loyalty' && (float)$totals['discount_amount'] > 0
+        if ($discountType === 'loyalty' && $this->getPlanFeature('allow_loyalty')
+            && (float)$totals['discount_amount'] > 0
             && ($customerId = (int)($this->request->getPost('customer_id') ?: 0))) {
             $rule = $db->table('loyalty_rules')->where('restaurant_id', $restaurantId)->where('is_active', 1)->orderBy('id','ASC')->get()->getRowArray();
             $customerRow = $db->table('customers')
@@ -293,7 +294,7 @@ class PosController extends BaseController
         }
 
         // Auto-print KOT if enabled (never blocks order creation)
-        $kotPrintResult = $this->settingOn('auto_print_kot') ? $this->_printKot($orderId) : null;
+        $kotPrintResult = ($this->settingOn('auto_print_kot') && $this->getPlanFeature('allow_kot_print')) ? $this->_printKot($orderId) : null;
 
         return $this->response->setJSON([
             'success'      => true,
@@ -494,6 +495,12 @@ class PosController extends BaseController
 
         // Print via Thermal Printer; on failure return the web slip so the
         // cashier can print the same KOT from the browser
+        // Plan gate: KOT printing is a plan feature — fall back to the
+        // web slip so the kitchen ticket is never silently lost
+        if (!$this->getPlanFeature('allow_kot_print')) {
+            return ['success' => false, 'error' => 'KOT printing is not included in your plan', 'slip_url' => base_url('pos/slip/kot/' . $orderId)];
+        }
+
         $printer = new ThermalPrinter($this->branch);
         $result  = $printer->printKOT($order, $kotNumber);
         if (empty($result['success'])) {
@@ -514,6 +521,12 @@ class PosController extends BaseController
 
     private function _printBill($orderId)
     {
+        // Plan gate: thermal bill printing is a plan feature — fall back
+        // to the web slip so billing is never blocked
+        if (!$this->getPlanFeature('allow_thermal_print')) {
+            return ['success' => false, 'error' => 'Thermal printing is not included in your plan — use the web slip', 'slip_url' => base_url('pos/slip/bill/' . $orderId)];
+        }
+
         $order = $this->orderModel->getOrderWithDetails($orderId);
         if (!$order || $order['branch_id'] != $this->session->get('branch_id')) {
             return ['success' => false, 'error' => 'Order not found'];
@@ -1155,6 +1168,11 @@ class PosController extends BaseController
      */
     public function loyaltyPreview()
     {
+        // Plan gate: loyalty is a plan feature
+        if (!$this->getPlanFeature('allow_loyalty')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Loyalty program is not included in your current plan']);
+        }
+
         $points = (float)$this->request->getPost('points');
         $sub    = (float)$this->request->getPost('subtotal');
         $custId = (int)($this->request->getPost('customer_id') ?: 0);
@@ -1240,6 +1258,7 @@ class PosController extends BaseController
             'invoice'    => $invoice,
             'restaurant' => $restaurant ?? [],
             'branch'     => $branch ?? [],
+            'whitelabel' => $this->getPlanFeature('allow_whitelabel'),
         ]);
     }
 
@@ -1268,6 +1287,7 @@ class PosController extends BaseController
             'orders'     => $orders,
             'restaurant' => $restaurant ?? [],
             'branch'     => $branch ?? [],
+            'whitelabel' => $this->getPlanFeature('allow_whitelabel'),
         ]);
     }
 }

@@ -49,6 +49,9 @@ abstract class BaseController extends Controller
         $rid = session('restaurant_id');
         if (!$rid) return ['allowed' => true];
 
+        // Trial / renewal expiry is folded into the live status first
+        $this->subscriptionState();
+
         $restaurant = $db->table('restaurants r')
             ->select('r.subscription_status, r.plan_id, p.max_branches, p.max_users, p.max_menu_items, p.max_tables')
             ->join('saas_plans p', 'p.id = r.plan_id', 'left')
@@ -87,6 +90,47 @@ abstract class BaseController extends Controller
             ->join('saas_plans p','p.id=r.plan_id','left')
             ->where('r.id',$rid)->get()->getRowArray();
         return !$plan || (bool)($plan[$feature] ?? false);
+    }
+
+    // ── Effective subscription status for the current tenant ──
+    // Folds trial expiry and renewal-date expiry into the stored
+    // status, self-correcting the row so every zone sees the truth.
+    // Returns ['state', 'plan', 'trial_ends_at', 'subscription_ends_at', 'days_left'].
+    protected function subscriptionState(): array
+    {
+        $db  = \Config\Database::connect();
+        $rid = session('restaurant_id');
+        if (!$rid) return ['state' => 'active', 'plan' => '', 'trial_ends_at' => null, 'subscription_ends_at' => null, 'days_left' => null];
+
+        $r = $db->table('restaurants r')
+            ->select('r.subscription_status, r.trial_ends_at, r.subscription_ends_at, p.name as plan_name')
+            ->join('saas_plans p', 'p.id = r.plan_id', 'left')
+            ->where('r.id', $rid)->get()->getRowArray();
+
+        $state = $r['subscription_status'] ?? 'active';
+        $now   = date('Y-m-d H:i:s');
+
+        if ($state === 'trial' && !empty($r['trial_ends_at']) && $r['trial_ends_at'] < $now) {
+            $state = 'expired';
+        } elseif ($state === 'active' && !empty($r['subscription_ends_at']) && $r['subscription_ends_at'] < $now) {
+            $state = 'expired';
+        }
+
+        // Self-correct the stored row so every later zone reads the truth
+        if ($state !== ($r['subscription_status'] ?? '')) {
+            $db->table('restaurants')->where('id', $rid)->update(['subscription_status' => $state]);
+        }
+
+        $anchor   = $r['subscription_ends_at'] ?? $r['trial_ends_at'] ?? null;
+        $daysLeft = $anchor ? max(0, (int)ceil((strtotime($anchor) - time()) / 86400)) : null;
+
+        return [
+            'state'                => $state,
+            'plan'                 => $r['plan_name'] ?? '',
+            'trial_ends_at'        => $r['trial_ends_at'] ?? null,
+            'subscription_ends_at' => $r['subscription_ends_at'] ?? null,
+            'days_left'            => $daysLeft,
+        ];
     }
 
 }

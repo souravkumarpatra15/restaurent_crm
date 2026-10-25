@@ -101,6 +101,13 @@ class DashboardController extends BaseController
             'topItems'       => $topItems,
             'hourlyRevenue'  => $hourlyRevenue,
             'reservations'   => $reservations,
+            'plan'           => $this->subscriptionState(),
+            'usage'          => [
+                ['label' => 'Branches',   'used' => $db->table('branches')->where('restaurant_id', $restaurantId)->where('is_active', 1)->countAllResults(), 'max' => (int)(session('plan_max_branches') ?? -1)],
+                ['label' => 'Staff',      'used' => $db->table('users')->where('restaurant_id', $restaurantId)->where('is_active', 1)->countAllResults(),    'max' => (int)(session('plan_max_users') ?? -1)],
+                ['label' => 'Menu Items', 'used' => $db->table('menu_items')->where('restaurant_id', $restaurantId)->countAllResults(),                      'max' => (int)(session('plan_max_menu_items') ?? -1)],
+                ['label' => 'Tables',     'used' => $db->table('tables t')->join('branches b', 'b.id = t.branch_id')->where('b.restaurant_id', $restaurantId)->where('t.is_active', 1)->countAllResults(), 'max' => (int)(session('plan_max_tables') ?? -1)],
+            ],
             'userName'       => session('user_name'),
             'userRole'       => session('role_slug'),
             'branchName'     => session('branch_name'),

@@ -12,6 +12,42 @@
   </div>
 </div>
 
+<!-- Plan & Subscription banner / card (tenant-wise) -->
+<?php
+$planState = $plan['state'] ?? 'active';
+$planName  = $plan['plan'] ?? '';
+$usageRows = $usage ?? [];
+?>
+<div style="padding:.5rem 1rem 0">
+  <div class="card" style="border-left:4px solid <?= $planState === 'active' ? '#22C55E' : ($planState === 'trial' ? '#F59E0B' : '#EF4444') ?>">
+    <div class="card-body" style="padding:.75rem 1rem;display:flex;gap:1rem;flex-wrap:wrap;align-items:center;justify-content:space-between">
+      <div style="display:flex;gap:.6rem;align-items:center;min-width:200px">
+        <div style="width:36px;height:36px;border-radius:10px;background:#F1F5F9;display:flex;align-items:center;justify-content:center"><i class="fa fa-crown" style="color:var(--primary)"></i></div>
+        <div>
+          <div style="font-weight:800;font-size:.85rem">Plan: <?= esc($planName ?: '—') ?></div>
+          <div style="font-size:.7rem;color:#64748B">
+            Status: <strong style="text-transform:none"><?= esc(ucfirst($planState)) ?></strong>
+            <?php if (!empty($plan['days_left']) && in_array($planState, ['trial','active'])): ?>
+              · <?= (int)$plan['days_left'] ?> day(s) left
+            <?php endif; ?>
+          </div>
+        </div>
+      </div>
+      <div style="flex:1;min-width:260px;display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.4rem">
+        <?php foreach ($usageRows as $u): ?>
+        <div style="background:#F8FAFC;border-radius:8px;padding:.4rem .55rem">
+          <div style="font-size:.62rem;color:#64748B;font-weight:700;text-transform:uppercase"><?= esc($u['label']) ?></div>
+          <div style="font-size:.78rem;font-weight:800"><?= $u['used'] ?> / <?= $u['max'] < 0 ? '∞' : $u['max'] ?></div>
+          <div style="height:4px;background:#E2E8F0;border-radius:4px;margin-top:.25rem">
+            <div style="height:4px;border-radius:4px;background:<?= $u['max'] > 0 && $u['used'] >= $u['max'] ? '#EF4444' : 'var(--primary)' ?>;width:<?= $u['max'] > 0 ? min(100, round($u['used'] / $u['max'] * 100)) : 15 ?>%"></div>
+          </div>
+        </div>
+        <?php endforeach; ?>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Quick Stats -->
 <div style="padding:0 1rem">
   <div class="stats-grid">

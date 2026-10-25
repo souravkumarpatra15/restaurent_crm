@@ -287,7 +287,7 @@ body {
     <div class="big">Thank You!</div>
     <div>Visit Us Again 🙏</div>
     <?php endif; ?>
-    <div style="margin-top:.3rem">Powered by DinoviX</div>
+    <div style="margin-top:.3rem"><?= empty($whitelabel) ? 'Powered by DinoviX' : 'Thank you!' ?></div>
     <div style="color:#aaa;font-size:10px;margin-top:.2rem">Printed: <?= date('d M Y h:i:s A') ?></div>
   </div>
 

@@ -18,9 +18,10 @@ class CustomerMenuController extends BaseController
                       b.kot_prefix, b.kot_counter,
                       r.name as restaurant_name, r.logo, r.currency_symbol, r.theme_color,
                       r.tax_type, r.default_tax_percent, r.service_charge_percent,
-                      r.receipt_header')
+                      r.receipt_header, p.allow_online_ordering, p.allow_whitelabel')
             ->join('branches b', 'b.id = t.branch_id', 'left')
             ->join('restaurants r', 'r.id = b.restaurant_id', 'left')
+            ->join('saas_plans p', 'p.id = r.plan_id', 'left')
             ->where('t.qr_token', $token)
             ->get()->getRowArray();
     }
@@ -31,6 +32,11 @@ class CustomerMenuController extends BaseController
         $table = $this->getTableByToken($token);
         if (!$table) {
             return view('public/menu_error', ['message' => 'Invalid or expired QR code. Please ask staff for help.']);
+        }
+
+        // Plan gate: online ordering is a paid feature (Starter plans)
+        if (!$table['allow_online_ordering']) {
+            return view('public/menu_error', ['message' => 'Online ordering is currently unavailable for this restaurant. Please place your order at the counter.']);
         }
 
         $db  = \Config\Database::connect();
@@ -121,6 +127,10 @@ class CustomerMenuController extends BaseController
         $table = $this->getTableByToken($token);
         if (!$table) {
             return $this->response->setJSON(['success' => false, 'message' => 'Invalid QR code']);
+        }
+        // Plan gate: online ordering is a paid feature (Starter plans)
+        if (!$table['allow_online_ordering']) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Online ordering is unavailable for this restaurant']);
         }
 
         $items = json_decode($this->request->getPost('items'), true);

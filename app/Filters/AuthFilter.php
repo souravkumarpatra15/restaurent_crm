@@ -79,16 +79,52 @@ class AuthFilter implements FilterInterface
             }
         }
 
-        // Check subscription status for restaurant users
+        // ── Subscription gate — every tenant, every request ─────
         if ($session->get('restaurant_id')) {
             try {
-                $restaurant = \Config\Database::connect()->table('restaurants')
-                    ->where('id', $session->get('restaurant_id'))
+                $db = \Config\Database::connect();
+                $restaurant = $db->table('restaurants r')
+                    ->select('r.id, r.subscription_status, r.trial_ends_at, r.subscription_ends_at,
+                              p.name as plan_name, p.max_branches, p.max_users, p.max_menu_items, p.max_tables')
+                    ->join('saas_plans p', 'p.id = r.plan_id', 'left')
+                    ->where('r.id', $session->get('restaurant_id'))
                     ->get()->getRowArray();
-                if ($restaurant && in_array($restaurant['subscription_status'], ['suspended', 'cancelled', 'expired'])) {
+
+                $state = $restaurant['subscription_status'] ?? 'active';
+                $now   = date('Y-m-d H:i:s');
+
+                // Fold trial expiry and renewal-date expiry into the live status
+                if ($state === 'trial' && !empty($restaurant['trial_ends_at']) && $restaurant['trial_ends_at'] < $now) {
+                    $state = 'expired';
+                } elseif ($state === 'active' && !empty($restaurant['subscription_ends_at']) && $restaurant['subscription_ends_at'] < $now) {
+                    $state = 'expired';
+                }
+
+                // Self-correct the stored row so every zone reads the truth
+                if ($state !== ($restaurant['subscription_status'] ?? '')) {
+                    $db->table('restaurants')->where('id', $restaurant['id'])->update(['subscription_status' => $state]);
+                }
+
+                // Publish to the session for layout banners / dashboards
+                $session->set([
+                    'subscription_state' => $state,
+                    'plan_name'          => $restaurant['plan_name'] ?? '',
+                    'trial_ends_at'      => $restaurant['trial_ends_at'],
+                    'plan_max_branches'   => $restaurant['max_branches'] ?? -1,
+                    'plan_max_users'      => $restaurant['max_users'] ?? -1,
+                    'plan_max_menu_items' => $restaurant['max_menu_items'] ?? -1,
+                    'plan_max_tables'     => $restaurant['max_tables'] ?? -1,
+                ]);
+
+                // Super admin impersonating a tenant keeps access for support
+                if (!empty($session->get('super_admin_backup'))) {
+                    return;
+                }
+
+                if (in_array($state, ['suspended', 'cancelled', 'expired'])) {
                     $session->destroy();
                     return redirect()->to(base_url('login'))
-                        ->with('error', 'Your subscription has expired. Please contact support.');
+                        ->with('error', 'Your subscription is ' . $state . '. Please renew to continue using DinoviX.');
                 }
             } catch (\Exception $e) {
             }
