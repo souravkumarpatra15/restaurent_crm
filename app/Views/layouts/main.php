@@ -141,6 +141,9 @@
     <a href="<?= base_url('admin/customers') ?>" class="nav-item <?= active('admin/customers*') ?>">
       <i class="fa fa-person"></i><span>Customers</span>
     </a>
+    <a href="<?= base_url('admin/import') ?>" class="nav-item <?= active('admin/import*') ?>">
+      <i class="fa fa-file-import"></i><span>Import Data</span>
+    </a>
     <a href="<?= base_url('admin/reservations') ?>" class="nav-item <?= active('admin/reservations*') ?>">
       <i class="fa fa-calendar-check"></i><span>Reservations</span>
     </a>

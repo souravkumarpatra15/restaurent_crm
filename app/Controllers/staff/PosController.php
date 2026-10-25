@@ -934,17 +934,22 @@ class PosController extends BaseController
         if (!$order || $order['branch_id'] != $this->session->get('branch_id')) {
             return $this->response->setJSON(['success' => false, 'message' => 'Order not found']);
         }
+        return $this->response->setJSON($this->doCancel($order, $this->request->getPost('reason') ?: 'Cancelled at POS'));
+    }
+
+    // ── Cancel one order — shared by single + bulk flows ─────
+    private function doCancel(array $order, string $reason): array
+    {
+        $id = (int)$order['id'];
         if ($order['status'] === 'cancelled') {
-            return $this->response->setJSON(['success' => false, 'message' => 'This order is already cancelled']);
+            return ['success' => false, 'message' => 'This order is already cancelled'];
         }
         if ($order['payment_status'] === 'paid') {
-            return $this->response->setJSON(['success' => false, 'message' => 'Paid orders cannot be cancelled — use a refund instead.']);
+            return ['success' => false, 'message' => 'Paid orders cannot be cancelled — use a refund instead.'];
         }
         if ($order['status'] === 'completed') {
-            return $this->response->setJSON(['success' => false, 'message' => 'Completed/billed orders cannot be cancelled.']);
+            return ['success' => false, 'message' => 'Completed/billed orders cannot be cancelled.'];
         }
-
-        $reason = $this->request->getPost('reason') ?: 'Cancelled at POS';
 
         $db = \Config\Database::connect();
         $db->transStart();
@@ -1001,14 +1006,114 @@ class PosController extends BaseController
 
         if ($db->transStatus() === false) {
             log_message('error', "Order cancellation transaction failed for order #$id");
-            return $this->response->setJSON(['success' => false, 'message' => 'Failed to cancel order — please try again']);
+            return ['success' => false, 'message' => 'Failed to cancel order — please try again'];
         }
 
-        return $this->response->setJSON([
+        return [
             'success'  => true,
             'message'  => 'Order #' . $order['order_number'] . ' cancelled',
             'order_id' => (int)$id,
             'table_id' => $order['table_id'] ? (int)$order['table_id'] : null,
+        ];
+    }
+
+    // ── Bulk cancel from the table sheet ──────────────────────
+    public function cancelBulk()
+    {
+        $ids = json_decode($this->request->getPost('order_ids'), true);
+        if (empty($ids) || !is_array($ids)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'No orders selected']);
+        }
+        $reason = $this->request->getPost('reason') ?: 'Bulk cancelled at POS';
+
+        $ok      = 0;
+        $skipped = [];
+        foreach (array_map('intval', $ids) as $oid) {
+            $order = $this->orderModel->find($oid);
+            if (!$order || $order['branch_id'] != $this->session->get('branch_id')) {
+                $skipped[] = 'order not found';
+                continue;
+            }
+            $res = $this->doCancel($order, $reason . ' (bulk)');
+            if (!empty($res['success'])) $ok++;
+            else $skipped[] = $res['message'] ?? 'failed';
+        }
+
+        return $this->response->setJSON([
+            'success'   => $ok > 0,
+            'message'   => $ok
+                ? "$ok order(s) cancelled" . ($skipped ? ' · ' . count($skipped) . ' skipped' : '')
+                : ($skipped[0] ?? 'Nothing cancelled'),
+            'cancelled' => $ok,
+        ]);
+    }
+
+    // ── Bill several orders together in one payment ───────────
+    public function billBulk()
+    {
+        $ids    = json_decode($this->request->getPost('order_ids'), true);
+        $method = $this->request->getPost('payment_method') ?: 'cash';
+        if (!in_array($method, ['cash', 'card', 'upi', 'wallet', 'online', 'credit'], true)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid payment method']);
+        }
+        if (empty($ids) || !is_array($ids)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'No orders selected']);
+        }
+
+        $db = \Config\Database::connect();
+        $orders = $db->table('orders')
+            ->whereIn('id', array_map('intval', $ids))
+            ->where('branch_id', $this->session->get('branch_id'))
+            ->whereIn('payment_status', ['unpaid', 'partial'])
+            ->whereIn('status', ['pending', 'confirmed', 'preparing', 'ready', 'served'])
+            ->orderBy('id', 'ASC')
+            ->get()->getResultArray();
+        if (empty($orders)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Selected orders are already billed or cancelled']);
+        }
+        $total = array_sum(array_column($orders, 'total_amount'));
+
+        $db->transStart();
+        foreach ($orders as $o) {
+            $db->table('payments')->insert([
+                'order_id'       => $o['id'],
+                'branch_id'      => $o['branch_id'],
+                'user_id'        => $this->session->get('user_id'),
+                'amount'         => $o['total_amount'],
+                'payment_method' => $method,
+                'change_returned'=> 0,
+                'status'         => 'completed',
+            ]);
+            $db->table('orders')->where('id', $o['id'])->update([
+                'payment_status' => 'paid',
+                'paid_amount'    => $o['total_amount'],
+                'balance_amount' => 0,
+                'status'         => 'completed',
+                'billed_at'      => date('Y-m-d H:i:s'),
+                'completed_at'   => date('Y-m-d H:i:s'),
+                'feedback_token' => bin2hex(random_bytes(16)),
+            ]);
+        }
+        $db->transComplete();
+        if ($db->transStatus() === false) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Billing failed — please try again']);
+        }
+
+        // Free tables that now have no remaining active orders
+        foreach (array_unique(array_filter(array_column($orders, 'table_id'))) as $tid) {
+            $remaining = $db->table('orders')->where('table_id', $tid)
+                ->whereIn('status', ['pending', 'confirmed', 'preparing', 'ready'])
+                ->countAllResults();
+            if ($remaining === 0) {
+                $db->table('tables')->where('id', $tid)->update(['status' => 'available']);
+            }
+        }
+
+        return $this->response->setJSON([
+            'success'  => true,
+            'message'  => count($orders) . ' order(s) billed together — ' . number_format($total, 2),
+            'total'    => (float)$total,
+            'slip_url' => base_url('pos/slip/bill-multi') . '?ids=' . implode(',', array_column($orders, 'id')),
         ]);
     }
 
@@ -1133,6 +1238,34 @@ class PosController extends BaseController
         return view('staff/pos/bill_slip', [
             'order'      => $order,
             'invoice'    => $invoice,
+            'restaurant' => $restaurant ?? [],
+            'branch'     => $branch ?? [],
+        ]);
+    }
+
+    // ── Combined receipt for several orders billed together ───
+    public function billSlipMulti()
+    {
+        $db  = \Config\Database::connect();
+        $ids = array_filter(array_map('intval', explode(',', (string)($this->request->getGet('ids') ?? ''))));
+        $orders = [];
+        foreach ($ids as $oid) {
+            $o = $this->orderModel->getOrderWithDetails($oid);
+            if ($o && $o['branch_id'] == $this->session->get('branch_id')) {
+                $orders[] = $o;
+            }
+        }
+        if (empty($orders)) return redirect()->to(base_url('pos'));
+
+        $restaurant = $db->table('restaurants')
+            ->where('id', $this->session->get('restaurant_id'))
+            ->get()->getRowArray();
+        $branch     = $db->table('branches')
+            ->where('id', $this->session->get('branch_id'))
+            ->get()->getRowArray();
+
+        return view('staff/pos/bill_slip_multi', [
+            'orders'     => $orders,
             'restaurant' => $restaurant ?? [],
             'branch'     => $branch ?? [],
         ]);

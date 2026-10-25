@@ -133,6 +133,11 @@ $routes->group('admin', ['filter' => 'auth:restaurant_admin,branch_manager,super
     $routes->post('orders/cancel/(:num)',           'Manager\OrderController::cancel/$1');
     $routes->post('orders/refund/(:num)',           'Manager\OrderController::refund/$1');
 
+    // Data import (menu items & customers)
+    $routes->get('import',                          'Manager\ImportController::page');
+    $routes->post('import/preview',                 'Manager\ImportController::preview');
+    $routes->post('import/run',                     'Manager\ImportController::run');
+
     // Reports
     $routes->get('reports/sales',                   'Manager\ReportController::sales');
     $routes->get('reports/items',                   'Manager\ReportController::items');
@@ -194,6 +199,8 @@ $routes->group('pos', ['filter' => 'auth:cashier,waiter,branch_manager,restauran
     $routes->post('order/confirm-customer/(:num)',        'Staff\PosController::confirmCustomerOrder/$1');
     $routes->post('order/reject-customer/(:num)',         'Staff\PosController::rejectCustomerOrder/$1');
     $routes->post('order/cancel/(:num)',            'Staff\PosController::cancelOrder/$1');
+    $routes->post('order/cancel-bulk',               'Staff\PosController::cancelBulk');
+    $routes->post('order/bill-bulk',                 'Staff\PosController::billBulk');
     $routes->post('order/apply-coupon',             'Staff\PosController::applyCoupon');
     $routes->post('order/loyalty-preview',          'Staff\PosController::loyaltyPreview');
     $routes->post('order/add-round',                'Staff\PosController::addRound');
@@ -218,6 +225,7 @@ $routes->group('pos', ['filter' => 'auth:cashier,waiter,branch_manager,restauran
 // Slip print routes (web-based fallback when no thermal printer)
 $routes->get('pos/slip/kot/(:num)',  'Staff\PosController::kotSlip/$1',  ['filter'=>'auth:cashier,waiter,branch_manager,restaurant_admin,super_admin']);
 $routes->get('pos/slip/bill/(:num)', 'Staff\PosController::billSlip/$1', ['filter'=>'auth:cashier,waiter,branch_manager,restaurant_admin,super_admin']);
+$routes->get('pos/slip/bill-multi', 'Staff\PosController::billSlipMulti', ['filter'=>'auth:cashier,waiter,branch_manager,restaurant_admin,super_admin']);
 
 // ── NEW ADVANCED FEATURES ──────────────────────────────────
 

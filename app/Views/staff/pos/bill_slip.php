@@ -186,7 +186,7 @@ body {
   <div class="item">
     <div class="item-row">
       <span class="item-nm"><?= esc($item['name']) ?></span>
-      <span class="item-qt"><?= $item['quantity'] ?></span>
+      <span class="item-qt"><?= rtrim(rtrim(number_format((float)$item['quantity'], 2), '0'), '.') ?></span>
       <span class="item-rt"><?= $sym ?><?= number_format($item['unit_price'],2) ?></span>
       <span class="item-am"><?= $sym ?><?= number_format($item['total_price'],2) ?></span>
     </div>

@@ -1038,6 +1038,7 @@ foreach ($tables as $area) {
 
   // ── Occupied table — show orders ─────────────────────────
   function showOccupiedSheet(t) {
+    currentSheetTable = t;
     document.getElementById('sOrdersTitle').textContent = '🍽 Table ' + t.num + ' — Active Orders';
     document.getElementById('sOrdersBody').innerHTML = '<div style="text-align:center;padding:2rem;color:#94A3B8"><i class="fa fa-spinner fa-spin fa-lg"></i><br><br>Loading orders...</div>';
     document.getElementById('sOrdersFoot').innerHTML = '';
@@ -1068,11 +1069,14 @@ foreach ($tables as $area) {
           ready: '#22C55E',
           served: '#10B981'
         };
+        const sel = window.bulkSel = window.bulkSel || new Set();
+        window.bulkCtx = { orders };
         document.getElementById('sOrdersBody').innerHTML = orders.map(o => {
           const isPaid = o.payment_status === 'paid';
           const kotBadge = parseInt(o.kot_count || 0) > 0 ? `<span style="font-size:.58rem;background:${isPaid?'#DCFCE7':'#FEF3C7'};color:${isPaid?'#15803D':'#92400E'};padding:.1rem .35rem;border-radius:8px;font-weight:800">${isPaid?'✓ PAID':'KOT×'+o.kot_count+' UNPAID'}</span>` : `<span style="font-size:.58rem;background:#FEF3C7;color:#92400E;padding:.1rem .35rem;border-radius:8px;font-weight:800">UNPAID</span>`;
           return `
-        <div style="display:flex;align-items:center;gap:.625rem;padding:.75rem 1rem;border-bottom:1px solid #F1F5F9;border-left:3px solid ${isPaid?'#22C55E':'#F59E0B'}">
+        <div class="torow" style="display:flex;align-items:center;gap:.5rem;padding:.75rem 1rem;border-bottom:1px solid #F1F5F9;border-left:3px solid ${isPaid?'#22C55E':'#F59E0B'}">
+          ${isPaid ? '' : `<input type="checkbox" ${sel.has(o.id)?'checked':''} style="width:17px;height:17px;accent-color:#FF6B35;cursor:pointer;flex-shrink:0" onchange="toggleBulkSel(${o.id}, this.checked)">`}
           <div style="flex:1;min-width:0">
             <div style="font-weight:800;font-size:.875rem;display:flex;align-items:center;gap:.4rem">
               ${o.order_number} ${kotBadge}
@@ -1083,41 +1087,166 @@ foreach ($tables as $area) {
           <div style="text-align:right;flex-shrink:0">
             <div style="font-weight:900;font-size:.9rem;color:var(--primary)">₹${parseFloat(o.total_amount).toFixed(0)}</div>
           </div>
-          <div style="display:flex;gap:.3rem">
+          <div class="tactions" style="display:flex;gap:.3rem;align-items:center;flex-shrink:0">
             <a href="${BASE}pos/order/${o.id}" style="padding:.35rem .6rem;background:var(--primary);color:#fff;border-radius:8px;font-size:.72rem;font-weight:800;text-decoration:none">Open</a>
             <a href="${BASE}pos/new-order/dine_in?table=${t.id}&add_to=${o.id}" style="padding:.35rem .6rem;background:#F5F3FF;color:#6D28D9;border-radius:8px;font-size:.72rem;font-weight:800;text-decoration:none;border:1px solid #DDD6FE" title="Add more items to this order">+Round</a>
-            ${isPaid ? '' : `<button onclick="cancelPosOrder(${o.id})" style="padding:.35rem .6rem;background:#FFF1F2;color:#B91C1C;border:1px solid #FCA5A5;border-radius:8px;font-size:.72rem;font-weight:800;cursor:pointer;align-self:center" title="Cancel this order"><i class="fa fa-ban"></i></button>`}
+            ${isPaid ? '' : `<button type="button" onclick="inlineCancel(${o.id}, this)" style="padding:.35rem .6rem;background:#FFF1F2;color:#B91C1C;border:1px solid #FCA5A5;border-radius:8px;font-size:.72rem;font-weight:800;cursor:pointer;align-self:center" title="Cancel this order"><i class="fa fa-ban"></i></button>`}
           </div>
         </div>`;
         }).join('');
 
-        // Footer: total amount + new order button
-        const total = orders.reduce((s, o) => s + parseFloat(o.total_amount), 0);
-        document.getElementById('sOrdersFoot').innerHTML = `
-        <div style="flex:1;display:flex;gap:.5rem">
-          <a href="${BASE}pos/new-order/dine_in?table=${t.id}" style="flex:1;padding:.7rem;border:1.5px solid #E2E8F0;border-radius:10px;font-weight:700;text-align:center;text-decoration:none;color:#334155;background:#fff;font-size:.82rem;display:flex;align-items:center;justify-content:center;gap:.35rem"><i class="fa fa-plus"></i> New Order</a>
-          <div style="flex:1;padding:.7rem;border-radius:10px;background:#0F172A;color:#fff;font-weight:900;text-align:center;font-size:.875rem">₹${total.toFixed(2)}</div>
-        </div>`;
+        // Footer: bulk bar
+        renderBulkFooter(t.id);
       }).catch(() => {
         document.getElementById('sOrdersBody').innerHTML = '<div style="color:#EF4444;text-align:center;padding:1.5rem">Failed to load orders</div>';
       });
   }
 
-  // ── Cancel a POS order (occupied table) ───────────────────
-  function cancelPosOrder(orderId) {
-    const reason = prompt('Reason for cancelling this order?', 'Walk-in cancelled');
-    if (reason === null) return;
-    postApi(BASE + 'pos/order/cancel/' + orderId, { reason: reason })
+  // ── Bulk / single actions for the table-orders sheet ─────
+  let currentSheetTable = null;
+  let sheetBulkMode = 'sel';
+
+  function renderBulkFooter(tableId) {
+    const sel = window.bulkSel = window.bulkSel || new Set();
+    const orders   = (window.bulkCtx && window.bulkCtx.orders) || [];
+    const total    = orders.reduce((s, o) => s + parseFloat(o.total_amount), 0);
+    const selOrders = orders.filter(o => sel.has(o.id));
+    const selTotal  = selOrders.reduce((s, o) => s + parseFloat(o.total_amount), 0);
+    const foot = document.getElementById('sOrdersFoot');
+
+    if (sheetBulkMode === 'pay') {
+      foot.innerHTML = `
+        <div style="width:100%;display:flex;gap:.35rem;align-items:center;flex-wrap:wrap">
+          ${['cash','card','upi'].map(m => `<button type="button" onclick="bulkBill('${m}', ${tableId})" style="flex:1;padding:.65rem .4rem;border:1.5px solid #E2E8F0;border-radius:10px;background:${m==='cash'?'#F0FFF4':'#F8FAFC'};font-weight:800;font-size:.8rem;cursor:pointer;text-transform:uppercase">${m}</button>`).join('')}
+          <button type="button" onclick="sheetBulkMode='sel';renderBulkFooter(${tableId})" style="padding:.65rem .7rem;border:1.5px solid #E2E8F0;border-radius:10px;background:#fff;font-weight:700;font-size:.8rem;cursor:pointer">✕</button>
+        </div>
+        <div style="width:100%;text-align:center;font-size:.68rem;color:#94A3B8">Charge ₹${selTotal.toFixed(2)} to one payment · ${selOrders.length} order(s)</div>`;
+      return;
+    }
+
+    if (selOrders.length) {
+      foot.innerHTML = `
+        <div style="flex:1;display:flex;gap:.5rem">
+          <button type="button" onclick="bulkCancelToggle(this)" style="flex:1;padding:.7rem;border:1.5px solid #FCA5A5;border-radius:10px;font-weight:800;text-align:center;color:#B91C1C;background:#FFF1F2;font-size:.82rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.35rem"><i class="fa fa-ban"></i> Cancel (<span class="bselN">${selOrders.length}</span>)</button>
+          <button type="button" onclick="sheetBulkMode='pay';renderBulkFooter(${tableId})" style="flex:1.6;padding:.7rem;border:none;border-radius:10px;font-weight:900;text-align:center;color:#fff;background:#15803D;font-size:.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.35rem"><i class="fa fa-receipt"></i> Bill Together ₹${selTotal.toFixed(0)}</button>
+          <button type="button" onclick="clearBulkSel()" title="Clear selection" style="padding:.7rem;border:1.5px solid #E2E8F0;border-radius:10px;background:#fff;cursor:pointer"><i class="fa fa-xmark"></i></button>
+        </div>`;
+      return;
+    }
+
+    foot.innerHTML = `
+      <div style="flex:1;display:flex;gap:.5rem">
+        <a href="${BASE}pos/new-order/dine_in?table=${tableId}" style="flex:1;padding:.7rem;border:1.5px solid #E2E8F0;border-radius:10px;font-weight:700;text-align:center;text-decoration:none;color:#334155;background:#fff;font-size:.82rem;display:flex;align-items:center;justify-content:center;gap:.35rem"><i class="fa fa-plus"></i> New Order</a>
+        <button type="button" onclick="toggleSelectAllBulk(this)" title="Select / release all orders" style="flex:1;padding:.7rem;border-radius:10px;background:#0F172A;color:#fff;font-weight:900;text-align:center;font-size:.875rem;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.35rem">
+          <i class="fa fa-check-double"></i> ₹${total.toFixed(2)} — Select All
+        </button>
+      </div>`;
+  }
+
+  function toggleSelectAllBulk() {
+    const sel = window.bulkSel = window.bulkSel || new Set();
+    const orders = ((window.bulkCtx && window.bulkCtx.orders) || []).filter(o => o.payment_status !== 'paid' && !['cancelled', 'completed'].includes(o.status));
+    const allOn = orders.length && orders.every(o => sel.has(o.id));
+    if (allOn) sel.clear();
+    else orders.forEach(o => sel.add(o.id));
+    renderOrdersSheet();
+  }
+
+  function toggleBulkSel(oid, on) {
+    const sel = window.bulkSel = window.bulkSel || new Set();
+    if (on) sel.add(oid); else sel.delete(oid);
+    renderOrdersSheet();
+  }
+
+  function clearBulkSel() {
+    (window.bulkSel = window.bulkSel || new Set()).clear();
+    renderOrdersSheet();
+  }
+
+  function renderOrdersSheet() {
+    if (currentSheetTable) showOccupiedSheet(currentSheetTable);
+  }
+
+  // ── Inline single-order cancel (no native prompt — works even
+  //    when the browser blocks dialogs) ──────────────────────
+  window.inlineCancel = function(oid, btn) {
+    const row = btn.closest('.torow');
+    if (!row || row.dataset.confirming) return;
+    row.dataset.confirming = '1';
+    const act = row.querySelector('.tactions');
+    act.innerHTML = `
+      <input type="text" class="tcr" placeholder="Reason (optional)" style="padding:.3rem .5rem;border:1px solid #E2E8F0;border-radius:8px;font-size:.7rem;width:110px;outline:none">
+      <button type="button" onclick="confirmInlineCancel(${oid}, this)" style="padding:.35rem .55rem;background:#DC2626;color:#fff;border:none;border-radius:8px;font-size:.7rem;font-weight:800;cursor:pointer">Yes</button>
+      <button type="button" onclick="renderOrdersSheet()" style="padding:.35rem .55rem;background:#fff;color:#334155;border:1px solid #E2E8F0;border-radius:8px;font-size:.7rem;font-weight:700;cursor:pointer">Keep</button>`;
+    const inp = act.querySelector('.tcr');
+    inp.focus();
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') confirmInlineCancel(oid, act.querySelector('button')); });
+  };
+
+  window.confirmInlineCancel = function(oid, btn) {
+    const wrap = btn.closest('.tactions');
+    const reason = wrap.querySelector('.tcr') ? wrap.querySelector('.tcr').value : '';
+    btn.disabled = true; btn.textContent = '…';
+    postApi(BASE + 'pos/order/cancel/' + oid, { reason: reason || 'Walk-in cancelled' })
       .then(d => {
         if (d.success) {
           showToast(d.message || 'Order cancelled', 'warning');
-          closeSheet('sOrders', 'bgOrders');
-          setTimeout(() => location.reload(), 700);
+          (window.bulkSel || new Set()).delete(oid);
+          renderOrdersSheet();
         } else {
           showToast(d.message || 'Could not cancel order', 'error');
+          renderOrdersSheet();
         }
       })
       .catch(() => showToast('Something went wrong.', 'error'));
+  };
+
+  // ── Bulk cancel (two-tap confirmation, no native dialog) ──
+  window.bulkCancelToggle = function(btn) {
+    if (btn.dataset.armed === '1') {
+      const sel = [...(window.bulkSel || new Set())];
+      btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
+      postApi(BASE + 'pos/order/cancel-bulk', { order_ids: JSON.stringify(sel), reason: 'Bulk cancelled at POS' })
+        .then(d => {
+          showToast(d.message || 'Done', d.success ? 'warning' : 'error');
+          window.bulkSel.clear();
+          sheetBulkMode = 'sel';
+          renderOrdersSheet();
+        })
+        .catch(() => { showToast('Something went wrong.', 'error'); btn.disabled = false; });
+      return;
+    }
+    btn.dataset.armed = '1';
+    btn.dataset.old = btn.innerHTML;
+    btn.innerHTML = '<i class="fa fa-triangle-exclamation"></i> Sure? Tap again';
+    setTimeout(() => { if (btn.isConnected && btn.dataset.armed === '1') { btn.dataset.armed = ''; btn.innerHTML = btn.dataset.old; } }, 4000);
+  };
+
+  // ── Bill all selected orders together, one payment ────────
+  window.bulkBill = function(method, tableId) {
+    const sel = [...(window.bulkSel || new Set())];
+    if (!sel.length) return;
+    document.getElementById('sOrdersFoot').innerHTML = '<div style="width:100%;text-align:center;padding:.7rem;font-weight:800"><i class="fa fa-spinner fa-spin"></i> Billing ' + sel.length + ' order(s)…</div>';
+    postApi(BASE + 'pos/order/bill-bulk', { order_ids: JSON.stringify(sel), payment_method: method })
+      .then(d => {
+        if (d.success) {
+          showToast(d.message, 'success');
+          window.bulkSel.clear();
+          sheetBulkMode = 'sel';
+          try { window.open(d.slip_url + (d.slip_url.includes('?') ? '&autoprint=1' : '?autoprint=1'), 'bill_slip', 'width=380,height=750,scrollbars=yes'); } catch (e) {}
+          setTimeout(() => location.reload(), 900);
+        } else {
+          showToast(d.message || 'Could not bill', 'error');
+          sheetBulkMode = 'sel';
+          renderOrdersSheet();
+        }
+      })
+      .catch(() => showToast('Something went wrong.', 'error'));
+  };
+
+  // legacy entry (kept so old links keep working)
+  function cancelPosOrder(orderId) {
+    inlineCancel(orderId, document.querySelector('[onclick*="inlineCancel"]') || document.body);
   }
 
   function cancelTableBooking(tableId) {
