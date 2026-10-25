@@ -110,6 +110,9 @@ $typeIcons = ['dine_in'=>'fa-chair','takeaway'=>'fa-bag-shopping','delivery'=>'f
       <?php if($order_type==='dine_in'): ?>
       <button class="chip" id="chipGuests" onclick="openSheet('sGuests')"><i class="fa fa-users"></i> <span id="guestsChipTxt">1 Guest</span></button>
       <?php endif; ?>
+      <?php if($order_type==='delivery'): ?>
+      <button class="chip" id="chipDling" onclick="openSheet('sDling')"><i class="fa fa-location-dot"></i> <span id="dlingChipTxt">Delivery info</span></button>
+      <?php endif; ?>
       <button class="chip" id="chipNote" onclick="openSheet('sNote')"><i class="fa fa-note-sticky"></i> Note</button>
     </div>
     <div id="cartBody">
@@ -133,6 +136,9 @@ $typeIcons = ['dine_in'=>'fa-chair','takeaway'=>'fa-bag-shopping','delivery'=>'f
       <div class="trow disc" id="tDiscRow" style="display:none"><span>Discount</span><span id="tDisc">-<?= $sym ?>0.00</span></div>
       <div class="trow"><span>GST</span><span id="tTax"><?= $sym ?>0.00</span></div>
       <div class="trow" id="tSvcRow" style="display:none"><span>Service</span><span id="tSvc"><?= $sym ?>0.00</span></div>
+      <?php if($order_type==='delivery'): ?>
+      <div class="trow" id="tDlcRow" style="display:none"><span>Delivery</span><span id="tDlc"><?= $sym ?>0.00</span></div>
+      <?php endif; ?>
       <div class="trow" id="tRndRow" style="display:none"><span>Round Off</span><span id="tRnd">0</span></div>
       <div class="trow grand"><span>TOTAL</span><span id="tTotal"><?= $sym ?>0.00</span></div>
     </div>
@@ -319,6 +325,30 @@ $typeIcons = ['dine_in'=>'fa-chair','takeaway'=>'fa-bag-shopping','delivery'=>'f
     <button onclick="closeSheet('sNote','bgNote')" style="flex:1;padding:.7rem;border:none;border-radius:var(--radius-sm);background:var(--primary);color:#fff;font-family:var(--font);font-weight:800;cursor:pointer;font-size:.95rem"><i class="fa fa-check"></i> Save Note</button>
   </div>
 </div>
+
+<?php if($order_type==='delivery'): ?>
+<!-- Delivery Info Sheet -->
+<div class="sheet-bg" id="bgDling" onclick="closeBg('bgDling','sDling')"></div>
+<div class="sheet" id="sDling">
+  <div class="sheet-pip"></div>
+  <div class="sheet-hdr">
+    <span class="sheet-title"><i class="fa fa-motorcycle" style="color:var(--primary)"></i> Delivery Details</span>
+    <button class="sheet-x" onclick="closeSheet('sDling','bgDling')"><i class="fa fa-times"></i></button>
+  </div>
+  <div class="sheet-body">
+    <textarea id="dlingAddress" rows="3" placeholder="Full delivery address — flat/street, landmark, pincode"
+              style="width:100%;padding:.875rem;border:1.5px solid var(--border);border-radius:var(--radius);font-size:.95rem;font-family:var(--font);resize:none;outline:none;line-height:1.55"></textarea>
+    <div style="display:flex;align-items:center;gap:.625rem;margin-top:.875rem">
+      <span style="font-weight:700;font-size:.85rem;white-space:nowrap">Delivery charge</span>
+      <input type="number" id="dlingCharge" min="0" step="0.01" value="0"
+             style="width:120px;padding:.6rem;border:1.5px solid var(--border);border-radius:var(--radius);font-size:.95rem;font-weight:700;text-align:right;outline:none">
+    </div>
+  </div>
+  <div class="sheet-foot">
+    <button onclick="saveDling()" style="flex:1;padding:.7rem;border:none;border-radius:var(--radius-sm);background:var(--primary);color:#fff;font-family:var(--font);font-weight:800;cursor:pointer;font-size:.95rem"><i class="fa fa-check"></i> Save Delivery Details</button>
+  </div>
+</div>
+<?php endif; ?>
 
 <!-- Coupon Sheet -->
 <div class="sheet-bg" id="bgCoupon" onclick="closeBg('bgCoupon','sCoupon')"></div>
@@ -543,6 +573,9 @@ function updateTotalsDOM(tot,sub,discid,discrow,tax,svc,svcrow,rnd,rndrow,total)
   if(gs(discid))  gs(discid).textContent='-'+SYM+tot.disc.toFixed(2);
   if(gs(svcrow))  gs(svcrow).style.display=tot.svc>0?'':'none';
   if(gs(svc))     gs(svc).textContent=SYM+tot.svc.toFixed(2);
+  // delivery charge row (delivery orders only)
+  const dRow=gs('tDlcRow'), dEl=gs('tDlc');
+  if(dRow && dEl){ dRow.style.display=tot.dlc>0?'':'none'; dEl.textContent=SYM+tot.dlc.toFixed(2); }
   if(gs(rndrow))  gs(rndrow).style.display=Math.abs(tot.rnd)>.001?'':'none';
   if(gs(rnd))     gs(rnd).textContent=(tot.rnd>0?'+':'')+SYM+tot.rnd.toFixed(2);
 }
@@ -569,10 +602,21 @@ function calcTotals(){
   });
   const d=disc.amt||0;
   const svc=SVCPCT>0?(sub-d)*SVCPCT/100:0;
-  const pre=sub-d+tax+svc;
+  const dc=(OMODE==='delivery'?(dling.charge||0):0);
+  const pre=sub-d+tax+svc+dc;
   const total=Math.round(pre);
   const rnd=total-pre;
-  return {sub:parseFloat(sub.toFixed(2)),tax:parseFloat(tax.toFixed(2)),disc:d,svc:parseFloat(svc.toFixed(2)),rnd:parseFloat(rnd.toFixed(2)),total};
+  return {sub:parseFloat(sub.toFixed(2)),tax:parseFloat(tax.toFixed(2)),disc:d,svc:parseFloat(svc.toFixed(2)),dlc:dc,rnd:parseFloat(rnd.toFixed(2)),total};
+}
+
+// ── Delivery details (delivery orders only) ───────────────
+let dling={address:'',charge:0};
+function saveDling(){
+  dling.address=document.getElementById('dlingAddress').value.trim();
+  dling.charge=parseFloat(document.getElementById('dlingCharge').value)||0;
+  document.getElementById('dlingChipTxt').textContent=(dling.charge>0?'Delivery ':'' )+(dling.address? dling.address.slice(0,18)+'…' : 'Delivery info');
+  renderAll();
+  closeSheet('sDling','bgDling');
 }
 
 // ── Discount ──────────────────────────────────────────────
@@ -717,7 +761,9 @@ async function createOrder(){
     // Add Round mode — append to existing order
     return postF(BASE+'pos/order/add-round',{order_id:ADD_TO_ORDER,items:JSON.stringify(items)});
   }
-  return postF(BASE+'pos/order/create',{order_type:OMODE,table_id:TABLEID,customer_id:cust.id||'',customer_name:cust.name||'',customer_phone:cust.phone||'',no_of_guests:guests,discount_type:disc.type||'flat',discount_value:disc.type==='loyalty'?(disc.val||0):(disc.amt||0),coupon_code:disc.coupon||'',kitchen_notes:note,items:JSON.stringify(items)});
+  post={order_type:OMODE,table_id:TABLEID,customer_id:cust.id||'',customer_name:cust.name||'',customer_phone:cust.phone||'',no_of_guests:guests,discount_type:disc.type||'flat',discount_value:disc.type==='loyalty'?(disc.val||0):(disc.amt||0),coupon_code:disc.coupon||'',kitchen_notes:note,items:JSON.stringify(items)};
+  if(OMODE==='delivery'){ post.delivery_address=dling.address; post.delivery_charge=dling.charge; }
+  return postF(BASE+'pos/order/create',post);
 }
 
 function showSuccess(data,paid,total){

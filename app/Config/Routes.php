@@ -129,6 +129,7 @@ $routes->group('admin', ['filter' => 'auth:restaurant_admin,branch_manager,super
     // Orders
     $routes->get('orders',                          'Manager\OrderController::index');
     $routes->get('orders/view/(:num)',              'Manager\OrderController::view/$1');
+    $routes->get('orders/(:num)',                   'Manager\OrderController::view/$1');
     $routes->post('orders/cancel/(:num)',           'Manager\OrderController::cancel/$1');
     $routes->post('orders/refund/(:num)',           'Manager\OrderController::refund/$1');
 
@@ -204,6 +205,9 @@ $routes->group('pos', ['filter' => 'auth:cashier,waiter,branch_manager,restauran
     $routes->get('kitchen',                         'Staff\KitchenController::index');
     $routes->post('kitchen/update-status',          'Staff\KitchenController::updateStatus');
     $routes->get('shift/summary',                   'Staff\ShiftController::summary');
+    $routes->get('delivery',                        'Staff\DeliveryController::board');
+    $routes->post('delivery/assign',                'Staff\DeliveryController::assign');
+    $routes->post('delivery/status',                'Staff\DeliveryController::status');
     $routes->post('shift/open',                     'Staff\ShiftController::open');
     $routes->post('shift/close',                    'Staff\ShiftController::close');
     $routes->post('shift/handover',                 'Staff\ShiftController::handover');

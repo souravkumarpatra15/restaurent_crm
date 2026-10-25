@@ -702,6 +702,7 @@ foreach ($tables as $area) {
           <span id="custOrdBadge" style="display:none;position:absolute;top:2px;right:2px;width:15px;height:15px;border-radius:50%;background:#EF4444;color:#fff;font-size:.52rem;font-weight:900;display:flex;align-items:center;justify-content:center;line-height:1;border:1.5px solid var(--navy-0)">0</span>
         </button>
         <a href="<?= base_url('pos/kitchen') ?>" class="pi-navbar-btn pi-desktop-act" title="Kitchen Display"><i class="fa fa-fire-burner"></i></a>
+        <a href="<?= base_url('pos/delivery') ?>" class="pi-navbar-btn pi-desktop-act" title="Delivery Board"><i class="fa fa-motorcycle"></i></a>
         <a href="<?= base_url('pos/shift/summary') ?>" class="pi-navbar-btn pi-desktop-act" title="Shift Summary"><i class="fa fa-clock"></i></a>
         <a href="<?= base_url('logout') ?>" class="pi-navbar-btn pi-desktop-act" title="Logout"><i class="fa fa-right-from-bracket"></i></a>
       </div>

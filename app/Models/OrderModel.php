@@ -11,7 +11,8 @@ class OrderModel extends BaseModel
     protected $allowedFields = [
         'restaurant_id','branch_id','table_id','customer_id','user_id',
         'order_number','order_type','status','customer_name','customer_phone',
-        'no_of_guests','waiter_id','subtotal','discount_type','discount_amount',
+        'no_of_guests','waiter_id','rider_id','rider_name','delivery_address','delivery_status','delivered_at',
+        'subtotal','discount_type','discount_amount',
         'discount_percent','coupon_code','tax_amount','cgst_amount','sgst_amount',
         'igst_amount','cess_amount','service_charge','packing_charge','delivery_charge',
         'round_off','total_amount','paid_amount','balance_amount','payment_status',

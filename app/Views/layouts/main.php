@@ -205,6 +205,10 @@
     <a href="<?= base_url('pos/kitchen') ?>" class="nav-item <?= active('pos/kitchen') ?>">
       <i class="fa fa-fire-burner"></i><span>Kitchen Display</span>
     </a>
+    <div class="nav-section">DELIVERY</div>
+    <a href="<?= base_url('pos/delivery') ?>" class="nav-item <?= active('pos/delivery') ?>">
+      <i class="fa fa-motorcycle"></i><span>Delivery Board</span>
+    </a>
     <div class="nav-section">SHIFT</div>
     <a href="<?= base_url('pos/shift/summary') ?>" class="nav-item <?= active('pos/shift/summary') ?>">
       <i class="fa fa-clock"></i><span>Shift Summary</span>

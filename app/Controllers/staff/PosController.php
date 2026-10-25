@@ -153,6 +153,14 @@ class PosController extends BaseController
         $couponCode    = strtoupper(trim($this->request->getPost('coupon_code') ?? ''));
         $totals = $this->orderModel->calculateTotals($itemDetails, $this->restaurant, $discountType, $discountValue, true, $couponCode);
 
+        // Delivery orders can carry a delivery charge + address
+        $orderType       = $this->request->getPost('order_type');
+        $deliveryCharge  = ($orderType === 'delivery') ? max(0, (float)($this->request->getPost('delivery_charge') ?? 0)) : 0;
+        $deliveryAddress = ($orderType === 'delivery') ? trim($this->request->getPost('delivery_address') ?: '') : null;
+        if ($deliveryCharge > 0) {
+            $totals['total_amount'] = round($totals['total_amount'] + $deliveryCharge, 2);
+        }
+
         $db = \Config\Database::connect();
         $db->transStart();
 
@@ -165,10 +173,13 @@ class PosController extends BaseController
             'customer_id'     => $this->request->getPost('customer_id') ?: null,
             'user_id'         => $userId,
             'order_number'    => $orderNumber,
-            'order_type'      => $this->request->getPost('order_type'),
+            'order_type'      => $orderType,
             'status'          => 'pending',
             'customer_name'   => $this->request->getPost('customer_name') ?: null,
             'customer_phone'  => $this->request->getPost('customer_phone') ?: null,
+            'delivery_address'=> $deliveryAddress,
+            'delivery_status' => $orderType === 'delivery' ? 'unassigned' : null,
+            'delivery_charge' => $deliveryCharge,
             'no_of_guests'    => (int)($this->request->getPost('no_of_guests') ?? $this->request->getPost('guests') ?? 1),
             'subtotal'        => $totals['subtotal'],
             'discount_type'   => $discountType,
