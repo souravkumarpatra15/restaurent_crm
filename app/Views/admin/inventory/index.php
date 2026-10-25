@@ -2,6 +2,7 @@
 <div style="padding:0 1rem">
   <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-bottom:1rem">
     <button class="btn btn-outline" onclick="openModal('addItemModal')"><i class="fa fa-plus"></i> Add Item</button>
+    <a href="<?= base_url('admin/inventory/recipes') ?>" class="btn btn-outline"><i class="fa fa-scroll"></i> Recipes</a>
     <button class="btn btn-primary" onclick="openModal('transactionModal')"><i class="fa fa-right-left"></i> Stock Entry</button>
   </div>
 

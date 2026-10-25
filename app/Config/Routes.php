@@ -172,6 +172,9 @@ $routes->group('admin', ['filter' => 'auth:restaurant_admin,branch_manager,super
     $routes->get('inventory',                       'Manager\InventoryController::index');
     $routes->post('inventory/store',                'Manager\InventoryController::store');
     $routes->post('inventory/transaction',          'Manager\InventoryController::transaction');
+$routes->get('inventory/recipes',               'Manager\InventoryController::recipes');
+$routes->get('inventory/recipes/(:num)',        'Manager\InventoryController::recipeEdit/$1');
+$routes->post('inventory/recipes/save',         'Manager\InventoryController::saveRecipe');
 
     // Notifications
     $routes->get('notifications/count',             'Manager\NotificationController::count');

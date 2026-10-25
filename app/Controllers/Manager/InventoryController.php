@@ -63,8 +63,7 @@ class InventoryController extends BaseController
         return redirect()->to(base_url('admin/inventory'))->with('success','Item added');
     }
 
-    public function transaction()
-    {
+    public function transaction()    {
         $db    = \Config\Database::connect();
         $bid   = session('branch_id');
         $itemId= $this->request->getPost('inventory_item_id');
@@ -119,5 +118,119 @@ class InventoryController extends BaseController
         }
 
         return $this->response->setJSON(['success'=>true,'new_stock'=>$newQty]);
+    }
+
+    // ── Recipe (BOM) editor — ingredients per menu item ──────
+    public function recipes()    {
+        $db  = \Config\Database::connect();
+        $rid = session('restaurant_id');
+
+        $menuItems = $db->table('menu_items')
+            ->select('id, name')
+            ->where('restaurant_id', $rid)
+            ->orderBy('name', 'ASC')
+            ->get()->getResultArray();
+
+        $invItems = $db->table('inventory_items')
+            ->select('id, name, unit')
+            ->where('restaurant_id', $rid)
+            ->where('is_active', 1)
+            ->orderBy('name', 'ASC')
+            ->get()->getResultArray();
+
+        // menu_item_id => [{inventory_item_id, quantity, name, unit}]
+        $recipes = $db->table('menu_item_ingredients mri')
+            ->select('mri.menu_item_id, mri.inventory_item_id, mri.quantity, ii.name, ii.unit')
+            ->join('inventory_items ii', 'ii.id = mri.inventory_item_id', 'left')
+            ->whereIn('mri.menu_item_id', array_column($menuItems, 'id') ?: [0])
+            ->get()->getResultArray();
+        $recipeMap = [];
+        foreach ($recipes as $r) {
+            $recipeMap[$r['menu_item_id']][] = $r;
+        }
+
+        return view('admin/inventory/recipes', array_merge($this->baseData(), [
+            'menuItems' => $menuItems,
+            'invItems'  => $invItems,
+            'recipeMap' => $recipeMap,
+        ]));
+    }
+
+    public function recipeEdit($menuItemId)
+    {
+        $db  = \Config\Database::connect();
+        $rid = session('restaurant_id');
+
+        $menuItem = $db->table('menu_items')
+            ->where('id', (int)$menuItemId)->where('restaurant_id', $rid)
+            ->get()->getRowArray();
+        if (!$menuItem) {
+            return redirect()->to(base_url('admin/inventory/recipes'))->with('error', 'Menu item not found');
+        }
+
+        $invItems = $db->table('inventory_items')
+            ->select('id, name, unit')
+            ->where('restaurant_id', $rid)
+            ->where('is_active', 1)
+            ->orderBy('name', 'ASC')
+            ->get()->getResultArray();
+
+        $recipeRows = $db->table('menu_item_ingredients')
+            ->where('menu_item_id', (int)$menuItemId)
+            ->get()->getResultArray();
+
+        return view('admin/inventory/recipe_edit', array_merge($this->baseData(), [
+            'menuItem'   => $menuItem,
+            'invItems'   => $invItems,
+            'recipeRows' => $recipeRows,
+        ]));
+    }
+
+    public function saveRecipe()
+    {
+        $db         = \Config\Database::connect();
+        $rid        = session('restaurant_id');
+        $menuItemId = (int)$this->request->getPost('menu_item_id');
+
+        // Tenant guard on the menu item
+        $menuItem = $db->table('menu_items')
+            ->where('id', $menuItemId)->where('restaurant_id', $rid)
+            ->get()->getRowArray();
+        if (!$menuItem) {
+            return redirect()->to(base_url('admin/inventory/recipes'))->with('error', 'Menu item not found');
+        }
+
+        $invIds = $this->request->getPost('inventory_item_id') ?: [];
+        $qtys   = $this->request->getPost('quantity') ?: [];
+
+        $db->transStart();
+        $db->table('menu_item_ingredients')->where('menu_item_id', $menuItemId)->delete();
+        foreach ($invIds as $i => $invId) {
+            $invId = (int)$invId;
+            $qty   = (float)($qtys[$i] ?? 0);
+            // Tenant guard on the inventory item too
+            $valid = $db->table('inventory_items')->where('id', $invId)->where('restaurant_id', $rid)->countAllResults();
+            if (!$invId || $qty <= 0 || !$valid) continue;
+            $db->table('menu_item_ingredients')->insert([
+                'menu_item_id'      => $menuItemId,
+                'inventory_item_id' => $invId,
+                'quantity'          => $qty,
+                'created_at'        => date('Y-m-d H:i:s'),
+            ]);
+        }
+        $db->transComplete();
+
+        return redirect()->to(base_url('admin/inventory/recipes') . '?item=' . $menuItemId)
+            ->with('success', 'Recipe saved for ' . $menuItem['name']);
+    }
+
+    private function baseData(): array
+    {
+        return [
+            'pageTitle'      => 'Inventory',
+            'userName'       => session('user_name'),
+            'userRole'       => session('role_slug'),
+            'restaurantName' => session('restaurant_name'),
+        ];
     }
 }

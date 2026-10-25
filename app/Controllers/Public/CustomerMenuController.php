@@ -275,8 +275,11 @@ class CustomerMenuController extends BaseController
             'subtotal'        => $totals['subtotal'],
             'discount_amount' => 0,
             'tax_amount'      => $totals['tax_amount'],
+            'igst_amount'     => $totals['igst_amount'],
             'cgst_amount'     => $totals['cgst_amount'],
             'sgst_amount'     => $totals['sgst_amount'],
+            'cess_amount'     => $totals['cess_amount'],
+            'packing_charge'  => $totals['packing_charge'],
             'total_amount'    => $totals['total_amount'],
             'payment_status'  => 'unpaid',
             'estimated_mins'  => $estMins,
@@ -320,6 +323,12 @@ class CustomerMenuController extends BaseController
             'booked_phone' => null,
             'booked_for'   => null,
         ]);
+
+        // Inventory: deduct recipe ingredients for the QR order
+        \App\Libraries\RecipeEngine::deduct(
+            $db, (int)$table['restaurant_id'], (int)$table['branch_id'],
+            $itemDetails, 0, (int)$orderId
+        );
 
         $db->transComplete();
 

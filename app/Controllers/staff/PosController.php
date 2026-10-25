@@ -8,6 +8,7 @@ use App\Models\TableModel;
 use App\Models\CustomerModel;
 use App\Models\RestaurantModel;
 use App\Libraries\ThermalPrinter;
+use App\Libraries\RecipeEngine;
 use Config\Database;
 
 class PosController extends BaseController
@@ -237,6 +238,10 @@ class PosController extends BaseController
         if ($this->request->getPost('table_id')) {
             $db->table('tables')->where('id', $this->request->getPost('table_id'))->update(['status' => 'occupied']);
         }
+
+        // Inventory: deduct recipe ingredients for everything just sold
+        RecipeEngine::deduct($db, $restaurantId, (int)$this->branch['id'], $itemDetails,
+            (int)$this->session->get('user_id'), (int)$orderId);
 
         $db->transComplete();
 
@@ -980,6 +985,9 @@ class PosController extends BaseController
             'cancelled_reason' => $reason,
             'cancelled_by'     => $this->session->get('user_id'),
         ]);
+
+        // Inventory: recipe ingredients of this order go back to stock
+        RecipeEngine::restockOrder($db, $order);
 
         // Stop the kitchen: cancel any still-open KOTs for this order
         $db->table('kots')
