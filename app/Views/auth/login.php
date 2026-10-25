@@ -506,6 +506,10 @@
         </button>
       </form>
 
+      <div style="text-align:center;margin-top:.9rem;font-size:.82rem;color:#94A3B8">
+        New to DinoviX? <a href="<?= base_url('signup') ?>" style="color:var(--primary);font-weight:700;text-decoration:none">Create a free restaurant account →</a>
+      </div>
+
       <!-- Demo Accounts -->
       <!-- <div class="demo-accounts">
         <div class="demo-title">— Quick Demo Access —</div>

@@ -1173,8 +1173,14 @@ class PosController extends BaseController
         }
         // Per-customer limit — how many times THIS customer may use it
         $perPage = (int)($coupon['per_user_limit'] ?? 0);
+        $custId  = (int)($this->request->getPost('customer_id') ?: 0);
+
+        // First-order / birthday coupons need a customer attached to check
+        if (!$custId && in_array($coupon['applicable_on'] ?? 'all', ['first_order', 'birthday'], true)) {
+            return $this->response->setJSON(['success'=>false,'message'=>'Attach a customer to use this coupon']);
+        }
+
         if ($perPage > 0) {
-            $custId = (int)($this->request->getPost('customer_id') ?: 0);
             if (!$custId) {
                 return $this->response->setJSON(['success'=>false,'message'=>'Attach a customer to use this coupon']);
             }
@@ -1186,6 +1192,29 @@ class PosController extends BaseController
                 ->countAllResults();
             if ($used >= $perPage) {
                 return $this->response->setJSON(['success'=>false,'message'=>'This customer has already used this coupon ' . $used . ' time(s)']);
+            }
+        }
+
+        // First-order-only: reject if this customer has any prior non-cancelled bill
+        if (($coupon['applicable_on'] ?? 'all') === 'first_order') {
+            $prior = $this->db->table('orders')
+                ->where('customer_id', $custId)
+                ->where('restaurant_id', $this->session->get('restaurant_id'))
+                ->where('status !=', 'cancelled')
+                ->countAllResults();
+            if ($prior > 0) {
+                return $this->response->setJSON(['success'=>false,'message'=>'This coupon is only valid on your first order']);
+            }
+        }
+
+        // Birthday coupon: valid only on the customer's birth date
+        if (($coupon['applicable_on'] ?? 'all') === 'birthday') {
+            $dob = $this->db->table('customers')->select('date_of_birth')->where('id', $custId)->get()->getRowArray()['date_of_birth'] ?? null;
+            if (!$dob) {
+                return $this->response->setJSON(['success'=>false,'message'=>'Customer has no date of birth saved']);
+            }
+            if (date('m-d', strtotime($dob)) !== date('m-d')) {
+                return $this->response->setJSON(['success'=>false,'message'=>"This birthday coupon is valid on the customer's birth date only (" . date('d M', strtotime($dob)) . ')']);
             }
         }
 

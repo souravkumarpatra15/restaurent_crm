@@ -7,6 +7,8 @@ use CodeIgniter\Router\RouteCollection;
 // $routes->get('/',                       'Auth\AuthController::login');
 $routes->get('login',                   'Auth\AuthController::login');
 $routes->post('login',                  'Auth\AuthController::doLogin');
+$routes->get('signup',                  'Auth\SignupController::form');
+$routes->post('signup',                 'Auth\SignupController::submit');
 $routes->get('logout',                  'Auth\AuthController::logout');
 $routes->get('forgot-password',         'Auth\AuthController::forgotPassword');
 $routes->post('forgot-password',        'Auth\AuthController::doForgotPassword');
@@ -278,3 +280,7 @@ $routes->post('admin/booking/no-show/(:num)', 'Manager\BookingMgmtController::no
 $routes->post('admin/booking/complete/(:num)','Manager\BookingMgmtController::complete/$1',['filter'=>'auth:restaurant_admin,branch_manager']);
 $routes->get('admin/booking/settings',        'Manager\BookingMgmtController::settings',  ['filter'=>'auth:restaurant_admin,branch_manager']);
 $routes->post('admin/booking/settings/save',  'Manager\BookingMgmtController::saveSettings',['filter'=>'auth:restaurant_admin,branch_manager']);
+
+// ── Public Booking API (for restaurant websites / widgets; no session, no CSRF) ──
+$routes->get('api/bookings/slots',             'Api\BookingApi::slots');
+$routes->post('api/bookings',                  'Api\BookingApi::book');

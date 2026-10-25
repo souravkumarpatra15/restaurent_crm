@@ -118,6 +118,8 @@
             <option value="dine_in">Dine-in Only</option>
             <option value="takeaway">Takeaway Only</option>
             <option value="delivery">Delivery Only</option>
+            <option value="first_order">First Order Only</option>
+            <option value="birthday">Valid on Customer Birthday</option>
           </select>
         </div>
       </div>
