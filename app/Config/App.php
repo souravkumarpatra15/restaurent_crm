@@ -16,6 +16,7 @@ class App extends BaseConfig
      *
      * E.g., http://example.com/
      */
+    // Deployments override this via `app.baseURL` in .env (handled by BaseConfig)
     public string $baseURL = 'http://localhost:8080/';
 
     /**
