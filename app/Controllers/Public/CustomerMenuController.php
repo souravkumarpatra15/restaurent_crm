@@ -52,7 +52,67 @@ class CustomerMenuController extends BaseController
         }
         $categories = array_values(array_filter($categories, fn($c) => !empty($c['items'])));
 
-        return view('public/menu', ['table' => $table, 'categories' => $categories]);
+        // Available variants + addon groups per item, so customers can
+        // customize before adding to the cart
+        $itemIds = [];
+        foreach ($categories as $cat) foreach ($cat['items'] as $it) $itemIds[] = $it['id'];
+
+        $cfg = [];
+        if ($itemIds) {
+            $inItems = implode(',', array_map('intval', $itemIds));
+
+            $variants = $db->table('menu_variants')
+                ->whereIn('menu_item_id', $itemIds)->where('is_active', 1)
+                ->orderBy('sort_order', 'ASC')
+                ->get()->getResultArray();
+            foreach ($variants as $v) {
+                $cfg[$v['menu_item_id']]['variants'][] = [
+                    'id'    => (int)$v['id'],
+                    'name'  => $v['name'],
+                    'price' => (float)$v['price'],
+                ];
+            }
+
+            $groupLinks = $db->table('menu_item_addon_groups iag')
+                ->select('iag.menu_item_id, g.id, g.name, g.selection_type, g.is_required, g.min_selection')
+                ->join('menu_addon_groups g', 'g.id = iag.addon_group_id')
+                ->whereIn('iag.menu_item_id', $itemIds)
+                ->get()->getResultArray();
+
+            $groupIds = array_map(fn($g) => (int)$g['id'], $groupLinks);
+            $addons   = [];
+            if ($groupIds) {
+                $rows = $db->table('menu_addons')
+                    ->whereIn('addon_group_id', $groupIds)->where('is_active', 1)
+                    ->orderBy('id', 'ASC')
+                    ->get()->getResultArray();
+                foreach ($rows as $a) {
+                    $addons[$a['addon_group_id']][] = [
+                        'id'    => (int)$a['id'],
+                        'name'  => $a['name'],
+                        'price' => (float)$a['price'],
+                    ];
+                }
+            }
+            foreach ($groupLinks as $gl) {
+                $groupId = (int)$gl['id'];
+                if (empty($addons[$groupId])) continue; // skip empty groups
+                $cfg[$gl['menu_item_id']]['groups'][] = [
+                    'id'         => $groupId,
+                    'name'       => $gl['name'],
+                    'required'   => (int)$gl['is_required'] === 1,
+                    'single'     => $gl['selection_type'] === 'single',
+                    'min'        => (int)$gl['min_selection'],
+                    'addons'     => $addons[$groupId],
+                ];
+            }
+        }
+
+        return view('public/menu', [
+            'table'      => $table,
+            'categories' => $categories,
+            'cfg'        => $cfg,
+        ]);
     }
 
     // ── Place order from customer ─────────────────────────────
@@ -113,16 +173,58 @@ class CustomerMenuController extends BaseController
                 ->where('is_active', 1)
                 ->get()->getRowArray();
             if (!$menuItem) continue;
+
+            $qty      = max(1, (int)($item['qty'] ?? 1));
+            $price    = (float)$menuItem['base_price'];
+            $variantId = 0;
+            $variantName = null;
+
+            // Variant: must actually belong to this menu item
+            if (!empty($item['variant_id'])) {
+                $variant = $db->table('menu_variants')
+                    ->where('id', (int)$item['variant_id'])
+                    ->where('menu_item_id', $menuItem['id'])
+                    ->where('is_active', 1)
+                    ->get()->getRowArray();
+                if ($variant) {
+                    // variant price INCLUDES the base (it is the absolute price)
+                    $price       = (float)$variant['price'];
+                    $variantId   = (int)$variant['id'];
+                    $variantName = $variant['name'];
+                }
+            }
+
+            // Add-ons: must belong to groups attached to THIS item, and the
+            // selected price is charged once per piece of the item
+            $addonRows = [];
+            if (!empty($item['addons']) && is_array($item['addons'])) {
+                $addonIds = array_map('intval', $item['addons']);
+                $rows = $db->table('menu_addons a')
+                    ->select('a.id, a.name, a.price')
+                    ->join('menu_item_addon_groups iag', 'iag.addon_group_id = a.addon_group_id')
+                    ->where('iag.menu_item_id', $menuItem['id'])
+                    ->whereIn('a.id', $addonIds)
+                    ->where('a.is_active', 1)
+                    ->get()->getResultArray();
+                $seen = [];
+                foreach ($rows as $a) {
+                    if (isset($seen[$a['id']])) continue; // dedupe
+                    $seen[$a['id']] = true;
+                    $addonRows[] = $a;
+                    $price += (float)$a['price'];
+                }
+            }
+
             $itemDetails[] = [
                 'menu_item_id' => $menuItem['id'],
-                'variant_id'   => null,
-                'name'         => $menuItem['name'],
-                'variant_name' => null,
-                'quantity'     => max(1, (int)($item['qty'] ?? 1)),
-                'unit_price'   => $menuItem['base_price'],
+                'variant_id'   => $variantId ?: null,
+                'name'         => $menuItem['name'] . ($variantName ? ' (' . $variantName . ')' : ''),
+                'variant_name' => $variantName,
+                'quantity'     => $qty,
+                'unit_price'   => $price,
                 'tax_percent'  => $menuItem['tax_percent'],
                 'notes'        => $item['note'] ?? '',
-                'addons'       => [],
+                'addons'       => $addonRows,
             ];
         }
 
@@ -177,7 +279,7 @@ class CustomerMenuController extends BaseController
             $db->table('order_items')->insert([
                 'order_id'     => $orderId,
                 'menu_item_id' => $item['menu_item_id'],
-                'variant_id'   => null,
+                'variant_id'   => $item['variant_id'],
                 'name'         => $item['name'],
                 'quantity'     => $item['quantity'],
                 'unit_price'   => $item['unit_price'],
@@ -187,6 +289,17 @@ class CustomerMenuController extends BaseController
                 'notes'        => $item['notes'],
                 'status'       => 'pending',
             ]);
+            $orderItemId = $db->insertID();
+
+            // Add-ons: also stored on the item so KOT/bill show them
+            foreach ($item['addons'] as $addon) {
+                $db->table('order_item_addons')->insert([
+                    'order_item_id' => $orderItemId,
+                    'addon_id'      => $addon['id'],
+                    'name'          => $addon['name'],
+                    'price'         => $addon['price'],
+                ]);
+            }
         }
 
         // Mark table occupied

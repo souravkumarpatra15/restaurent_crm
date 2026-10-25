@@ -98,6 +98,22 @@ html,body{height:100%;font-family:var(--font);background:#F8FAFC;color:#0F172A;-
 .ci-qty{display:flex;align-items:center;gap:.375rem}
 .ci-price{font-weight:900;font-size:.9rem;color:var(--p);min-width:60px;text-align:right}
 
+/* ── CUSTOMIZE (variants & add-ons) ─────────────────── */
+.opt-row{display:flex;align-items:center;gap:.625rem;padding:.625rem;border:1.5px solid #E2E8F0;border-radius:12px;margin-bottom:.4rem;cursor:pointer;transition:all .15s;background:#fff}
+.opt-row.on{border-color:var(--p);background:#FFF7F2}
+.opt-row .opt-check{width:20px;height:20px;border:2px solid #CBD5E1;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.6rem;transition:all .15s;font-weight:900}
+.opt-row.on .opt-check{background:var(--p);border-color:var(--p)}
+.opt-row.multi .opt-check{border-radius:6px}
+.opt-main{flex:1;min-width:0}
+.opt-name{font-weight:700;font-size:.8rem;color:#0F172A}
+.opt-price{font-size:.72rem;color:#64748B;font-weight:600}
+.grp-title{font-weight:800;font-size:.72rem;color:#0F172A;margin:.875rem 0 .4rem;text-transform:uppercase;letter-spacing:.04em}
+.grp-title .req-dot{color:#DC2626;font-weight:900}
+.step-nav{display:flex;align-items:center;gap:.75rem;justify-content:center;margin:.75rem 0}
+.step-nav button.step{width:44px;height:44px;border-radius:50%;border:1.5px solid var(--border);background:#fff;font-weight:900;font-size:1.2rem;cursor:pointer;color:var(--p)}
+.step-nav .n{font-weight:900;font-size:1.05rem;min-width:28px;text-align:center}
+.cust-badge{position:absolute;top:.6rem;left:.6rem;background:#EFF6FF;color:#1D4ED8;font-size:.55rem;font-weight:800;padding:.15rem .35rem;border-radius:7px}
+
 /* ── PLACE ORDER FORM ───────────────────────────────── */
 .form-field{margin-bottom:.75rem}
 .form-label{font-size:.72rem;font-weight:800;color:#64748B;display:block;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.04em}
@@ -171,7 +187,7 @@ html,body{height:100%;font-family:var(--font);background:#F8FAFC;color:#0F172A;-
           <?= $item['food_type']==='beverage'?'☕':($item['food_type']==='dessert'?'🍰':'🍽') ?>
           <?php endif; ?>
         </div>
-        <div class="icard-body">
+        <div class="icard-body" data-item-id="<?= $item['id'] ?>" data-item-name="<?= esc($item['name']) ?>" data-item-price="<?= $item['base_price'] ?>">
           <div class="icard-top">
             <span class="dot <?= in_array($item['item_type'],['veg','vegan'])?'veg':'nveg' ?>"></span>
             <span class="icard-name"><?= esc($item['name']) ?></span>
@@ -186,19 +202,21 @@ html,body{height:100%;font-family:var(--font);background:#F8FAFC;color:#0F172A;-
             </div>
           </div>
         </div>
+        <?php $hasOpts = !empty($cfg[$item['id']]['variants']) || !empty($cfg[$item['id']]['groups']); ?>
+        <?php if ($hasOpts): ?><span class="cust-badge">Customise</span><?php endif; ?>
         <!-- Qty badge (shows when >0 in cart) -->
         <div class="qty-badge" id="qb<?= $item['id'] ?>" style="display:none">0</div>
         <!-- Add button (shows when qty=0) -->
         <div class="qty-wrap" id="qw<?= $item['id'] ?>">
-          <button class="qty-btn add" onclick="addItem(<?= $item['id'] ?>,<?= $item['base_price'] ?>,'<?= esc(addslashes($item['name'])) ?>')">
+          <button class="qty-btn add" onclick="<?= $hasOpts ? 'openCustomize('.$item['id'].')' : 'quickAdd('.$item['id'].')' ?>">
             <i class="fa fa-plus"></i>
           </button>
         </div>
         <!-- Qty controls (shows when qty>0) -->
         <div class="qty-wrap" id="qc<?= $item['id'] ?>" style="display:none">
-          <button class="qty-btn sub" onclick="changeQty(<?= $item['id'] ?>,-1)">－</button>
+          <button class="qty-btn sub" onclick="changeQtyMain(<?= $item['id'] ?>,-1)">－</button>
           <span class="qty-num" id="qn<?= $item['id'] ?>">0</span>
-          <button class="qty-btn add" onclick="changeQty(<?= $item['id'] ?>,1)">＋</button>
+          <button class="qty-btn add" onclick="<?= $hasOpts ? 'openCustomize('.$item['id'].')' : 'quickAdd('.$item['id'].')' ?>">＋</button>
         </div>
       </div>
       <?php endforeach; ?>
@@ -227,6 +245,27 @@ html,body{height:100%;font-family:var(--font);background:#F8FAFC;color:#0F172A;-
     <button class="btn btn-outline" onclick="closeCart()"><i class="fa fa-arrow-left"></i></button>
     <button class="btn btn-primary" id="checkoutBtn" onclick="openCheckout()">
       <i class="fa fa-arrow-right"></i> Confirm Order
+    </button>
+  </div>
+</div>
+
+<!-- ── Customize Sheet (variants & add-ons) ────────── -->
+<div class="sheet-bg" id="bgCustom" onclick="closeCustomize()"></div>
+<div class="sheet" id="sCustom" style="max-height:88vh">
+  <div class="sheet-pip"></div>
+  <div class="sheet-hdr">
+    <span class="sheet-title" id="custTitle">Customise</span>
+    <button class="sheet-x" onclick="closeCustomize()"><i class="fa fa-times"></i></button>
+  </div>
+  <div class="sheet-body" id="custBody"></div>
+  <div class="sheet-foot" style="flex-direction:column;gap:.55rem">
+    <div class="step-nav" style="margin:0">
+      <button class="step" onclick="custQty(-1)">－</button>
+      <span class="n" id="custQty">1</span>
+      <button class="step" onclick="custQty(1)">＋</button>
+    </div>
+    <button class="btn btn-primary btn-block" id="custAddBtn" onclick="addCustomized()">
+      Add to Order · <span id="custTotal">₹0</span>
     </button>
   </div>
 </div>
@@ -278,29 +317,72 @@ html,body{height:100%;font-family:var(--font);background:#F8FAFC;color:#0F172A;-
 const SYM   = '<?= $table['currency_symbol'] ?? '₹' ?>';
 const TOKEN = '<?= $table['qr_token'] ?>';
 const BASE  = '<?= base_url() ?>';
+/* item config: {id: {variants:[{id,name,price}], groups:[{id,name,required,single,addons:[{id,name,price}]}]}} */
+const CFG   = <?= json_encode($cfg ?? new \stdClass()) ?>;
 
-// Cart state: {id: {id, name, price, qty}}
+// Cart state: key = `id:variantId:addonIds` — below
 const cart = {};
+
+function itemBasics(id) {
+  // Pull name/base price from the rendered card data attributes
+  const nameEl = document.querySelector('[data-item-name="'+id+'"]');
+  return { name: nameEl ? nameEl.dataset.itemName : 'Item', base: window['BP'+id] ?? 0 };
+}
 
 function getCartArr() { return Object.values(cart).filter(i => i.qty > 0); }
 function cartTotal()  { return getCartArr().reduce((s,i) => s + i.price * i.qty, 0); }
 function cartCount()  { return getCartArr().reduce((s,i) => s + i.qty, 0); }
+function itemQtyOf(id){ return getCartArr().filter(i => i.id == id).reduce((s,i) => s + i.qty, 0); }
 
-// ── Add / Change Qty ─────────────────────────────────
-function addItem(id, price, name) {
-  if (!cart[id]) cart[id] = {id, name, price, qty: 0};
-  cart[id].qty = 1;
+function comboKey(id, variantId, addonIds) {
+  return id + ':' + (variantId || 0) + ':' + addonIds.slice().sort((a,b)=>a-b).join('-');
+}
+
+// ── Quick add (no variants/addons) ───────────────────
+function quickAdd(id) {
+  addItem(id, BP[id].name, 0, '', BP[id].base, []);
+}
+const BP = {}; // filled by data attributes below
+document.querySelectorAll('[data-item-name]').forEach(el => {
+  BP[el.dataset.itemId] = { name: el.dataset.itemName, base: parseFloat(el.dataset.itemPrice) };
+});
+
+function addItem(id, name, variantId, variantName, basePrice, addons) {
+  const key = comboKey(id, variantId, addons.map(a => a.id));
+  if (!cart[key]) {
+    const addonTotal = addons.reduce((s,a) => s + a.price, 0);
+    cart[key] = {
+      key, id, name,
+      variantId: variantId || 0, variantName: variantName || '',
+      addons,
+      base: basePrice,
+      price: basePrice + addonTotal,  // price per single piece
+      qty: 0
+    };
+  }
+  cart[key].qty += 1;
   syncItem(id);
 }
 
-function changeQty(id, delta) {
-  if (!cart[id]) return;
-  cart[id].qty = Math.max(0, cart[id].qty + delta);
+// change the main combo of an item (used by the +/- badge buttons)
+function changeQtyMain(id, delta) {
+  const entries = getCartArr().filter(i => i.id == id);
+  if (!entries.length) return;
+  const e = delta < 0 ? entries[0] : entries[entries.length - 1];
+  e.qty = Math.max(0, e.qty + delta);
+  if (e.qty === 0) delete cart[e.key];
   syncItem(id);
+}
+
+function changeQty(key, delta) {
+  if (!cart[key]) return;
+  cart[key].qty = Math.max(0, cart[key].qty + delta);
+  if (cart[key].qty === 0) delete cart[key];
+  syncItem(cart[key]?.id || key.split(':')[0]);
 }
 
 function syncItem(id) {
-  const qty = cart[id]?.qty || 0;
+  const qty = itemQtyOf(id);
   const qb = document.getElementById('qb'+id);
   const qw = document.getElementById('qw'+id);
   const qc = document.getElementById('qc'+id);
@@ -321,6 +403,140 @@ function updateFab() {
   fab.classList.toggle('hidden', cnt === 0);
 }
 
+// ── Customize Sheet ───────────────────────────────────
+let custItem = null;      // item id being customized
+const custSel = { variant: null, addons: new Set(), qty: 1 };
+
+function openCustomize(id) {
+  const cfg = CFG[id];
+  if (!cfg) { quickAdd(id); return; }
+  custItem = id;
+  custSel.variant = cfg.variants && cfg.variants.length ? cfg.variants[0].id : 0;
+  custSel.addons  = new Set();
+  custSel.qty     = 1;
+
+  const b = BP[id];
+  document.getElementById('custTitle').textContent = 'Customise — ' + b.name;
+
+  let html = '';
+  if (cfg.variants && cfg.variants.length) {
+    html += '<div class="grp-title">Choose size <span class="req-dot">*</span></div>';
+    html += cfg.variants.map(v => optRow('variant', v.id, v.name, fr(v.price - b.base), true)).join('');
+  }
+  (cfg.groups || []).forEach(g => {
+    html += '<div class="grp-title">' + escH(g.name) + (g.required ? ' <span class="req-dot">*</span>' : '') +
+            ' <span style="font-weight:600;color:#94A3B8;text-transform:none">' + (g.single ? 'pick 1' : 'pick any') + '</span></div>';
+    html += g.addons.map(a => optRow('addon' + g.id, a.id, a.name, fr(a.price), !g.single)).join('');
+  });
+  document.getElementById('custBody').innerHTML = html;
+  document.getElementById('custQty').textContent = '1';
+  updateCustTotal();
+
+  document.getElementById('bgCustom').classList.add('on');
+  document.getElementById('sCustom').classList.add('on');
+  document.body.style.overflow = 'hidden';
+}
+
+function escH(s) { const d = document.createElement('span'); d.textContent = s; return d.innerHTML; }
+function fr(v)   { return (v >= 0 ? '+' : '−') + ' ' + SYM + Math.abs(v).toFixed(2); }
+
+function optRow(field, id, name, priceTxt, multi) {
+  return `<div class="opt-row${multi ? ' multi' : ''}" data-field="${field}" data-opt="${id}" data-name="${escH(name)}" onclick="toggleOpt(this)">
+    <span class="opt-check"></span>
+    <span class="opt-main"><span class="opt-name">${escH(name)}</span>${priceTxt ? `<span class="opt-price" style="display:block">${priceTxt}</span>` : ''}
+    </span>
+  </div>`;
+}
+
+function toggleOpt(row) {
+  const field = row.dataset.field, opt = row.dataset.opt;
+  if (field === 'variant') {
+    document.querySelectorAll('.opt-row[data-field="variant"]').forEach(r => r.classList.remove('on'));
+    row.classList.add('on');
+    custSel.variant = parseInt(opt, 10);
+  } else {
+    const singleGroup = field.startsWith('addon') && !row.classList.contains('multi');
+    if (singleGroup) {
+      const wasOn = row.classList.contains('on');
+      document.querySelectorAll(`.opt-row[data-field="${field}"]`).forEach(r => r.classList.remove('on'));
+      if (!wasOn) { row.classList.add('on'); custSel.addons.add(field + '#' + opt); }
+      else custSel.addons.delete(field + '#' + opt);
+    } else {
+      if (row.classList.contains('on')) {
+        row.classList.remove('on');
+        custSel.addons.delete(field + '#' + opt);
+      } else {
+        row.classList.add('on');
+        // enforce max_selection? keep simple: allow any
+        custSel.addons.add(field + '#' + opt);
+      }
+    }
+  }
+  updateCustTotal();
+}
+
+function custDetails() {
+  const cfg = CFG[custItem] || {};
+  const variant = (cfg.variants || []).find(v => v.id === custSel.variant) || null;
+  const addons = [];
+  custSel.addons.forEach(k => {
+    const [field, optId] = k.split('#');
+    const g = (cfg.groups || []).find(g => 'addon' + g.id === field);
+    const a = g && g.addons.find(a => String(a.id) === String(optId));
+    if (a) addons.push(a);
+  });
+  return { variant, addons };
+}
+
+function custQty(delta) {
+  custSel.qty = Math.max(1, custSel.qty + delta);
+  document.getElementById('custQty').textContent = custSel.qty;
+  updateCustTotal();
+}
+
+function updateCustTotal() {
+  if (!custItem) return;
+  const { variant, addons } = custDetails();
+  const b = BP[custItem];
+  const each = (variant ? variant.price : b.base) + addons.reduce((s,a) => s + a.price, 0);
+  document.getElementById('custTotal').textContent = SYM + (each * custSel.qty).toFixed(2);
+}
+
+function addCustomized() {
+  const cfg = CFG[custItem] || {};
+  // validate required groups
+  for (const g of (cfg.groups || [])) {
+    if (g.required) {
+      const chosen = custSel.addons.size
+        ? [...custSel.addons].filter(k => k.startsWith('addon' + g.id + '#'))
+        : [];
+      if (!chosen.length) { alert('Please choose an option for "' + g.name + '"'); return; }
+    }
+  }
+  const { variant, addons } = custDetails();
+  const b = BP[custItem];
+  const base = variant ? variant.price : b.base;
+  for (let i = 0; i < custSel.qty; i++) {
+    addItem(custItem, b.name, variant ? variant.id : 0, variant ? variant.name : '', base, addons);
+  }
+  closeCustomize(true);
+  toast('Added ' + b.name, 'success');
+}
+
+function closeCustomize(added) {
+  document.getElementById('bgCustom').classList.remove('on');
+  document.getElementById('sCustom').classList.remove('on');
+  document.body.style.overflow = '';
+}
+
+function toast(msg, type) {
+  const el = document.createElement('div');
+  el.textContent = msg;
+  el.style.cssText = 'position:fixed;top:4.6rem;left:50%;transform:translateX(-50%);background:#0F172A;color:#fff;padding:.6rem 1.1rem;border-radius:10px;font-weight:700;font-size:.8rem;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,.25)';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2000);
+}
+
 // ── Cart Sheet ────────────────────────────────────────
 function openCart() {
   renderCartBody();
@@ -334,6 +550,18 @@ function closeCart() {
   document.body.style.overflow = '';
 }
 
+function comboLabel(i) {
+  let parts = [];
+  if (i.variantName) parts.push(escH(i.variantName));
+  if (i.addons.length) parts.push('+' + i.addons.length + ' add-on' + (i.addons.length > 1 ? 's' : ''));
+  return parts.join(' · ');
+}
+function comboSub(i) {
+  const lines = [];
+  if (i.addons.length) lines.push(i.addons.map(a => escH(a.name)).join(', '));
+  return lines.join('<br>');
+}
+
 function renderCartBody() {
   const items = getCartArr();
   if (!items.length) {
@@ -343,13 +571,14 @@ function renderCartBody() {
   let html = items.map(i => `
     <div class="ci">
       <div style="flex:1">
-        <div class="ci-name">${i.name}</div>
+        <div class="ci-name">${escH(i.name)}${i.variantName ? ` <span style="color:var(--p);font-size:.7rem;font-weight:800">· ${escH(i.variantName)}</span>` : ''}</div>
+        ${comboSub(i) ? `<div class="ci-note">${comboSub(i)}</div>` : ''}
         <div style="font-size:.72rem;color:#94A3B8;margin-top:.1rem">${SYM}${i.price.toFixed(2)} × ${i.qty}</div>
       </div>
       <div class="ci-qty">
-        <button class="qty-btn sub" onclick="changeQty(${i.id},-1);renderCartBody();updateFab()">－</button>
+        <button class="qty-btn sub" onclick="changeQty('${i.key.replace(/'/g,"\\'")}',-1);renderCartBody();updateFab()">－</button>
         <span class="qty-num">${i.qty}</span>
-        <button class="qty-btn add" onclick="changeQty(${i.id},1);renderCartBody();updateFab()">＋</button>
+        <button class="qty-btn add" onclick="changeQty('${i.key.replace(/'/g,"\\'")}',1);renderCartBody();updateFab()">＋</button>
       </div>
       <div class="ci-price">${SYM}${(i.price*i.qty).toFixed(0)}</div>
     </div>`).join('');
@@ -362,8 +591,10 @@ function renderCartBody() {
 // ── Checkout Sheet ────────────────────────────────────
 function openCheckout() {
   const items = getCartArr();
-  let html = items.map(i => `
-    <div class="ots-row"><span>${i.name} × ${i.qty}</span><span>${SYM}${(i.price*i.qty).toFixed(2)}</span></div>`).join('');
+  let html = items.map(i => {
+    const label = escH(i.name) + (i.variantName ? ` (${escH(i.variantName)})` : '') + (i.addons.length ? ` +${i.addons.length}` : '');
+    return `<div class="ots-row"><span>${label} × ${i.qty}</span><span>${SYM}${(i.price*i.qty).toFixed(2)}</span></div>`;
+  }).join('');
   html += `<div class="ots-row total"><span>Total</span><span>${SYM}${cartTotal().toFixed(2)}</span></div>`;
   document.getElementById('coSummary').innerHTML = html;
   document.getElementById('bgCo').classList.add('on');
@@ -387,7 +618,12 @@ async function placeOrder() {
     customer_name:  document.getElementById('coName').value.trim(),
     customer_phone: document.getElementById('coPhone').value.trim(),
     notes:          document.getElementById('coNote').value.trim(),
-    items:          JSON.stringify(items.map(i => ({id:i.id, qty:i.qty}))),
+    items:          JSON.stringify(items.map(i => ({
+      id: i.id,
+      qty: i.qty,
+      variant_id: i.variantId || 0,
+      addons: i.addons.map(a => a.id)
+    }))),
   });
 
   try {
