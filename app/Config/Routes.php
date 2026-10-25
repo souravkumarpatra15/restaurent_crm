@@ -206,6 +206,9 @@ $routes->group('pos', ['filter' => 'auth:cashier,waiter,branch_manager,restauran
     $routes->get('shift/summary',                   'Staff\ShiftController::summary');
     $routes->post('shift/open',                     'Staff\ShiftController::open');
     $routes->post('shift/close',                    'Staff\ShiftController::close');
+    $routes->post('shift/handover',                 'Staff\ShiftController::handover');
+    $routes->post('shift/handover-receive/(:num)',  'Staff\ShiftController::handoverReceive/$1');
+    $routes->get('shift/handover-slip/(:num)',      'Staff\ShiftController::handoverSlip/$1');
 });
 
 // Slip print routes (web-based fallback when no thermal printer)
