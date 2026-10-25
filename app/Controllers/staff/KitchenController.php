@@ -19,7 +19,7 @@ class KitchenController extends BaseController
 
         foreach ($kots as &$kot) {
             $kot['items'] = $db->table('kot_items ki')
-                ->select('ki.*, oi.notes')
+                ->select('ki.*, oi.notes, oi.status as item_status')
                 ->join('order_items oi','oi.id = ki.order_item_id','left')
                 ->where('ki.kot_id', $kot['id'])
                 ->get()->getResultArray();
@@ -76,14 +76,17 @@ class KitchenController extends BaseController
         $db->table('kots')->where('id', $kotId)->update($update);
 
         // Mirror the status down to the KOT items and the original order items
-        // (they used to stay "pending" forever in the POS order view)
+        // (they used to stay "pending" forever in the POS order view).
+        // Items the chef already advanced individually are never regressed.
         $itemStatus = match ($status) {
             'ready', 'served' => 'ready',
             'in_progress'     => 'preparing',
             default           => null,
         };
-        if ($itemStatus !== null) {
-            $db->table('kot_items')->where('kot_id', $kotId)->update(['status' => $itemStatus]);
+        if ($itemStatus === 'preparing') {
+            $db->table('kot_items')->where('kot_id', $kotId)->where('status', 'pending')->update(['status' => 'preparing']);
+        } elseif ($itemStatus !== null) {
+            $db->table('kot_items')->where('kot_id', $kotId)->whereIn('status', ['pending', 'preparing'])->update(['status' => $itemStatus]);
         }
 
         // order_items has the wider status set
@@ -97,9 +100,11 @@ class KitchenController extends BaseController
         if ($orderItemStatus !== null) {
             $orderItems = $db->table('kot_items')->select('order_item_id')->where('kot_id', $kotId)->get()->getResultArray();
             if ($orderItems) {
-                $db->table('order_items')
-                    ->whereIn('id', array_column($orderItems, 'order_item_id'))
-                    ->update(['status' => $orderItemStatus]);
+                if ($orderItemStatus === 'preparing') {
+                    $db->table('order_items')->whereIn('id', array_column($orderItems, 'order_item_id'))->where('status', 'pending')->update(['status' => 'preparing']);
+                } else {
+                    $db->table('order_items')->whereIn('id', array_column($orderItems, 'order_item_id'))->whereIn('status', ['pending', 'preparing'])->update(['status' => $orderItemStatus]);
+                }
             }
         }
 
@@ -110,6 +115,55 @@ class KitchenController extends BaseController
         }
 
         return $this->response->setJSON(['success' => true]);
+    }
+
+    // ── Per-item kitchen status (tap a dish to advance it) ────
+    public function itemStatus()
+    {
+        $itemId = (int)$this->request->getPost('item_id');
+        $status = $this->request->getPost('status');
+
+        if (!in_array($status, ['pending', 'preparing', 'ready', 'served'], true)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid status']);
+        }
+
+        $db  = \Config\Database::connect();
+        $bid = session('branch_id');
+
+        $item = $db->table('order_items oi')
+            ->select('oi.id, oi.order_id')
+            ->join('orders o', 'o.id = oi.order_id')
+            ->where('oi.id', $itemId)
+            ->where('o.branch_id', $bid)
+            ->get()->getRowArray();
+        if (!$item) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Order item not found']);
+        }
+
+        $db->table('order_items')->where('id', $itemId)->update(['status' => $status]);
+
+        // Mirror to the KOT line
+        $kotStatus = in_array($status, ['ready', 'served'], true) ? 'ready' : $status;
+        $db->table('kot_items')->where('order_item_id', $itemId)->update(['status' => $kotStatus]);
+
+        // Every dish on the ticket ready? → bump the whole KOT automatically
+        $kotItem = $db->table('kot_items')->where('order_item_id', $itemId)->get()->getRowArray();
+        if ($kotItem) {
+            $kotId = (int)$kotItem['kot_id'];
+            $allReady = (int)$db->table('kot_items')
+                ->where('kot_id', $kotId)
+                ->whereNotIn('status', ['ready'])
+                ->countAllResults() === 0;
+            if ($allReady) {
+                $db->table('kots')->where('id', $kotId)->update([
+                    'status'      => 'ready',
+                    'ready_at'    => date('Y-m-d H:i:s'),
+                    'prepared_by' => session('user_id'),
+                ]);
+            }
+        }
+
+        return $this->response->setJSON(['success' => true, 'kot_auto_ready' => !empty($allReady)]);
     }
 
     public function summary()

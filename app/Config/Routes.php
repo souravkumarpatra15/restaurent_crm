@@ -215,6 +215,7 @@ $routes->group('pos', ['filter' => 'auth:cashier,waiter,branch_manager,restauran
     $routes->get('table-orders/(:num)',             'Staff\PosController::tableOrders/$1');
     $routes->get('kitchen',                         'Staff\KitchenController::index');
     $routes->post('kitchen/update-status',          'Staff\KitchenController::updateStatus');
+$routes->post('kitchen/item-status',            'Staff\KitchenController::itemStatus');
     $routes->get('shift/summary',                   'Staff\ShiftController::summary');
     $routes->get('delivery',                        'Staff\DeliveryController::board');
     $routes->post('delivery/assign',                'Staff\DeliveryController::assign');
@@ -224,6 +225,7 @@ $routes->group('pos', ['filter' => 'auth:cashier,waiter,branch_manager,restauran
     $routes->post('shift/handover',                 'Staff\ShiftController::handover');
     $routes->post('shift/handover-receive/(:num)',  'Staff\ShiftController::handoverReceive/$1');
     $routes->get('shift/handover-slip/(:num)',      'Staff\ShiftController::handoverSlip/$1');
+$routes->get('shift/z-slip/(:num)',             'Staff\ShiftController::zSlip/$1');
 });
 
 // Slip print routes (web-based fallback when no thermal printer)

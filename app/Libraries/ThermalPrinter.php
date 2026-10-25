@@ -137,11 +137,20 @@ class ThermalPrinter
             $data .= $this->twoColumns('Discount', '-' . $sym . number_format($order['discount_amount'], 2)) . self::LF;
         }
 
-        if ($order['cgst_amount'] > 0) {
+        if (($order['igst_amount'] ?? 0) > 0) {
+            $data .= $this->twoColumns('IGST', $sym . number_format($order['igst_amount'], 2)) . self::LF;
+        } elseif ($order['cgst_amount'] > 0) {
             $data .= $this->twoColumns('CGST', $sym . number_format($order['cgst_amount'], 2)) . self::LF;
             $data .= $this->twoColumns('SGST', $sym . number_format($order['sgst_amount'], 2)) . self::LF;
         } elseif ($order['tax_amount'] > 0) {
             $data .= $this->twoColumns('Tax', $sym . number_format($order['tax_amount'], 2)) . self::LF;
+        }
+
+        if (($order['cess_amount'] ?? 0) > 0) {
+            $data .= $this->twoColumns('Cess', $sym . number_format($order['cess_amount'], 2)) . self::LF;
+        }
+        if (($order['packing_charge'] ?? 0) > 0) {
+            $data .= $this->twoColumns('Packing', $sym . number_format($order['packing_charge'], 2)) . self::LF;
         }
 
         if ($order['service_charge'] > 0) {

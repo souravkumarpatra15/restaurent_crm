@@ -309,6 +309,7 @@ function closeCounter() {
             '\nExpected: ' + SYM + d.expected.toFixed(2) +
             '\nCounted: ' + SYM + d.counted.toFixed(2) +
             '\nDifference: ' + SYM + d.difference.toFixed(2) + ' (' + d.status + ')');
+      if (d.z_slip_url) window.open(d.z_slip_url + '?autoprint=1', 'z_slip', 'width=360,height=780,scrollbars=yes');
       location.reload();
     } else alert(d.message || 'Could not close counter');
   }).catch(() => alert('Network error'));

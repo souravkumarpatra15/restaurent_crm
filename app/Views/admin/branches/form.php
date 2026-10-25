@@ -44,6 +44,11 @@
             <input type="text" class="form-control" name="printer_ip" placeholder="192.168.1.100" value="<?= esc($branch['printer_ip'] ?? '') ?>"></div>
           <div class="form-group"><label class="form-label">Printer Port</label>
             <input type="number" class="form-control" name="printer_port" value="<?= $branch['printer_port'] ?? 9100 ?>"></div>
+          <div class="form-group"><label class="form-label">Bill Paper Width</label>
+            <select class="form-control" name="printer_type">
+              <option value="thermal_80mm" <?= ($branch['printer_type'] ?? 'thermal_80mm') === 'thermal_80mm' ? 'selected' : '' ?>>80mm (wide)</option>
+              <option value="thermal_58mm" <?= ($branch['printer_type'] ?? '') === 'thermal_58mm' ? 'selected' : '' ?>>58mm (narrow)</option>
+            </select></div>
         </div>
         <div class="form-row cols-2">
           <div class="form-group"><label class="form-label">KOT Printer IP <span style="font-size:.72rem;color:var(--text-muted)">(blank = same printer)</span></label>

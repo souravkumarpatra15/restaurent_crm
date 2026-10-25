@@ -32,14 +32,16 @@ class OrderModel extends BaseModel
         return $prefix . str_pad($counter, 5, '0', STR_PAD_LEFT);
     }
 
-    public function calculateTotals($items, $restaurant, $discountType = null, $discountValue = 0, $serviceChargeApply = false, $couponCode = null)
+    public function calculateTotals($items, $restaurant, $discountType = null, $discountValue = 0, $serviceChargeApply = false, $couponCode = null, $packingCharge = 0)
     {
-        $subtotal = 0;
-        $taxTotal = 0;
+        $subtotal  = 0;
+        $taxTotal  = 0;
+        $cessTotal = 0;
 
         foreach ($items as &$item) {
             $lineTotal = $item['unit_price'] * $item['quantity'];
             $lineTax   = 0;
+            $lineCess  = $lineTotal * (float)($item['cess_percent'] ?? 0) / 100;
 
             if ($restaurant['tax_type'] === 'exclusive') {
                 $lineTax = $lineTotal * ($item['tax_percent'] / 100);
@@ -49,9 +51,10 @@ class OrderModel extends BaseModel
             }
 
             $item['tax_amount']   = round($lineTax, 2);
-            $item['total_price']  = round($lineTotal + ($restaurant['tax_type'] === 'exclusive' ? $lineTax : 0), 2);
+            $item['total_price']  = round($lineTotal + ($restaurant['tax_type'] === 'exclusive' ? $lineTax : 0) + $lineCess, 2);
             $subtotal += $lineTotal;
             $taxTotal += $lineTax;
+            $cessTotal += $lineCess;
         }
 
         // 'coupon' discounts arrive as a flat amount pre-computed by
@@ -88,22 +91,28 @@ class OrderModel extends BaseModel
 
         // Inclusive tax is ALREADY inside the subtotal — adding $taxTotal
         // again overcharged every inclusive-tax restaurant
-        $netTotal    = $subtotal - $discountAmount + ($restaurant['tax_type'] === 'exclusive' ? $taxTotal : 0) + $serviceCharge;
+        $netTotal    = $subtotal - $discountAmount + ($restaurant['tax_type'] === 'exclusive' ? $taxTotal : 0)
+                     + $cessTotal + $serviceCharge + (float)$packingCharge;
         $roundOff    = round($netTotal) - $netTotal;
         $finalTotal  = round($netTotal);
 
-        // Split CGST/SGST (equal halves for intra-state)
-        $cgst = round($taxTotal / 2, 2);
-        $sgst = $taxTotal - $cgst;
+        // GST split — intra-state: equal CGST+SGST halves; inter-state: single IGST
+        $taxMode = ($restaurant['tax_mode'] ?? 'intra') === 'inter';
+        $igst    = $taxMode ? round($taxTotal, 2) : 0;
+        $cgst    = $taxMode ? 0 : round($taxTotal / 2, 2);
+        $sgst    = $taxMode ? 0 : round($taxTotal, 2) - $cgst;
 
         return [
             'subtotal'        => round($subtotal, 2),
             'discount_amount' => $discountAmount,
             'coupon_code'     => ($discountType === 'coupon' && $discountAmount > 0) ? strtoupper(trim((string)$couponCode)) : null,
             'tax_amount'      => round($taxTotal, 2),
+            'igst_amount'     => $igst,
             'cgst_amount'     => $cgst,
             'sgst_amount'     => $sgst,
+            'cess_amount'     => round($cessTotal, 2),
             'service_charge'  => $serviceCharge,
+            'packing_charge'  => round((float)$packingCharge, 2),
             'round_off'       => round($roundOff, 2),
             'total_amount'    => $finalTotal,
             'items'           => $items,

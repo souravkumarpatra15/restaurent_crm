@@ -233,6 +233,7 @@ class CustomerMenuController extends BaseController
                 'quantity'     => $qty,
                 'unit_price'   => $price,
                 'tax_percent'  => $menuItem['tax_percent'],
+                'cess_percent' => (float)($menuItem['cess_percent'] ?? 0),
                 'notes'        => $item['note'] ?? '',
                 'addons'       => $addonRows,
             ];

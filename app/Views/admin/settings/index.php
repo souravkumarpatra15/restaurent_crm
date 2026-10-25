@@ -66,6 +66,17 @@
             </select>
           </div>
           <div class="form-group">
+            <label class="form-label">GST Split</label>
+            <select class="form-control" name="tax_mode">
+              <option value="intra" <?= ($restaurant['tax_mode'] ?? 'intra') === 'intra' ? 'selected' : '' ?>>Intra-state — CGST + SGST</option>
+              <option value="inter" <?= ($restaurant['tax_mode'] ?? 'intra') === 'inter' ? 'selected' : '' ?>>Inter-state — IGST only</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Packing Charge (₹, takeaway/delivery)</label>
+            <input type="number" step="0.01" min="0" class="form-control" name="packaging_charge" value="<?= esc($restaurant['packaging_charge'] ?? 0) ?>">
+          </div>
+          <div class="form-group">
             <label class="form-label">Default Tax %</label>
             <select class="form-control" name="default_tax_percent">
               <?php foreach ([0,5,12,18,28] as $t): ?>

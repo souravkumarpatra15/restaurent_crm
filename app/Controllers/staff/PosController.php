@@ -142,19 +142,24 @@ class PosController extends BaseController
                 'quantity'     => max(1, (float)$item['quantity']),
                 'unit_price'   => $price,
                 'tax_percent'  => $menuItem['tax_percent'],
+                'cess_percent' => (float)($menuItem['cess_percent'] ?? 0),
                 'notes'        => $item['notes'] ?? '',
                 'addons'       => $item['addons'] ?? [],
             ];
         }
 
-        // Calculate totals
+        // Calculate totals — packing charge applies to takeaway/delivery
         $discountType  = $this->request->getPost('discount_type') ?: 'flat';
         $discountValue = (float)($this->request->getPost('discount_value') ?? 0);
         $couponCode    = strtoupper(trim($this->request->getPost('coupon_code') ?? ''));
-        $totals = $this->orderModel->calculateTotals($itemDetails, $this->restaurant, $discountType, $discountValue, true, $couponCode);
+        $orderType     = $this->request->getPost('order_type');
+        $packingCharge = in_array($orderType, ['takeaway', 'delivery'], true)
+            ? max(0, (float)($this->restaurant['packaging_charge'] ?? 0))
+            : 0;
+        $totals = $this->orderModel->calculateTotals($itemDetails, $this->restaurant, $discountType, $discountValue, true, $couponCode, $packingCharge);
 
         // Delivery orders can carry a delivery charge + address
-        $orderType       = $this->request->getPost('order_type');
+        $deliveryCharge  = ($orderType === 'delivery') ? max(0, (float)($this->request->getPost('delivery_charge') ?? 0)) : 0;
         $deliveryCharge  = ($orderType === 'delivery') ? max(0, (float)($this->request->getPost('delivery_charge') ?? 0)) : 0;
         $deliveryAddress = ($orderType === 'delivery') ? trim($this->request->getPost('delivery_address') ?: '') : null;
         if ($deliveryCharge > 0) {
@@ -186,8 +191,11 @@ class PosController extends BaseController
             'discount_amount' => $totals['discount_amount'],
             'coupon_code'     => $totals['coupon_code'] ?? null,
             'tax_amount'      => $totals['tax_amount'],
+            'igst_amount'     => $totals['igst_amount'],
             'cgst_amount'     => $totals['cgst_amount'],
             'sgst_amount'     => $totals['sgst_amount'],
+            'cess_amount'     => $totals['cess_amount'],
+            'packing_charge'  => $totals['packing_charge'],
             'service_charge'  => $totals['service_charge'],
             'round_off'       => $totals['round_off'],
             'total_amount'    => $totals['total_amount'],
@@ -279,7 +287,7 @@ class PosController extends BaseController
                 $redeemedPoints = $points;
             } else {
                 // Redemption was invalid — recalculate without the discount
-                $totals = $this->orderModel->calculateTotals($itemDetails, $this->restaurant, 'flat', 0, true);
+                $totals = $this->orderModel->calculateTotals($itemDetails, $this->restaurant, 'flat', 0, true, null, $packingCharge);
                 $this->orderModel->update($orderId, [
                     'discount_type'   => 'flat',
                     'discount_amount' => 0,
@@ -1155,9 +1163,26 @@ class PosController extends BaseController
         if (!empty($coupon['usage_limit']) && (int)$coupon['usage_count'] >= (int)$coupon['usage_limit']) {
             return $this->response->setJSON(['success'=>false,'message'=>'Coupon usage limit reached']);
         }
+        // Per-customer limit — how many times THIS customer may use it
+        $perPage = (int)($coupon['per_user_limit'] ?? 0);
+        if ($perPage > 0) {
+            $custId = (int)($this->request->getPost('customer_id') ?: 0);
+            if (!$custId) {
+                return $this->response->setJSON(['success'=>false,'message'=>'Attach a customer to use this coupon']);
+            }
+            $used = $this->db->table('orders')
+                ->where('coupon_code', $coupon['code'])
+                ->where('customer_id', $custId)
+                ->where('status !=', 'cancelled')
+                ->where('restaurant_id', $this->session->get('restaurant_id'))
+                ->countAllResults();
+            if ($used >= $perPage) {
+                return $this->response->setJSON(['success'=>false,'message'=>'This customer has already used this coupon ' . $used . ' time(s)']);
+            }
+        }
 
         $discount = $coupon['discount_type'] === 'percent'
-            ? min($subtotal * $coupon['discount_value'] / 100, $coupon['max_discount_amount'] ?: PHP_INT_MAX)
+            ? min($subtotal * $coupon['discount_value'] / 100, (float)$coupon['max_discount_amount'] > 0 ? (float)$coupon['max_discount_amount'] : PHP_INT_MAX)
             : $coupon['discount_value'];
         return $this->response->setJSON(['success'=>true,'discount'=>round($discount,2)]);
     }

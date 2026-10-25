@@ -357,6 +357,63 @@ class ShiftController extends BaseController
             'counted'    => $counted,
             'difference' => $difference,
             'status'     => abs($difference) < 10 ? 'balanced' : ($difference > 0 ? 'surplus' : 'shortage'),
+            'z_slip_url' => base_url('pos/shift/z-slip/' . $shift['id']),
+        ]);
+    }
+
+    // ── Z-Report (end-of-shift summary slip, printable) ───────
+    public function zSlip($shiftId)
+    {
+        $db   = \Config\Database::connect();
+        $bid  = session('branch_id');
+        $rid  = session('restaurant_id');
+
+        $shift = $db->table('shifts s')
+            ->select('s.*, u.name as staff_name, b.name as branch_name')
+            ->join('users u', 'u.id = s.user_id', 'left')
+            ->join('branches b', 'b.id = s.branch_id', 'left')
+            ->where('s.id', $shiftId)
+            ->where('s.branch_id', $bid)
+            ->get()->getRowArray();
+        if (!$shift) return redirect()->to(base_url('pos/shift/summary'));
+
+        $to   = $shift['closed_at'] ?? date('Y-m-d H:i:s');
+
+        // Payment split for this cashier's period
+        $methods = $db->table('payments p')
+            ->select("p.payment_method, COUNT(*) as count, SUM(p.amount) as total")
+            ->join('orders o', 'o.id = p.order_id')
+            ->where('o.branch_id', $bid)
+            ->where('o.user_id', $shift['user_id'])
+            ->where('p.created_at >=', $shift['opened_at'])
+            ->where('p.created_at <=', $to)
+            ->whereNotIn('o.status', ['cancelled', 'refunded'])
+            ->groupBy('p.payment_method')->orderBy('total', 'DESC')
+            ->get()->getResultArray();
+        $methodTotal = array_sum(array_column($methods, 'total'));
+
+        // Sales stats for the period
+        $stats = $db->table('orders')
+            ->select('COUNT(*) as bills, SUM(total_amount) as sales, SUM(discount_amount) as discounts,
+                      SUM(service_charge) as service, SUM(tax_amount) as tax')
+            ->where('user_id', $shift['user_id'])->where('branch_id', $bid)
+            ->where('created_at >=', $shift['opened_at'])->where('created_at <=', $to)
+            ->where('status !=', 'cancelled')
+            ->get()->getRowArray();
+        $cancels = $db->table('orders')
+            ->where('user_id', $shift['user_id'])->where('branch_id', $bid)
+            ->where('created_at >=', $shift['opened_at'])->where('created_at <=', $to)
+            ->where('status', 'cancelled')->countAllResults();
+
+        $restaurant = $db->table('restaurants')->where('id', $rid)->get()->getRowArray();
+
+        return view('staff/shift/z_slip', [
+            'shift'      => $shift,
+            'methods'    => $methods,
+            'methodTotal'=> $methodTotal,
+            'stats'      => $stats,
+            'cancels'    => $cancels,
+            'restaurant' => $restaurant ?? [],
         ]);
     }
 }

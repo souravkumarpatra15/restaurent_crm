@@ -94,6 +94,16 @@ body {
   .slip { box-shadow: none; max-width: 100%; }
 }
 </style>
+<style>
+<?php $wide = ($branch['printer_type'] ?? 'thermal_80mm') === 'thermal_80mm'; ?>
+<?php if ($wide): ?>
+.slip { max-width: 380px; font-size: 13.5px; }
+.rname { font-size: 17px; }
+.item-row { font-size: 13px; }
+.tot-r { font-size: 13px; }
+.tot-r.grand { font-size: 15.5px; }
+<?php endif; ?>
+</style>
 </head>
 <body>
 

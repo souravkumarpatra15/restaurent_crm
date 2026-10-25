@@ -104,6 +104,16 @@ body {
   .slip { box-shadow: none; max-width: 100%; }
 }
 </style>
+<style>
+<?php $wide = ($branch['printer_type'] ?? 'thermal_80mm') === 'thermal_80mm'; ?>
+<?php if ($wide): ?>
+.slip { max-width: 380px; font-size: 13.5px; }
+.rname { font-size: 17px; }
+.item-row { font-size: 13px; }
+.tot-r { font-size: 13px; }
+.tot-r.grand { font-size: 15.5px; }
+<?php endif; ?>
+</style>
 </head>
 <body>
 
@@ -214,11 +224,19 @@ body {
     // Derive the half-rate labels from the real item tax percentages
     $maxItemTaxRate = 0;
     foreach ($order['items'] as $it) { $maxItemTaxRate = max($maxItemTaxRate, (float)($it['tax_percent'] ?? 0)); }
-    if ($order['cgst_amount'] > 0): ?>
+    if (($order['igst_amount'] ?? 0) > 0): ?>
+    <div class="tot-r"><span>IGST (<?= number_format($maxItemTaxRate, 2) ?>%)</span><span><?= $sym ?><?= number_format($order['igst_amount'],2) ?></span></div>
+    <?php elseif ($order['cgst_amount'] > 0): ?>
     <div class="tot-r"><span>CGST (<?= number_format($maxItemTaxRate / 2, 2) ?>%)</span><span><?= $sym ?><?= number_format($order['cgst_amount'],2) ?></span></div>
     <div class="tot-r"><span>SGST (<?= number_format($maxItemTaxRate / 2, 2) ?>%)</span><span><?= $sym ?><?= number_format($order['sgst_amount'],2) ?></span></div>
     <?php elseif ($order['tax_amount'] > 0): ?>
     <div class="tot-r"><span>GST</span><span><?= $sym ?><?= number_format($order['tax_amount'],2) ?></span></div>
+    <?php endif; ?>
+    <?php if (($order['cess_amount'] ?? 0) > 0): ?>
+    <div class="tot-r"><span>Cess</span><span><?= $sym ?><?= number_format($order['cess_amount'],2) ?></span></div>
+    <?php endif; ?>
+    <?php if (($order['packing_charge'] ?? 0) > 0): ?>
+    <div class="tot-r"><span>Packing Charge</span><span><?= $sym ?><?= number_format($order['packing_charge'],2) ?></span></div>
     <?php endif; ?>
     <?php if ($order['service_charge'] > 0): ?>
     <div class="tot-r"><span>Service Charge</span><span><?= $sym ?><?= number_format($order['service_charge'],2) ?></span></div>

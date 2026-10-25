@@ -90,8 +90,14 @@ $ready      = count(array_filter($kots, fn($k) => $k['status'] === 'ready'));
 
         <!-- Items -->
         <div class="kotc-items">
-          <?php foreach ($kot['items'] as $item): ?>
-          <div class="kitem">
+          <?php foreach ($kot['items'] as $item):
+            $ist = $item['item_status'] ?? 'pending';
+            // Tap-to-advance: pending → preparing → ready (served handled ticket-wide)
+            $istNext  = ['pending' => 'preparing', 'preparing' => 'ready', 'ready' => 'ready', 'served' => 'served'][$ist] ?? 'preparing';
+            $istLabel = ['pending' => 'Queued', 'preparing' => 'Cooking', 'ready' => 'Ready', 'served' => 'Served'][$ist] ?? $ist;
+            $istClr   = ['pending' => '#94A3B8', 'preparing' => '#F59E0B', 'ready' => '#22C55E', 'served' => '#15803D'][$ist] ?? '#94A3B8';
+          ?>
+          <div class="kitem" style="cursor:pointer" title="Tap to advance this item" onclick="setItemStatus(<?= $item['order_item_id'] ?>, '<?= $istNext ?>', this)">
             <div class="kitem-qty"><?= $item['quantity'] ?>×</div>
             <div class="kitem-body">
               <div class="kitem-name"><?= esc($item['name']) ?></div>
@@ -102,6 +108,7 @@ $ready      = count(array_filter($kots, fn($k) => $k['status'] === 'ready'));
               <div class="kitem-add">+ <?= is_array($item['addons']) ? implode(', ', array_map('esc', $item['addons'])) : esc($item['addons']) ?></div>
               <?php endif; ?>
             </div>
+            <span class="kitem-st" data-oid="<?= $item['order_item_id'] ?>" style="flex-shrink:0;font-size:.6rem;font-weight:900;letter-spacing:.04em;padding:.22rem .5rem;border-radius:8px;background:<?= $istClr ?>22;color:<?= $istClr ?>"><?= $istLabel ?></span>
           </div>
           <?php endforeach; ?>
         </div>
@@ -226,6 +233,38 @@ async function updateKot(id, status, btn) {
     btn.innerHTML = orig;
     btn.classList.remove('loading');
     showKAlert('📡 Network error. Check connection.', 'error');
+  }
+}
+
+// ── Per-item status (tap a dish line to advance it) ──────
+async function setItemStatus(itemId, status, el) {
+  const chip = el.querySelector('.kitem-st');
+  if (chip) {
+    chip.textContent = '…';
+  }
+  try {
+    const d = await fetch(BASE + 'pos/kitchen/item-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': CT },
+      body: `${CN}=${CT}&item_id=${itemId}&status=${status}`
+    }).then(r => r.json());
+    if (!d.success) {
+      showKAlert('❌ ' + (d.message || 'Item update failed'), 'error');
+      return setTimeout(() => location.reload(), 1200);
+    }
+    if (d.kot_auto_ready) {
+      showKAlert('✅ All dishes on the ticket are ready', 'ok');
+    }
+    // Optimistic chip style
+    const map = { pending: ['Queued', '#94A3B8'], preparing: ['Cooking', '#F59E0B'], ready: ['Ready', '#22C55E'], served: ['Served', '#15803D'] };
+    if (chip && map[status]) {
+      chip.textContent = map[status][0];
+      chip.style.background = map[status][1] + '22';
+      chip.style.color = map[status][1];
+    }
+  } catch (e) {
+    showKAlert('📡 Network error. Check connection.', 'error');
+    if (chip) chip.textContent = '!';
   }
 }
 
