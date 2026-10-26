@@ -1046,6 +1046,10 @@ foreach ($tables as $area) {
 
     fetch(BASE + 'pos/table-orders/' + t.id)
       .then(r => r.json()).then(orders => {
+        // Normalise ids to integers ONCE — DB rows arrive as strings and a
+        // string/number mismatch in the bulk-selection Set silently broke
+        // the "Bill Together" checkboxes
+        orders = orders.map(o => ({ ...o, id: parseInt(o.id, 10) }));
         if (!orders.length) {
           document.getElementById('sOrdersBody').innerHTML = '<div style="text-align:center;padding:2.5rem;color:#94A3B8"><i class="fa fa-receipt fa-2x" style="margin-bottom:.75rem;display:block"></i>No active orders at this table.</div>';
           document.getElementById('sOrdersFoot').innerHTML = `
@@ -1154,6 +1158,7 @@ foreach ($tables as $area) {
 
   function toggleBulkSel(oid, on) {
     const sel = window.bulkSel = window.bulkSel || new Set();
+    oid = parseInt(oid, 10);
     if (on) sel.add(oid); else sel.delete(oid);
     renderOrdersSheet();
   }
@@ -1191,7 +1196,7 @@ foreach ($tables as $area) {
       .then(d => {
         if (d.success) {
           showToast(d.message || 'Order cancelled', 'warning');
-          (window.bulkSel || new Set()).delete(oid);
+          (window.bulkSel || new Set()).delete(parseInt(oid, 10));
           renderOrdersSheet();
         } else {
           showToast(d.message || 'Could not cancel order', 'error');

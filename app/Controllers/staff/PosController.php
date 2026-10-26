@@ -1076,14 +1076,12 @@ class PosController extends BaseController
                 'change_returned'=> 0,
                 'status'         => 'completed',
             ]);
-            $db->table('orders')->where('id', $o['id'])->update([
+            // Same finish-line as checkout / UPI verify: invoice, feedback
+            // token, table release, loyalty — never missing from reports
+            \App\Libraries\OrderFinalize::complete($db, (int)$o['id'], [
                 'payment_status' => 'paid',
                 'paid_amount'    => $o['total_amount'],
                 'balance_amount' => 0,
-                'status'         => 'completed',
-                'billed_at'      => date('Y-m-d H:i:s'),
-                'completed_at'   => date('Y-m-d H:i:s'),
-                'feedback_token' => bin2hex(random_bytes(16)),
             ]);
         }
         $db->transComplete();
