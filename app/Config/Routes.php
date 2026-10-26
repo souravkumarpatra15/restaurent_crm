@@ -61,6 +61,14 @@ $routes->group('super', ['filter' => 'auth:super_admin'], function ($routes) {
     $routes->post('notifications/mark-read',        'Admin\NotificationController::markRead');
     $routes->get('notifications/count',             'Admin\NotificationController::count');
     $routes->post('subscriptions/remind/(:num)',    'Admin\SubscriptionController::remind/$1');
+
+    // Owner feedback programme (forms → tenants → homepage testimonials)
+    $routes->get('feedback',                   'Admin\FeedbackFormController::index');
+    $routes->post('feedback/store',            'Admin\FeedbackFormController::store');
+    $routes->post('feedback/send/(:num)',      'Admin\FeedbackFormController::send/$1');
+    $routes->post('feedback/toggle/(:num)',    'Admin\FeedbackFormController::toggle/$1');
+    $routes->post('feedback/publish/(:num)',   'Admin\FeedbackFormController::publish/$1');
+    $routes->post('feedback/delete/(:num)',    'Admin\FeedbackFormController::deleteResponse/$1');
 });
 
 // ── RESTAURANT ADMIN / MANAGER ───────────────────────────────
@@ -69,6 +77,10 @@ $routes->group('admin', ['filter' => 'auth:restaurant_admin,branch_manager,super
     $routes->get('dashboard/live-orders',           'Manager\DashboardController::liveOrders');
     $routes->get('dashboard/hourly-chart',          'Manager\DashboardController::hourlyChart');
     $routes->get('dashboard/switch-branch',         'Manager\DashboardController::switchBranch');
+
+    // Restaurant-owned UPI payment settings (restaurant administrators only)
+    $routes->get('upi-settings',                    'Staff\UpiController::settings');
+    $routes->post('upi-settings/save',              'Staff\UpiController::saveSettings');
 
     // Branches
     $routes->get('branches',                        'Manager\BranchController::index');
@@ -195,6 +207,13 @@ $routes->get('menu/table/(:segment)/poll/(:num)',   'Public\CustomerMenuControll
 $routes->post('menu/table/(:segment)/order',         'Public\CustomerMenuController::placeOrder/$1');
 $routes->get('menu/table/(:any)',                    'Public\CustomerMenuController::index/$1');
 
+// Restaurant-owned UPI QR — customer screen keyed by the unguessable
+// payment attempt ref; claim records a CLAIM only, never "paid"
+$routes->get('upi/pay/(:segment)',                   'Public\UpiCustomerController::screen/$1');
+$routes->get('upi/pay/(:segment)/qr',                'Public\UpiCustomerController::qrImage/$1');
+$routes->get('upi/pay/(:segment)/status',            'Public\UpiCustomerController::status/$1');
+$routes->post('upi/pay/(:segment)/claim',            'Public\UpiCustomerController::claim/$1');
+
 $routes->group('pos', ['filter' => 'auth:cashier,waiter,branch_manager,restaurant_admin'], function ($routes) {
     $routes->get('/',                               'Staff\PosController::index');
     $routes->get('table-map',                       'Staff\PosController::tableMap');
@@ -202,6 +221,13 @@ $routes->group('pos', ['filter' => 'auth:cashier,waiter,branch_manager,restauran
     $routes->get('order/(:num)',                    'Staff\PosController::orderDetail/$1');
     $routes->post('order/create',                   'Staff\PosController::createOrder');
     $routes->post('order/checkout',                 'Staff\PosController::checkout');
+    // UPI QR payments (restaurant-owned account, staff-verified)
+    $routes->post('upi/qr',                         'Staff\UpiController::qr');
+    $routes->get('upi/status/(:segment)',           'Staff\UpiController::status/$1');
+    $routes->post('upi/verify',                     'Staff\UpiController::verify');
+    $routes->post('upi/reject',                     'Staff\UpiController::reject');
+    $routes->get('upi/pending',                     'Staff\UpiController::pending');
+    $routes->get('upi/history',                     'Staff\UpiController::history');
     $routes->post('order/print-kot',                'Staff\PosController::printKot');
     $routes->post('order/print-bill',               'Staff\PosController::printBill');
     $routes->get('order/pending-customer',               'Staff\PosController::pendingCustomerOrders');
@@ -257,6 +283,10 @@ $routes->post('admin/waste/store',          'Manager\WasteController::store',   
 
 // Customer Feedback (manager)
 $routes->get('admin/feedback',              'Manager\FeedbackController::index',     ['filter'=>'auth:restaurant_admin,branch_manager,super_admin']);
+
+// Owner feedback programme (super admin sends forms → tenants respond)
+$routes->get('admin/owner-feedback',              'Manager\OwnerFeedbackController::index',  ['filter'=>'auth:restaurant_admin,branch_manager,super_admin']);
+$routes->post('admin/owner-feedback/submit',      'Manager\OwnerFeedbackController::submit', ['filter'=>'auth:restaurant_admin,branch_manager,super_admin']);
 
 // Customer Feedback (public — no auth)
 $routes->get('feedback/(:segment)',         'Public\FeedbackController::index/$1');

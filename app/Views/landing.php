@@ -2096,6 +2096,21 @@
       <div class="eyebrow">What restaurant owners say</div>
       <h2 class="sec-h reveal">Loved by kitchens across India</h2>
       <div class="testi-grid">
+        <?php $autoTestis = array_slice(($testimonials ?? []), 0, 3); if (!empty($autoTestis)): ?>
+          <?php foreach ($autoTestis as $t): ?>
+          <div class="testi reveal">
+            <div class="testi-quote"><?= esc($t['comment'] ?: 'DinoviX has simplified how we run our restaurant every single day.') ?></div>
+            <div class="testi-author">
+              <div class="testi-avatar"><?= esc(mb_strtoupper(mb_substr($t['display_name'] ?? 'R', 0, 2))) ?></div>
+              <div>
+                <div class="testi-name"><?= esc($t['display_name'] ?? 'Restaurant Owner') ?></div>
+                <div class="testi-role"><?= esc($t['restaurant_name'] ?? 'Restaurant Partner') ?></div>
+                <div class="stars"><?= str_repeat('★', (int)$t['rating']) . str_repeat('☆', max(0, 5 - (int)$t['rating'])) ?></div>
+              </div>
+            </div>
+          </div>
+          <?php endforeach; ?>
+        <?php else: ?>
         <div class="testi reveal">
           <div class="testi-quote">The QR ordering completely changed how our peak hours work. Tables turn faster, staff
             isn't running to take orders, and the kitchen actually knows what's happening.</div>
@@ -2132,6 +2147,7 @@
             </div>
           </div>
         </div>
+        <?php endif; ?>
       </div>
     </div>
   </section>

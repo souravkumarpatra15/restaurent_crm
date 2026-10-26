@@ -109,7 +109,10 @@ $this->section('content'); ?>
         <i class="fa fa-fire-burner"></i> KOT
       </button>
       <button onclick="printBillAction()" class="btn btn-outline" style="flex:1">
-        <i class="fa fa-print"></i> Print Bill
+        <i class="fa fa-print"></i> Bill
+      </button>
+      <button onclick="startUpiQr()" class="btn" style="flex:2;background:#0B1E3D;color:#fff">
+        <i class="fa fa-qrcode"></i> UPI QR Pay
       </button>
       <button onclick="openCheckoutModal()" class="btn btn-primary" style="flex:2">
         <i class="fa fa-cash-register"></i> Checkout — ₹<?= number_format($order['total_amount'], 2) ?>
@@ -148,16 +151,19 @@ $this->section('content'); ?>
         <div style="font-size:.82rem;color:var(--text-muted)">Amount Due</div>
         <div style="font-size:2rem;font-weight:800;color:var(--primary)">₹<?= number_format($order['total_amount'], 2) ?></div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Payment Method</label>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem">
-          <?php foreach (['cash' => '💵 Cash', 'card' => '💳 Card', 'upi' => '📱 UPI', 'wallet' => '👛 Wallet', 'online' => '🌐 Online', 'credit' => '📋 Credit'] as $k => $v): ?>
-            <button class="btn btn-outline payment-btn" data-method="<?= $k ?>" onclick="selectPayment(this)" style="font-size:.78rem;padding:.4rem">
-              <?= $v ?>
+        <div class="form-group">
+          <label class="form-label">Payment Method</label>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem">
+            <?php foreach (['cash' => '💵 Cash', 'card' => '💳 Card', 'upi' => '📱 UPI', 'wallet' => '👛 Wallet', 'online' => '🌐 Online', 'credit' => '📋 Credit'] as $k => $v): ?>
+              <button class="btn btn-outline payment-btn" data-method="<?= $k ?>" onclick="selectPayment(this)" style="font-size:.78rem;padding:.4rem">
+                <?= $v ?>
+              </button>
+            <?php endforeach; ?>
+            <button class="btn payment-btn" data-method="upi_qr" onclick="startUpiQr()" style="font-size:.78rem;padding:.4rem;background:var(--primary);color:#fff">
+              📲 UPI QR
             </button>
-          <?php endforeach; ?>
+          </div>
         </div>
-      </div>
       <div class="form-group">
         <label class="form-label">Amount Received</label>
         <input type="number" class="form-control" id="payAmt" value="<?= number_format($order['total_amount'], 2, '.', '') ?>" style="font-size:1.1rem;font-weight:700;text-align:center" oninput="calcChange()">
@@ -181,8 +187,64 @@ $this->section('content'); ?>
   </div>
 </div>
 
+<!-- UPI QR Payment Modal — mock flow: Total → QR (fixed amount) → live status → verify -->
+<div class="modal-overlay" id="upiQrModal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <span class="modal-title">📲 Payment — <span id="qrOrder"></span></span>
+      <button class="modal-close" onclick="closeUpiQr()"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body" style="text-align:center">
+      <div style="padding:.875rem;background:var(--primary-light,#FFF1E8);border-radius:10px;margin-bottom:.875rem">
+        <div style="font-size:.78rem;color:var(--text-muted)">Total Amount</div>
+        <div style="font-size:2rem;font-weight:800;color:var(--primary)">₹<span id="qrAmt">—</span></div>
+      </div>
+
+      <div id="qrHolder" style="margin:0 auto .75rem;width:238px;height:238px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden">
+        <i class="fa fa-spinner fa-spin" style="font-size:1.5rem;color:var(--text-muted)"></i>
+      </div>
+
+      <div style="margin-bottom:.55rem">
+        <div style="font-weight:800;font-size:.95rem">Scan QR to Pay</div>
+        <div style="font-size:.75rem;color:var(--text-muted)">UPI Payment · Scan using any UPI app</div>
+        <div style="margin-top:.4rem"><span class="badge-pill badge-success" style="font-size:.72rem">✓ Amount is fixed — pay exactly ₹<span id="qrAmt2">—</span></span></div>
+      </div>
+
+      <div id="qrStatusBox" style="background:#F5F7FA;border-radius:10px;padding:.65rem;font-size:.8rem;margin-bottom:.35rem">
+        ⏳ Waiting for payment — this updates automatically…
+      </div>
+      <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:.5rem">
+        Ref <span id="qrRef" style="font-family:'JetBrains Mono',monospace"></span> · valid until <span id="qrExpiry"></span>
+        · <a id="qrCustomerLink" href="#" target="_blank" style="color:var(--primary);font-weight:700">show customer screen</a>
+      </div>
+
+      <!-- verify mini-form (slides in under the QR, QR stays visible) -->
+      <div id="qrVerifyPane" style="display:none;text-align:left;background:#FFF7ED;border:1px solid #FDBA74;border-radius:10px;padding:.65rem">
+        <b style="font-size:.78rem">Confirm after checking YOUR bank/merchant app</b>
+        <div class="form-group" style="margin:.5rem 0 .4rem">
+          <label class="form-label" style="font-size:.72rem">Bank / UPI transaction reference (UTR)</label>
+          <input type="text" id="qrTxnRef" class="form-input" maxlength="64" placeholder="e.g. 405123456789" style="font-family:'JetBrains Mono',monospace">
+        </div>
+        <div class="form-group" style="margin:0 0 .5rem">
+          <label class="form-label" style="font-size:.72rem">Note (optional)</label>
+          <input type="text" id="qrVerifyNote" class="form-input" maxlength="200">
+        </div>
+        <div style="display:flex;gap:.4rem">
+          <button class="btn btn-outline btn-sm" onclick="toggleVerifyPane(false)">Back</button>
+          <button class="btn btn-primary btn-sm" id="qrVerifyBtn" style="flex:1" onclick="verifyUpiNow()">Confirm receipt — ₹<span id="qrVerifyAmt">—</span></button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" id="qrRejectBtn" onclick="rejectUpiClaim()"><i class="fa fa-ban"></i> Reject</button>
+      <button class="btn btn-primary" id="qrVerifyOpenBtn" onclick="toggleVerifyPane(true)"><i class="fa fa-check"></i> Money received? Verify</button>
+    </div>
+  </div>
+</div>
+
 <script>
   const ORDER_ID = <?= $order['id'] ?>;
+  const ORDER_NUMBER = '<?= esc($order['order_number']) ?>';
   const ORDER_TOTAL = <?= $order['total_amount'] ?>;
   const CSRF_NAME = '<?= csrf_token() ?>';
   const CSRF_TOKEN = '<?= csrf_hash() ?>';
@@ -374,6 +436,160 @@ function openBillSlip() {
         return r.json();
       }).then(d => handlePrintResult(d, 'Reprinted!'))
       .catch(e => showToast(e.message || 'Network error', 'error'));
+  }
+
+  // ── UPI QR payment flow (mock-style: Total → fixed QR → live status → verify) ──
+  let UPI_REF = null, UPI_TIMER = null;
+
+  function startUpiQr() {
+    closeModal('checkoutModal');
+    UPI_REF = null;
+    document.getElementById('qrVerifyPane').style.display = 'none';
+    document.getElementById('qrRejectBtn').disabled = false;
+    document.getElementById('qrVerifyOpenBtn').disabled = false;
+    document.getElementById('qrHolder').innerHTML = '<i class="fa fa-spinner fa-spin" style="font-size:1.5rem;color:var(--text-muted)"></i>';
+    document.getElementById('qrStatusBox').innerHTML = '⏳ Preparing your QR…';
+    document.getElementById('qrAmt').textContent = '—';
+    document.getElementById('qrAmt2').textContent = '—';
+    openModal('upiQrModal');
+
+    fetch('<?= base_url('pos/upi/qr') ?>', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+        body: new URLSearchParams({ [CSRF_NAME]: CSRF_TOKEN, order_id: ORDER_ID })
+      }).then(r => r.json()).then(d => {
+        if (!d.success) {
+          closeUpiQr();
+          showToast(d.message || 'UPI QR not available', d.needs_setup ? 'warning' : 'error');
+          if (d.needs_setup) setTimeout(() => { location.href = '<?= base_url('admin/upi-settings') ?>'; }, 800);
+          return;
+        }
+        UPI_REF = d.attempt_ref;
+        const amt = parseFloat(d.amount).toFixed(2).replace(/\.00$/, '');
+        document.getElementById('qrAmt').textContent   = amt;
+        document.getElementById('qrAmt2').textContent  = amt;
+        document.getElementById('qrOrder').textContent = ORDER_NUMBER;
+        document.getElementById('qrRef').textContent   = d.attempt_ref;
+        document.getElementById('qrExpiry').textContent = d.expires_at;
+        document.getElementById('qrHolder').innerHTML = d.qr
+          ? '<img src="' + d.qr + '" style="width:100%;height:100%;object-fit:contain" alt="UPI QR">'
+          : '<div style="font-size:.78rem;color:var(--danger);padding:.6rem">QR image unavailable — open the customer link below</div>';
+        document.getElementById('qrCustomerLink').href = d.customer_url;
+        document.getElementById('qrStatusBox').innerHTML = '⏳ Waiting for payment — this updates automatically…';
+        startUpiPoll(d.status_url);
+      }).catch(e => {
+        closeUpiQr();
+        showToast(e.message || 'Network error', 'error');
+      });
+  }
+
+  function startUpiPoll(statusUrl) {
+    stopUpiPoll();
+    if (!statusUrl) return;
+    UPI_TIMER = setInterval(() => {
+      fetch(statusUrl).then(r => r.json()).then(d => {
+        if (!d.success) { stopUpiPoll(); return; }
+        const box = document.getElementById('qrStatusBox');
+        if (d.claimed && d.state === 'pending') {
+          box.style.background = '#FFF7ED';
+          box.innerHTML = '🙋 Customer says they have paid — check your bank/merchant app, then verify below.';
+        }
+        if (d.state === 'paid') {
+          stopUpiPoll();
+          box.style.background = '#F0FFF4';
+          box.innerHTML = '✅ Payment verified — ₹' + d.amount.replace(/\.00$/, '') + ' received. Thank you!';
+          showModalFooter(false);
+          setTimeout(() => { closeModal('upiQrModal'); location.reload(); }, 1400);
+        } else if (d.state === 'expired') {
+          stopUpiPoll();
+          box.style.background = '#F9F5EF';
+          box.innerHTML = '⏰ QR expired — close and tap UPI QR Pay again for a fresh one.';
+          showModalFooter(false);
+        } else if (d.state === 'rejected') {
+          stopUpiPoll();
+          box.style.background = '#FEF2F2';
+          box.innerHTML = '🚫 Claim rejected — close and tap UPI QR Pay to retry.';
+          showModalFooter(false);
+        }
+      }).catch(() => {});
+    }, 5000);
+  }
+
+  function showModalFooter(show) {
+    document.getElementById('qrRejectBtn').style.display = show ? '' : 'none';
+    document.getElementById('qrVerifyOpenBtn').style.display = show ? '' : 'none';
+  }
+
+  function stopUpiPoll() {
+    if (UPI_TIMER) { clearInterval(UPI_TIMER); UPI_TIMER = null; }
+  }
+
+  function closeUpiQr() {
+    stopUpiPoll();
+    closeModal('upiQrModal');
+  }
+
+  function toggleVerifyPane(show) {
+    const pane = document.getElementById('qrVerifyPane');
+    if (show) {
+      if (!UPI_REF) { showToast('Generate the QR first', 'warning'); return; }
+      document.getElementById('qrVerifyAmt').textContent = document.getElementById('qrAmt').textContent;
+      pane.style.display = '';
+      setTimeout(() => document.getElementById('qrTxnRef').focus(), 120);
+    } else {
+      pane.style.display = 'none';
+    }
+  }
+
+  function verifyUpiNow() {
+    const ref = document.getElementById('qrTxnRef').value.trim();
+    if (!ref) { showToast('Enter the bank/UPI transaction reference (UTR)', 'error'); setTimeout(() => document.getElementById('qrTxnRef').focus(), 100); return; }
+    const btn = document.getElementById('qrVerifyBtn');
+    btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Verifying…';
+    fetch('<?= base_url('pos/upi/verify') ?>', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+        body: new URLSearchParams({
+          [CSRF_NAME]: CSRF_TOKEN,
+          attempt_ref: UPI_REF,
+          txn_ref: ref,
+          note: document.getElementById('qrVerifyNote').value.trim()
+        })
+      }).then(r => r.json()).then(d => {
+        if (d.success) {
+          stopUpiPoll();
+          const box = document.getElementById('qrStatusBox');
+          box.style.background = '#F0FFF4';
+          box.innerHTML = '✅ ' + d.message;
+          showModalFooter(false);
+          setTimeout(() => { closeModal('upiQrModal'); location.reload(); }, 1400);
+        } else {
+          showToast(d.message || 'Could not verify', 'error');
+        }
+      }).catch(e => showToast(e.message || 'Network error', 'error'))
+      .finally(() => { btn.disabled = false; btn.innerHTML = 'Confirm receipt — ₹<span id="qrVerifyAmt">—</span>'; });
+  }
+
+  function rejectUpiClaim() {
+    if (!UPI_REF) { showToast('Generate the QR first', 'warning'); return; }
+    const reason = prompt('Reason for rejecting this payment claim?', 'No matching credit in our bank app');
+    if (reason === null) return;
+    if (!reason || reason.trim().length < 3) { showToast('A real reason is required', 'error'); return; }
+    fetch('<?= base_url('pos/upi/reject') ?>', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+        body: new URLSearchParams({ [CSRF_NAME]: CSRF_TOKEN, attempt_ref: UPI_REF, reason: reason.trim() })
+      }).then(r => r.json()).then(d => {
+        if (d.success) {
+          stopUpiPoll();
+          const box = document.getElementById('qrStatusBox');
+          box.style.background = '#FEF2F2';
+          box.innerHTML = '🚫 Claim rejected — the customer screen will show "not verified". Close and generate a new QR to retry.';
+          showModalFooter(false);
+          // order page can stay; staff may generate a fresh QR immediately
+          setTimeout(() => { closeModal('upiQrModal'); }, 2500);
+        } else showToast(d.message || 'Could not reject', 'error');
+      }).catch(e => showToast(e.message || 'Network error', 'error'));
   }
 </script>
 

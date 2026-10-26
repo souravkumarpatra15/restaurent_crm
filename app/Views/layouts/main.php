@@ -104,6 +104,9 @@
     <a href="<?= base_url('super/notifications') ?>" class="nav-item <?= active('super/notifications*') ?>">
       <i class="fa fa-bell"></i><span>Notifications</span>
     </a>
+    <a href="<?= base_url('super/feedback') ?>" class="nav-item <?= active('super/feedback*') ?>">
+      <i class="fa fa-comments"></i><span>Owner Feedback</span>
+    </a>
     <a href="<?= base_url('super/settings') ?>" class="nav-item <?= active('super/settings*') ?>">
       <i class="fa fa-gear"></i><span>Settings</span>
     </a>
@@ -157,6 +160,9 @@
     <a href="<?= base_url('admin/coupons') ?>" class="nav-item <?= active('admin/coupons*') ?>">
       <i class="fa fa-ticket"></i><span>Coupons</span>
     </a>
+    <a href="<?= base_url('pos/upi/pending') ?>" class="nav-item <?= active('pos/upi*') ?>">
+      <i class="fa fa-qrcode"></i><span>UPI Payments</span>
+    </a>
     <div class="nav-section">REPORTS</div>
     <a href="<?= base_url('admin/reports/sales') ?>" class="nav-item <?= active('admin/reports*') ?>">
       <i class="fa fa-chart-bar"></i><span>Reports</span>
@@ -197,6 +203,12 @@
     <a href="<?= base_url('admin/settings') ?>" class="nav-item <?= active('admin/settings*') ?>">
       <i class="fa fa-gear"></i><span>Settings</span>
     </a>
+    <a href="<?= base_url('admin/owner-feedback') ?>" class="nav-item <?= active('admin/owner-feedback*') ?>">
+      <i class="fa fa-comments"></i><span>Owner Feedback</span>
+    </a>
+    <a href="<?= base_url('admin/upi-settings') ?>" class="nav-item <?= active('admin/upi-settings*') ?>">
+      <i class="fa fa-qrcode"></i><span>UPI Payments</span>
+    </a>
 
     <?php else: ?>
     <!-- ── CASHIER / WAITER / KITCHEN ── -->
@@ -209,6 +221,9 @@
     </a>
     <a href="<?= base_url('pos/new-order/delivery') ?>" class="nav-item">
       <i class="fa fa-motorcycle"></i><span>Delivery</span>
+    </a>
+    <a href="<?= base_url('pos/upi/pending') ?>" class="nav-item <?= active('pos/upi*') ?>">
+      <i class="fa fa-qrcode"></i><span>Pending UPI</span>
     </a>
     <div class="nav-section">KITCHEN</div>
     <a href="<?= base_url('pos/kitchen') ?>" class="nav-item <?= active('pos/kitchen') ?>">

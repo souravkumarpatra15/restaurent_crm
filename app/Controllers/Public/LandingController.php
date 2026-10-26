@@ -31,6 +31,17 @@ class LandingController extends BaseController
             ->get()
             ->getResultArray();
 
+        // Owner feedback — published, consented answers from real tenants
+        $data['testimonials'] = $db->table('feedback_responses fr')
+            ->select('fr.rating, fr.comment, fr.display_name, fr.restaurant_name, fr.responded_at')
+            ->where('fr.is_published', 1)
+            ->where('fr.can_publish', 1)
+            ->where('fr.rating >=', 4)
+            ->orderBy('fr.published_at', 'DESC')
+            ->limit(9)
+            ->get()
+            ->getResultArray();
+
         $html = view('landing', $data);
         $trialUrl = base_url('register');
 
