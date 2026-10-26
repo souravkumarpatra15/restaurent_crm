@@ -238,6 +238,31 @@ $this->section('content'); ?>
   </div>
 </div>
 
+<!-- Cancel Order Modal -->
+<div class="modal-overlay" id="cancelModal">
+  <div class="modal" style="max-width:340px">
+    <div class="modal-header">
+      <span class="modal-title" style="color:#DC2626">🚫 Cancel Order</span>
+      <button class="modal-close" onclick="closeModal('cancelModal')"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:.75rem">
+        Cancelling stops the kitchen for order <b>#<?= esc($order['order_number']) ?></b> and returns items to stock. This cannot be undone.
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reason</label>
+        <input type="text" class="form-control" id="cancelReason" placeholder="e.g. Walk-in cancelled, changed mind" onkeydown="if(event.key==='Enter')processCancel()">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('cancelModal')">Keep order</button>
+      <button class="btn btn-lg" style="background:#DC2626;color:#fff" id="cancelBtn" onclick="processCancel()">
+        <i class="fa fa-ban"></i> Cancel order
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- UPI QR Payment Modal — mock flow: Total → QR (fixed amount) → live status → verify -->
 <div class="modal-overlay" id="upiQrModal">
   <div class="modal" style="max-width:400px">
@@ -500,8 +525,15 @@ function openBillSlip() {
   }
 
   function cancelOrderAction() {
-    const reason = prompt('Reason for cancelling this order?', 'Walk-in cancelled');
-    if (reason === null) return;
+    openModal('cancelModal');
+    setTimeout(() => document.getElementById('cancelReason').focus(), 80);
+  }
+
+  function processCancel() {
+    const reason = document.getElementById('cancelReason').value.trim() || 'Walk-in cancelled';
+    const btn = document.getElementById('cancelBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Cancelling…';
     fetch('<?= base_url('pos/order/cancel/' . $order['id']) ?>', {
         method: 'POST',
         headers: {
@@ -512,14 +544,25 @@ function openBillSlip() {
           [CSRF_NAME]: CSRF_TOKEN,
           reason: reason
         })
-      }).then(r => r.json()).then(d => {
+      })
+      .then(r => r.ok ? r.json() : r.text().then(t => { throw new Error('Session expired — reloading'); } ))
+      .then(d => {
         if (d.success) {
           showToast(d.message || 'Order cancelled', 'warning');
+          closeModal('cancelModal');
           setTimeout(() => location.reload(), 700);
         } else {
           showToast(d.message || 'Could not cancel order', 'error');
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa fa-ban"></i> Cancel order';
         }
-      }).catch(e => showToast(e.message || 'Network error', 'error'));
+      })
+      .catch(e => {
+        showToast(e.message || 'Network error', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa fa-ban"></i> Cancel order';
+        setTimeout(() => location.reload(), 1500); // fresh session/token, try again
+      });
   }
 
   function printKotAction() {
