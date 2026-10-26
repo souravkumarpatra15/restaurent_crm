@@ -267,6 +267,62 @@
       margin-bottom: .75rem
     }
 
+    /* status chips */
+    .chip {
+      font-size: .62rem;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      padding: .28rem .65rem;
+      border-radius: 99px
+    }
+
+    .chip-pay-unpaid {
+      background: rgba(248, 113, 113, .14);
+      color: #F87171;
+      border: 1px solid rgba(248, 113, 113, .35)
+    }
+
+    .chip-pay-paid {
+      background: rgba(52, 211, 153, .14);
+      color: #34D399;
+      border: 1px solid rgba(52, 211, 153, .35)
+    }
+
+    /* per-item live kitchen status */
+    .item-st {
+      font-size: .58rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      padding: .12rem .45rem;
+      border-radius: 99px;
+      flex-shrink: 0;
+      margin-left: .45rem
+    }
+
+    .st-pending {
+      background: rgba(255, 255, 255, .08);
+      color: rgba(255, 255, 255, .45)
+    }
+
+    .st-ready {
+      background: rgba(52, 211, 153, .14);
+      color: #34D399
+    }
+
+    .st-served {
+      background: rgba(52, 211, 153, .14);
+      color: #34D399
+    }
+
+    .items-prog {
+      font-size: .66rem;
+      font-weight: 800;
+      color: var(--p);
+      text-transform: none
+    }
+
     .oitem {
       display: flex;
       justify-content: space-between;
@@ -430,6 +486,13 @@
       <span class="poll-dot"></span>Live tracking your order
     </div>
 
+    <!-- Status chips -->
+    <div style="display:flex;gap:.4rem;justify-content:center;margin-top:.65rem;flex-wrap:wrap">
+      <span class="chip chip-pay <?= $order['payment_status'] === 'paid' ? 'chip-pay-paid' : 'chip-pay-unpaid' ?>" id="payChip">
+        <?= $order['payment_status'] === 'paid' ? '✔ Paid' : '● Payment pending' ?>
+      </span>
+    </div>
+
     <!-- Animated icon -->
     <div class="pulse-ring">
       <div class="status-icon" id="sIcon">📋</div>
@@ -480,14 +543,20 @@
 
   <!-- Order items -->
   <div class="card">
-    <div class="card-title">Your Order</div>
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+      <span>Your Order</span>
+      <span class="items-prog" id="progText"></span>
+    </div>
     <?php foreach ($items as $it): ?>
       <div class="oitem">
         <div>
           <div class="oitem-name"><?= esc($it['name']) ?></div>
           <div class="oitem-qty">× <?= $it['quantity'] ?><?= $it['notes'] ? ' · ' . $it['notes'] : '' ?></div>
         </div>
-        <div class="oitem-price"><?= $table['currency_symbol'] ?? '₹' ?><?= number_format($it['total_price'], 2) ?></div>
+        <div style="display:flex;align-items:center;gap:.45rem">
+          <span class="oitem-price"><?= $table['currency_symbol'] ?? '₹' ?><?= number_format($it['total_price'], 2) ?></span>
+          <span class="item-st st-<?= esc(($it['status'] ?? 'pending') ?: 'pending') ?>"><?= esc(($it['status'] ?? 'pending') ?: 'pending') ?></span>
+        </div>
       </div>
     <?php endforeach; ?>
     <div class="total-row">
@@ -537,6 +606,27 @@
       icon.textContent = icons[data.step] || '📋';
       label.textContent = data.label;
       msg.textContent = data.message;
+
+      // live item kitchen statuses + payment chip
+      if (document.getElementById('payChip') && data.payment_status) {
+        const chip = document.getElementById('payChip');
+        const paid = data.payment_status === 'paid';
+        chip.className = 'chip chip-pay ' + (paid ? 'chip-pay-paid' : 'chip-pay-unpaid');
+        chip.textContent = paid ? '✔ Paid' : '● Payment pending';
+      }
+      if (Array.isArray(data.items)) {
+        const badges = document.querySelectorAll('.oitem .item-st');
+        data.items.forEach((it, i) => {
+          if (badges[i] && it.status) {
+            badges[i].className = 'item-st st-' + it.status;
+            badges[i].textContent = it.status;
+          }
+        });
+        if (document.getElementById('progText') && data.progress) {
+          document.getElementById('progText').textContent =
+            data.progress.prepared + '/' + data.progress.total + ' prepared';
+        }
+      }
 
       // Timer
       if (data.step >= 4) {

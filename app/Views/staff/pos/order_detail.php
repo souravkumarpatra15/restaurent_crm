@@ -194,7 +194,7 @@ $this->section('content'); ?>
       <span class="modal-title">📲 Payment — <span id="qrOrder"></span></span>
       <button class="modal-close" onclick="closeUpiQr()"><i class="fa fa-times"></i></button>
     </div>
-    <div class="modal-body" style="text-align:center">
+    <div class="modal-body" style="text-align:center;max-height:calc(100vh - 210px);overflow-y:auto">
       <div style="padding:.875rem;background:var(--primary-light,#FFF1E8);border-radius:10px;margin-bottom:.875rem">
         <div style="font-size:.78rem;color:var(--text-muted)">Total Amount</div>
         <div style="font-size:2rem;font-weight:800;color:var(--primary)">₹<span id="qrAmt">—</span></div>

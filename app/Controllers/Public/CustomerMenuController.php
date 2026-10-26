@@ -386,8 +386,9 @@ class CustomerMenuController extends BaseController
         if (!$order) return view('public/menu_error', ['message' => 'Order not found.']);
 
         $items = $db->table('order_items')
-            ->select('name, quantity, unit_price, total_price, notes')
+            ->select("name, quantity, unit_price, total_price, notes, COALESCE(status, 'pending') AS status")
             ->where('order_id', $orderId)
+            ->where("COALESCE(status, '') !=", 'cancelled')
             ->get()->getResultArray();
 
         return view('public/order_status', [
@@ -413,6 +414,14 @@ class CustomerMenuController extends BaseController
 
         if (!$order) return $this->response->setJSON(['error' => true]);
 
+        $items = $db->table('order_items')
+            ->select('name, variant_name, quantity, status')
+            ->where('order_id', $orderId)
+            ->where('status !=', 'cancelled')
+            ->orderBy('id', 'ASC')
+            ->get()->getResultArray();
+        $progress = \App\Libraries\OrderTrack::itemProgress($items);
+
         $created     = strtotime($order['created_at']);
         $elapsedMins = (time() - $created) / 60;
         $estMins     = (int)($order['estimated_mins'] ?? 15);
@@ -437,6 +446,14 @@ class CustomerMenuController extends BaseController
             'icon'        => $info['icon'],
             'remain_mins' => (int)$remainMins,
             'elapsed_mins'=> (int)$elapsedMins,
+            'payment_status' => $order['payment_status'],
+            'items'       => array_map(fn($i) => [
+                'name'    => $i['name'],
+                'qty'     => (int)$i['quantity'],
+                'variant' => $i['variant_name'],
+                'status'  => $i['status'],
+            ], $items),
+            'progress'    => $progress,
         ]);
     }
 }

@@ -275,18 +275,40 @@ body {
 
   <!-- Feedback QR -->
   <?php if (!empty($order['feedback_token'])): ?>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <div class="upi-box" style="border:1.5px dashed #6366F1;background:#F5F3FF">
     <div style="font-size:10px;font-weight:700;color:#6366F1;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.3rem">⭐ Rate Your Experience</div>
     <div id="fbQrBox" style="display:flex;justify-content:center"></div>
     <div style="font-size:9px;color:#888;margin-top:.15rem">Scan the QR · Takes 30 seconds</div>
   </div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script>
     new QRCode(document.getElementById('fbQrBox'), {
       text: '<?= base_url('feedback/' . $order['feedback_token']) ?>',
       width: 110,
       height: 110,
       colorDark: '#4F46E5',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  </script>
+  <?php endif; ?>
+
+  <!-- Live tracking QR (takeaway & delivery) -->
+  <?php if (in_array(($order['order_type'] ?? ''), ['takeaway', 'delivery'], true) && !empty($order['track_token'])): ?>
+  <?php $trackUrl = base_url('track/' . $order['track_token']); ?>
+  <?php if (empty($order['feedback_token'])): ?><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><?php endif; ?>
+  <div class="upi-box" style="border:1.5px dashed #0284C7;background:#F0F9FF">
+    <div style="font-size:10px;font-weight:700;color:#0284C7;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.3rem">📡 Track Your Order Live</div>
+    <div id="trackQrBox" style="display:flex;justify-content:center"></div>
+    <div style="font-size:9px;color:#888;margin-top:.15rem">Scan to watch your order being prepared live</div>
+    <div style="font-size:8.5px;color:#555;margin-top:.2rem;font-weight:600;word-break:break-all"><?= esc($trackUrl) ?></div>
+  </div>
+  <script>
+    new QRCode(document.getElementById('trackQrBox'), {
+      text: '<?= esc($trackUrl) ?>',
+      width: 110,
+      height: 110,
+      colorDark: '#0369A1',
       colorLight: '#ffffff',
       correctLevel: QRCode.CorrectLevel.M
     });

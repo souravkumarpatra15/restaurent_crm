@@ -292,6 +292,10 @@ $routes->post('admin/owner-feedback/submit',      'Manager\OwnerFeedbackControll
 $routes->get('feedback/(:segment)',         'Public\FeedbackController::index/$1');
 $routes->post('feedback/(:segment)/submit', 'Public\FeedbackController::store/$1');
 
+// Customer live tracking (from bill-slip link/QR) — takeaway, delivery, any order
+$routes->get('track/(:segment)',            'Public\TrackController::index/$1');
+$routes->get('track/(:segment)/poll',       'Public\TrackController::poll/$1');
+
 // ── PUBLIC TABLE BOOKING (DinoviX) ────────────────────────
 $routes->get('book',                          'Booking\DiscoverController::index');
 $routes->post('book/slots',                   'Booking\DiscoverController::slots');
