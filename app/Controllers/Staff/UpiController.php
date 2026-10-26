@@ -396,12 +396,27 @@ class UpiController extends BaseController
         if (bccomp($remain, '0.00', 2) < 0) $remain = '0.00';
 
         $orderUpdate = ['paid_amount' => $collected, 'balance_amount' => $remain];
-        if (bccomp($remain, '0.00', 2) === 0) {
+        $fullyPaid = bccomp($remain, '0.00', 2) === 0;
+        if ($fullyPaid) {
             $orderUpdate['payment_status'] = 'paid';
         } else {
             $orderUpdate['payment_status'] = 'partial';
         }
         $db->table('orders')->where('id', $pay['order_id'])->update($orderUpdate);
+
+        // Fully paid through the QR → give the order the EXACT same
+        // finish as counter checkout: completed, invoice, feedback token,
+        // table freed, loyalty earned. Otherwise dine-in tables stayed
+        // occupied and sales reports missed QR income.
+        $invoiceNumber = null;
+        if ($fullyPaid) {
+            $fin = \App\Libraries\OrderFinalize::complete($db, (int)$pay['order_id'], [
+                'payment_status' => 'paid',
+                'paid_amount'    => $collected,
+                'balance_amount' => '0.00',
+            ]);
+            $invoiceNumber = $fin['invoice_number'];
+        }
 
         $this->audit($db, $pay['id'], $rid, (int)$pay['o_branch'],
             'note', null, null, (int)session('user_id'), $txnRef,
@@ -409,16 +424,15 @@ class UpiController extends BaseController
 
         $db->query('COMMIT');
 
-        $fullyPaid = bccomp($remain, '0.00', 2) === 0;
-
         return $this->response->setJSON([
             'success'      => true,
             'message'      => $fullyPaid
-                ? 'Payment verified — order is fully paid (₹' . $collected . ' collected)'
+                ? 'Payment verified — order fully paid & completed (₹' . $collected . ' collected)'
                 : 'Payment verified (₹' . $collected . ' collected; ₹' . $remain . ' still outstanding)',
             'fully_paid'   => $fullyPaid,
             'paid'         => $collected,
             'balance'      => $remain,
+            'invoice_number' => $invoiceNumber,
         ]);
     }
 

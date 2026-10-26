@@ -16,11 +16,11 @@
           <?= csrf_field() ?>
           <div class="form-group">
             <label class="form-label">Title</label>
-            <input type="text" name="title" class="form-input" maxlength="150" required placeholder="e.g. How is DinoviX working for your restaurant?">
+            <input type="text" name="title" class="form-control" maxlength="150" required placeholder="e.g. How is DinoviX working for your restaurant?">
           </div>
           <div class="form-group">
             <label class="form-label">Message (shown in the owner's notification)</label>
-            <textarea name="message" class="form-input" rows="3" maxlength="500" placeholder="A short note asking the owner to rate and share how things are going…"></textarea>
+            <textarea name="message" class="form-control" rows="3" maxlength="500" placeholder="A short note asking the owner to rate and share how things are going…"></textarea>
           </div>
           <button type="submit" class="btn btn-primary"><i class="fa fa-plus"></i> Create form</button>
         </form>

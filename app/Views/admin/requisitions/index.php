@@ -19,24 +19,34 @@
         <?php else: ?>
         <form action="<?= base_url('admin/requisitions/store') ?>" method="POST" id="reqForm">
           <?= csrf_field() ?>
-          <div id="reqLines" style="display:flex;flex-direction:column;gap:.5rem">
-            <div style="display:flex;gap:.4rem;align-items:center">
-              <select class="form-input" name="item_id[]" style="flex:1" required>
+          <style>
+            .rq-line { display:flex; gap:.4rem; align-items:center; }
+            .rq-line select { flex:1; min-width:0; }
+            .rq-qty { width:86px; text-align:right; }
+            .rq-del { width:34px; height:38px; padding:0; display:inline-flex; align-items:center; justify-content:center;
+                      border:1.5px solid var(--border); border-radius:var(--radius-sm); background:#fff; color:var(--text-muted);
+                      transition:all .15s; }
+            .rq-del:hover { border-color:var(--danger); color:var(--danger); background:#FFF5F5; }
+            #reqLines .rq-line + .rq-line { margin-top:.4rem; }
+          </style>
+          <div id="reqLines" style="display:flex;flex-direction:column;gap:.4rem">
+            <div class="rq-line">
+              <select class="form-control" name="item_id[]" style="flex:1" required>
                 <option value="">Select item…</option>
                 <?php foreach ($items as $it): ?>
                 <option value="<?= (int)$it['id'] ?>"><?= esc($it['name']) ?> (<?= esc($it['unit'] ?: 'unit') ?>)<?= $it['stock'] !== null ? ' — stock ' . rtrim(rtrim(number_format((float)$it['stock'], 3), '0'), '.') : '' ?></option>
                 <?php endforeach; ?>
               </select>
-              <input type="number" name="qty[]" class="form-input" style="width:86px" step="0.001" min="0.001" placeholder="Qty" required>
-              <button type="button" class="btn btn-outline btn-sm" onclick="this.parentElement.remove()">✕</button>
+              <input type="number" name="qty[]" class="form-control rq-qty" step="0.001" min="0.001" placeholder="Qty" required>
+              <button type="button" class="rq-del" title="Remove line" onclick="this.parentElement.remove()">✕</button>
             </div>
           </div>
           <div style="margin:.55rem 0">
             <button type="button" class="btn btn-outline btn-sm" onclick="addReqLine()"><i class="fa fa-plus"></i> Add item</button>
           </div>
           <div class="form-group">
-            <label class="form-label">Note to the manager (optional)</label>
-            <input type="text" name="note" class="form-input" maxlength="255" placeholder="e.g. Fri biryani prep — need extra paneer">
+            <label class="form-label">Note to the manager <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
+            <input type="text" name="note" class="form-control" maxlength="255" placeholder="e.g. Fri biryani prep — need extra paneer">
           </div>
           <button type="submit" class="btn btn-primary" style="width:100%"><i class="fa fa-paper-plane"></i> Submit requisition</button>
         </form>
@@ -82,7 +92,7 @@
                     <td style="padding:.1rem;color:var(--text-muted)">requested <b><?= rtrim(rtrim(number_format((float)$it['qty_requested'], 3), '0'), '.') ?></b> <?= esc($it['unit'] ?: '') ?></td>
                     <?php if ($r['status'] === 'pending' && $canManage): ?>
                     <td style="padding:.1rem">
-                      approve <input type="number" class="form-input" style="width:86px;display:inline-block;padding:.15rem .4rem" step="0.001" min="0"
+                      approve <input type="number" class="form-control" style="width:86px;display:inline-block;padding:.15rem .4rem" step="0.001" min="0"
                              name="qty_approved[<?= (int)$it['id'] ?>]" form="appr<?= (int)$r['id'] ?>" value="<?= rtrim(rtrim(number_format((float)$it['qty_requested'], 3), '0'), '.') ?>">
                       <?= esc($it['unit'] ?: '') ?>
                     </td>
@@ -134,6 +144,7 @@ const firstLine = document.getElementById('reqLines')?.firstElementChild;
 function addReqLine() {
   if (!firstLine) return;
   const clone = firstLine.cloneNode(true);
+  clone.querySelector('select').selectedIndex = 0;
   clone.querySelector('input[name="qty[]"]').value = '';
   document.getElementById('reqLines').appendChild(clone);
 }

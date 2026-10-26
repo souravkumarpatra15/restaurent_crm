@@ -37,7 +37,7 @@
 
         <div class="form-group">
           <label class="form-label">Comment (optional)</label>
-          <textarea name="comment" class="form-input" rows="3" maxlength="1000" placeholder="What works well? What should we improve?"></textarea>
+          <textarea name="comment" class="form-control" rows="3" maxlength="1000" placeholder="What works well? What should we improve?"></textarea>
         </div>
 
         <div class="form-group" style="display:flex;align-items:center;gap:.6rem">

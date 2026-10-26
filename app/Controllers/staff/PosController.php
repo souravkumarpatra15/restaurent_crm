@@ -378,53 +378,16 @@ class PosController extends BaseController
             ]);
         }
 
-        // Update order
-        $this->orderModel->update($orderId, [
+        // Complete the order via the shared finish-line (same outcome as
+        // UPI verification): completed status, invoice, feedback token,
+        // table release, loyalty
+        $fin = \App\Libraries\OrderFinalize::complete($db, $orderId, [
             'payment_status' => 'paid',
             'paid_amount'    => $totalPaid,
             'balance_amount' => 0,
-            'status'         => 'completed',
-            'billed_at'      => date('Y-m-d H:i:s'),
-            'completed_at'   => date('Y-m-d H:i:s'),
         ]);
-
-        // Generate feedback token for post-meal QR review
-        $feedbackToken = bin2hex(random_bytes(16));
-        $db->table('orders')->where('id', $orderId)->update(['feedback_token' => $feedbackToken]);
-
-        // Create invoice
-        $invoiceNumber = $this->_generateInvoiceNumber($order['restaurant_id'], $order['branch_id']);
-        $db->table('invoices')->insert([
-            'order_id'       => $orderId,
-            'restaurant_id'  => $order['restaurant_id'],
-            'branch_id'      => $order['branch_id'],
-            'invoice_number' => $invoiceNumber,
-            'invoice_date'   => date('Y-m-d'),
-            'customer_name'  => $order['customer_name'],
-            'customer_phone' => $order['customer_phone'],
-            'subtotal'       => $order['subtotal'],
-            'discount'       => $order['discount_amount'],
-            'tax_amount'     => $order['tax_amount'],
-            'total_amount'   => $order['total_amount'],
-        ]);
-
-        // Free table — only when no OTHER active order is still open on it
-        // (multi-order-per-table is supported via "add round")
-        if ($order['table_id']) {
-            $remaining = $db->table('orders')
-                ->where('table_id', $order['table_id'])
-                ->where('id !=', $orderId)
-                ->whereIn('status', ['pending', 'confirmed', 'preparing', 'ready', 'served'])
-                ->countAllResults();
-            if ($remaining === 0) {
-                $db->table('tables')->where('id', $order['table_id'])->update(['status' => 'available']);
-            }
-        }
-
-        // Loyalty points
-        if ($order['customer_id']) {
-            $this->_awardLoyaltyPoints($order);
-        }
+        $invoiceNumber = $fin['invoice_number'];
+        $feedbackToken = $fin['feedback_token'] ?? null;
 
         $db->transComplete();
 

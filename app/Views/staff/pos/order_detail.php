@@ -244,12 +244,12 @@ $this->section('content'); ?>
         </div>
         <div class="form-group" style="margin:.55rem 0 .45rem">
           <label class="form-label" style="font-size:.72rem">Bank / UPI reference (UTR) — <span style="color:var(--text-muted)">optional</span></label>
-          <input type="text" id="qrTxnRef" class="form-input" maxlength="64" placeholder="Not mandatory — auto-recorded if blank" style="font-family:'JetBrains Mono',monospace">
+          <input type="text" id="qrTxnRef" class="form-control" maxlength="64" placeholder="Not mandatory — auto-recorded if blank" style="font-family:'JetBrains Mono',monospace">
           <div style="font-size:.66rem;color:var(--text-muted);margin-top:.2rem">Most banks/apps show a 12-digit reference. Leave it blank if you can't find it — we record one automatically.</div>
         </div>
         <div class="form-group" style="margin:0 0 .5rem">
           <label class="form-label" style="font-size:.72rem">Note for your records (optional)</label>
-          <input type="text" id="qrVerifyNote" class="form-input" maxlength="200" placeholder="e.g. Salary-day rush, checked by Ramesh">
+          <input type="text" id="qrVerifyNote" class="form-control" maxlength="200" placeholder="e.g. Salary-day rush, checked by Ramesh">
         </div>
         <div style="display:flex;gap:.4rem">
           <button class="btn btn-outline btn-sm" onclick="toggleVerifyPane(false)">Back</button>
@@ -281,6 +281,15 @@ $this->section('content'); ?>
     btn.classList.add('btn-primary');
     selectedMethod = btn.dataset.method;
     document.getElementById('changeRow').style.display = selectedMethod === 'cash' ? '' : 'none';
+    // UPI opens the restaurant QR flow instead of instant recording
+    const payBtn = document.getElementById('payBtn');
+    if (selectedMethod === 'upi') {
+      payBtn.innerHTML = '<i class="fa fa-qrcode"></i> Open UPI QR';
+      document.getElementById('payAmt').closest('.form-group').style.opacity = '.45';
+    } else {
+      payBtn.innerHTML = '<i class="fa fa-check"></i> Confirm Payment';
+      document.getElementById('payAmt').closest('.form-group').style.opacity = '';
+    }
   }
 
   document.querySelector('[data-method="cash"]')?.click();
@@ -306,6 +315,15 @@ $this->section('content'); ?>
   }
 
   function processCheckout() {
+    // UPI is NEVER instantly recorded — the money must land on the
+    // restaurant's own QR and be verified against the bank app.
+    if (selectedMethod === 'upi') {
+      closeModal('checkoutModal');
+      startUpiQr();
+      showToast('UPI is collected through your restaurant QR — show it to the customer', 'info');
+      return;
+    }
+
     const paid = parseFloat(document.getElementById('payAmt').value) || 0;
     if (paid < ORDER_TOTAL) {
       showToast('Amount is less than total!', 'error');

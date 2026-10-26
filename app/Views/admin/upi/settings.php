@@ -32,13 +32,13 @@
         <div id="upiFields" style="<?= empty($restaurant['upi_enabled']) ? 'opacity:.5;pointer-events:none' : '' ?>">
           <div class="form-group">
             <label class="form-label">Your receiving UPI ID (VPA)</label>
-            <input type="text" name="upi_vpa" id="upiVpa" class="form-input" placeholder="yourrestaurant@okhdfcbank" maxlength="120"
+            <input type="text" name="upi_vpa" id="upiVpa" class="form-control" placeholder="yourrestaurant@okhdfcbank" maxlength="120"
                    value="<?= esc($restaurant['upi_vpa'] ?? '') ?>" style="max-width:420px;font-family:'JetBrains Mono',monospace">
             <div style="font-size:.72rem;color:var(--text-muted);margin-top:.25rem">Format: name@bankhandle &mdash; exactly the ID you use to receive money in GPay / PhonePe / Paytm / your bank app.</div>
           </div>
           <div class="form-group">
             <label class="form-label">Payee display name</label>
-            <input type="text" name="upi_payee_name" id="upiPayee" class="form-input" maxlength="40"
+            <input type="text" name="upi_payee_name" id="upiPayee" class="form-control" maxlength="40"
                    value="<?= esc($restaurant['upi_payee_name'] ?? '') ?>" placeholder="<?= esc($restaurant['name'] ?? 'Restaurant name') ?>" style="max-width:420px">
             <div style="font-size:.72rem;color:var(--text-muted);margin-top:.25rem">Shown in the customer&rsquo;s UPI app next to the amount (3&ndash;40 characters).</div>
           </div>

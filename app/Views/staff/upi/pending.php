@@ -89,16 +89,16 @@
       </div>
       <div class="form-group">
         <label class="form-label">Bank / UPI transaction reference (UTR)</label>
-        <input type="text" id="vTxnRef" class="form-input" maxlength="64" placeholder="e.g. 405123456789 or your bank's ref"
+        <input type="text" id="vTxnRef" class="form-control" maxlength="64" placeholder="e.g. 405123456789 or your bank's ref"
                style="font-family:'JetBrains Mono',monospace">
       </div>
       <div class="form-group">
         <label class="form-label">Received amount (₹)</label>
-        <input type="number" id="vReceived" class="form-input" step="0.01" min="0">
+        <input type="number" id="vReceived" class="form-control" step="0.01" min="0">
       </div>
       <div class="form-group">
         <label class="form-label">Note (optional)</label>
-        <input type="text" id="vNote" class="form-input" maxlength="200" placeholder="e.g. verified in GPay merchant app">
+        <input type="text" id="vNote" class="form-control" maxlength="200" placeholder="e.g. verified in GPay merchant app">
       </div>
     </div>
     <div class="modal-footer">
@@ -119,7 +119,7 @@
       <div id="rOrder" style="font-weight:700;margin-bottom:.5rem"></div>
       <div class="form-group">
         <label class="form-label">Reason (required)</label>
-        <input type="text" id="rReason" class="form-input" maxlength="200" placeholder="e.g. No matching credit in bank app">
+        <input type="text" id="rReason" class="form-control" maxlength="200" placeholder="e.g. No matching credit in bank app">
       </div>
     </div>
     <div class="modal-footer">

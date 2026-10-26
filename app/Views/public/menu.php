@@ -117,8 +117,8 @@ html,body{height:100%;font-family:var(--font);background:#F8FAFC;color:#0F172A;-
 /* ── PLACE ORDER FORM ───────────────────────────────── */
 .form-field{margin-bottom:.75rem}
 .form-label{font-size:.72rem;font-weight:800;color:#64748B;display:block;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.04em}
-.form-input{width:100%;padding:.625rem .875rem;border:1.5px solid var(--border);border-radius:10px;font-family:var(--font);font-size:.875rem;outline:none;transition:border-color .15s;background:#fff}
-.form-input:focus{border-color:var(--p)}
+.form-control{width:100%;padding:.625rem .875rem;border:1.5px solid var(--border);border-radius:10px;font-family:var(--font);font-size:.875rem;outline:none;transition:border-color .15s;background:#fff}
+.form-control:focus{border-color:var(--p)}
 .order-summary{background:#F8FAFC;border-radius:12px;padding:.875rem;margin-bottom:1rem}
 .ots-row{display:flex;justify-content:space-between;align-items:center;font-size:.8rem;margin-bottom:.3rem;color:#64748B}
 .ots-row.total{font-weight:900;font-size:.95rem;color:#0F172A;margin-bottom:0;margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border)}
@@ -284,15 +284,15 @@ html,body{height:100%;font-family:var(--font);background:#F8FAFC;color:#0F172A;-
     <!-- Customer details (optional) -->
     <div class="form-field">
       <label class="form-label">Your Name (optional)</label>
-      <input type="text" class="form-input" id="coName" placeholder="e.g. Rahul">
+      <input type="text" class="form-control" id="coName" placeholder="e.g. Rahul">
     </div>
     <div class="form-field">
       <label class="form-label">Phone (optional)</label>
-      <input type="tel" class="form-input" id="coPhone" placeholder="+91 XXXXX XXXXX" inputmode="tel">
+      <input type="tel" class="form-control" id="coPhone" placeholder="+91 XXXXX XXXXX" inputmode="tel">
     </div>
     <div class="form-field">
       <label class="form-label">Special Instructions</label>
-      <input type="text" class="form-input" id="coNote" placeholder="Allergies, less spice, extra napkins…">
+      <input type="text" class="form-control" id="coNote" placeholder="Allergies, less spice, extra napkins…">
     </div>
     <div style="background:#F0FDF4;border-radius:10px;padding:.75rem;font-size:.78rem;color:#15803D;display:flex;gap:.5rem;align-items:flex-start">
       <i class="fa fa-circle-info" style="margin-top:.1rem"></i>
