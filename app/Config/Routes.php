@@ -233,6 +233,7 @@ $routes->group('pos', ['filter' => 'auth:cashier,waiter,branch_manager,restauran
     $routes->get('order/pending-customer',               'Staff\PosController::pendingCustomerOrders');
     $routes->post('order/confirm-customer/(:num)',        'Staff\PosController::confirmCustomerOrder/$1');
     $routes->post('order/reject-customer/(:num)',         'Staff\PosController::rejectCustomerOrder/$1');
+    $routes->post('order/set-status',               'Staff\PosController::setOrderStatus');
     $routes->post('order/cancel/(:num)',            'Staff\PosController::cancelOrder/$1');
     $routes->post('order/cancel-bulk',               'Staff\PosController::cancelBulk');
     $routes->post('order/bill-bulk',                 'Staff\PosController::billBulk');

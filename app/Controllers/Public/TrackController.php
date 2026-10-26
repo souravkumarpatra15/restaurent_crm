@@ -134,12 +134,15 @@ class TrackController extends BaseController
         $timeline = $this->timeline($order);
         $progress = $this->itemProgress($order['items']);
 
-        $created     = strtotime($order['created_at']);
-        $elapsedMins = (time() - $created) / 60;
+        // Database clock, not PHP time() — the two differ (PHP UTC vs MySQL
+        // IST) and the ETA would read hours off
+        $db = \Config\Database::connect();
+        $elapsedMins = (int)$db->query(
+            "SELECT TIMESTAMPDIFF(MINUTE, ?, NOW()) AS m", [$order['created_at']]
+        )->getRowArray()['m'];
         $etaMins     = (int)($order['estimated_mins'] ?? 15);
 
         // Order snapshot for the pay entry point (upi enabled / amount)
-        $db = \Config\Database::connect();
         $upiEnabled = false;
         if ($order['payment_status'] !== 'paid' && !empty($order['rid'])) {
             $r2 = $db->table('restaurants')
@@ -174,8 +177,10 @@ class TrackController extends BaseController
 
         $timeline = $this->timeline($order);
 
-        $created     = strtotime($order['created_at']);
-        $elapsedMins = (time() - $created) / 60;
+        $db          = \Config\Database::connect();
+        $elapsedMins = (int)$db->query(
+            "SELECT TIMESTAMPDIFF(MINUTE, ?, NOW()) AS m", [$order['created_at']]
+        )->getRowArray()['m'];
         $etaMins     = (int)($order['estimated_mins'] ?? 15);
 
         // headline text mirroring the table tracker

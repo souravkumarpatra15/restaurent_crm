@@ -873,6 +873,60 @@ class PosController extends BaseController
         ]);
     }
 
+    // ── Advance order status (confirmed → preparing → ready → served) ──
+    // Nothing used to move dine-in orders along, so the customer's live
+    // timeline froze at "Confirmed" forever. This gives staff explicit
+    // timeline control; each step updates within ~8s on the customer page.
+    public function setOrderStatus()
+    {
+        $orderId     = (int)$this->request->getPost('order_id');
+        $next        = trim((string)$this->request->getPost('status'));
+        $orderStatus = $this->request->getPost('order_status'); // optional stale client value
+
+        if (!in_array($next, ['confirmed', 'preparing', 'ready', 'served'], true)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid status']);
+        }
+        if ($orderStatus !== null && !in_array($orderStatus, ['pending', 'confirmed', 'preparing', 'ready', 'served'], true)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid current status']);
+        }
+
+        $order = $this->orderModel->find($orderId);
+        if (!$order || $order['branch_id'] != $this->session->get('branch_id')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Order not found']);
+        }
+        if (in_array($order['status'], ['cancelled', 'completed'], true)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'This order is already ' . $order['status']]);
+        }
+
+        // Server enforces the true sequence — a stale screen can never
+        // skip or rewind a step
+        $path = ['pending' => 'confirmed', 'confirmed' => 'preparing', 'preparing' => 'ready', 'ready' => 'served'];
+        $expected = $path[$orderStatus] ?? $path[$order['status']] ?? null;
+        if ($expected !== $next) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Next step from ' . $order['status'] . ' is ' . ($path[$order['status']] ?? '—'),
+                'current' => $order['status'],
+            ]);
+        }
+
+        $this->orderModel->update($orderId, [
+            'status'     => $next,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        // "Start cooking" also flags open KOTs so the kitchen board moves
+        if ($next === 'preparing') {
+            \Config\Database::connect()->table('kots')
+                ->where('order_id', $orderId)
+                ->where('status', 'pending')
+                ->update(['status' => 'in_progress']);
+        }
+
+        $label = ['confirmed' => 'Order confirmed', 'preparing' => 'Cooking started', 'ready' => 'Food ready', 'served' => 'Order served'][$next];
+        return $this->response->setJSON(['success' => true, 'message' => $label, 'status' => $next]);
+    }
+
     // ── Reject a customer QR order ────────────────────────────
     public function rejectCustomerOrder($orderId)
     {

@@ -22,6 +22,57 @@ $this->section('content'); ?>
   <!-- Order Content -->
   <div style="flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:1rem">
 
+    <?php $activeStatuses = ['pending', 'confirmed', 'preparing', 'ready', 'served']; ?>
+    <?php if (in_array($order['status'], $activeStatuses, true) && in_array($order['order_type'], ['dine_in', 'takeaway'], true)): ?>
+    <!-- Kitchen Timeline control — advances the customer's live tracking page -->
+    <div class="card" id="timelineCard">
+      <div class="card-body" style="padding:.7rem 1rem">
+        <?php
+          $tlSteps = [
+            'pending'    => ['Received',  'clipboard-list'],
+            'confirmed'  => ['Confirmed', 'check'],
+            'preparing'  => ['Cooking',   'fire-burner'],
+            'ready'      => ['Ready',     'utensils'],
+            'served'     => ['Served',    'bell-concierge'],
+          ];
+          $curIdx = array_search($order['status'], array_keys($tlSteps), true);
+        ?>
+        <div style="display:flex;align-items:center;justify-content:center">
+          <?php $n = 0; foreach ($tlSteps as $sk => [$sv, $sic]) : $n++; $isNow = $n === $curIdx; $isDone = $n < $curIdx; ?>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:.15rem;min-width:58px">
+            <span style="width:26px;height:26px;border-radius:50%;background:<?= $isNow ? 'var(--primary)' : ($isDone ? '#68D391' : 'var(--border)') ?>;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:.6rem<?= $isNow ? ';box-shadow:0 0 0 4px rgba(255,107,53,.15)' : '' ?>">
+              <i class="fa fa-<?= $sic ?>"></i>
+            </span>
+            <span style="font-size:.62rem;font-weight:800;color:<?= $isNow ? 'var(--primary)' : ($isDone ? 'var(--success)' : 'var(--text-muted)') ?>"><?= $sv ?></span>
+          </div>
+          <?php if ($n < count($tlSteps)): ?><i class="fa fa-chevron-right" style="font-size:.55rem;color:var(--border)"></i><?php endif; ?>
+          <?php endforeach; ?>
+        </div>
+        <?php if ($order['status'] === 'pending'): ?>
+        <button class="btn btn-primary" style="width:100%;margin-top:.55rem" onclick="confirmPendingOrder()">
+          <i class="fa fa-check"></i> Confirm order &amp; send to kitchen
+        </button>
+        <?php else: ?>
+        <?php
+          $nxtMap = [
+            'confirmed' => ['preparing', '🍳 Start cooking',  '#ED8936'],
+            'preparing' => ['ready',     '🍽 Mark Ready',     '#38A169'],
+            'ready'     => ['served',    '🔔 Mark Served',   '#2B6CB0'],
+          ];
+          $nx = $nxtMap[$order['status']] ?? null;
+        ?>
+        <?php if ($nx): ?>
+        <button class="btn" style="width:100%;margin-top:.55rem;background:<?= $nx[2] ?>;color:#fff" onclick="advanceStatus('<?= $nx[0] ?>', '<?= $order['status'] ?>')">
+          <i class="fa fa-forward"></i> <?= $nx[1] ?>
+        </button>
+        <?php else: ?>
+        <div style="text-align:center;font-size:.72rem;color:var(--text-muted);margin-top:.5rem">Served — complete the payment to finish the order</div>
+        <?php endif; ?>
+        <?php endif; ?>
+      </div>
+    </div>
+    <?php endif; ?>
+
     <!-- Items List -->
     <div class="card">
       <div class="card-header">
@@ -312,6 +363,41 @@ $this->section('content'); ?>
 
   function openCheckoutModal() {
     openModal('checkoutModal');
+  }
+
+  // ── Kitchen timeline: advance the order toward served ──
+  function advanceStatus(next, from) {
+    const btn = event.target.closest('button');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Updating…'; }
+    fetch('<?= base_url('pos/order/set-status') ?>', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+      body: new URLSearchParams({ [CSRF_NAME]: CSRF_TOKEN, order_id: ORDER_ID, status: next, order_status: from })
+    }).then(r => r.json()).then(d => {
+      if (d.success) {
+        showToast(d.message + ' — customer screen updates automatically', 'success');
+        setTimeout(() => location.reload(), 700);
+      } else {
+        showToast(d.message || 'Could not update', 'error');
+        if (btn) { btn.disabled = false; location.reload(); }
+      }
+    }).catch(() => { showToast('Network error', 'error'); if (btn) { btn.disabled = false; btn.innerHTML = 'Retry'; } });
+  }
+
+  function confirmPendingOrder() {
+    // Uses the QR-order confirm endpoint (creates the KOT + prints), same as the Ready screen
+    fetch('<?= base_url('pos/order/confirm-customer/' . $order['id']) ?>', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+      body: new URLSearchParams({ [CSRF_NAME]: CSRF_TOKEN })
+    }).then(r => r.json()).then(d => {
+      if (d.success) {
+        showToast('Order confirmed & sent to kitchen', 'success');
+        setTimeout(() => location.reload(), 700);
+      } else {
+        showToast(d.message || 'Could not confirm', 'error');
+      }
+    }).catch(() => showToast('Network error', 'error'));
   }
 
   function processCheckout() {

@@ -422,8 +422,12 @@ class CustomerMenuController extends BaseController
             ->get()->getResultArray();
         $progress = \App\Libraries\OrderTrack::itemProgress($items);
 
-        $created     = strtotime($order['created_at']);
-        $elapsedMins = (time() - $created) / 60;
+        // Database clock, not PHP time() — the two differ (PHP UTC vs MySQL
+        // IST) and the ETA would read hours off
+        $db = \Config\Database::connect();
+        $elapsedMins = (int)$db->query(
+            "SELECT TIMESTAMPDIFF(MINUTE, ?, NOW()) AS m", [$order['created_at']]
+        )->getRowArray()['m'];
         $estMins     = (int)($order['estimated_mins'] ?? 15);
         $remainMins  = max(0, $estMins - $elapsedMins);
 
