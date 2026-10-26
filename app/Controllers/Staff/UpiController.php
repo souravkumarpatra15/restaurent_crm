@@ -142,18 +142,6 @@ class UpiController extends BaseController
         $rid     = (int)session('restaurant_id');
         $bid     = (int)session('branch_id');
 
-        $restaurant = $db->table('restaurants')
-            ->select('name, upi_enabled, upi_vpa, upi_payee_name')
-            ->where('id', $rid)->get()->getRowArray();
-
-        if (!$restaurant || !$restaurant['upi_enabled'] || empty($restaurant['upi_vpa'])) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'UPI QR payments are not enabled for this restaurant. Configure your UPI ID first (Admin → UPI Payments).',
-                'needs_setup' => true,
-            ]);
-        }
-
         $order = $db->table('orders')
             ->select('id, restaurant_id, branch_id, order_number, total_amount, paid_amount, balance_amount, payment_status, status')
             ->where('id', $orderId)
@@ -165,93 +153,37 @@ class UpiController extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Order not found']);
         }
 
-        // Money may still land on an expired QR — verification stays possible;
-        // but a billed/paid order must never open a second attempt.
-        if ($order['payment_status'] === 'paid' || $order['status'] === 'completed' || $order['status'] === 'cancelled') {
-            return $this->response->setJSON(['success' => false, 'message' => 'This order is already billed/closed']);
+        $res = \App\Libraries\UpiAttempts::create($db, $order, (int)session('user_id'), 'pos');
+        if (!$res['ok']) {
+            $msg = $res['message'];
+            $json = ['success' => false, 'message' => $msg];
+            if (str_contains($msg, 'not enabled')) {
+                $json['message']    = 'UPI QR payments are not enabled for this restaurant. Configure your UPI ID first (Admin → UPI Payments).';
+                $json['needs_setup'] = true;
+            }
+            if (str_contains($msg, 'already held')) {
+                $json['show_pending'] = true;
+            }
+            return $this->response->setJSON($json);
         }
 
-        // Outstanding, in bcmath — never floating point.
-        // completed payments collect, refunded returns to outstanding,
-        // open attempts hold their spot so two QRs can't over-collect.
-        $outstanding   = $this->outstanding($db, $order);
-        $pendingTotal  = $db->query(
-            "SELECT COALESCE(SUM(amount),0) AS t FROM payments
-             WHERE order_id = ? AND verify_status = 'pending'",
-            [$order['id']]
-        )->getRowArray()['t'];
-
-        $attemptAmount = bcsub($outstanding, (string)round((float)$pendingTotal, 2), 2);
-        if (bccomp($attemptAmount, '0.00', 2) <= 0) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'The outstanding amount is already held by an open QR attempt. Verify or reject it first.',
-                'show_pending' => true,
-            ]);
-        }
-
-        // Increase only the *pending* portion, capped at outstanding
-        if (bccomp($attemptAmount, $outstanding, 2) > 0) {
-            $attemptAmount = $outstanding;
-        }
-
-        // Unique payment attempt reference (public, shown to the bank as tr=)
-        do {
-            $attemptRef = 'DX' . date('ymd') . strtoupper(bin2hex(random_bytes(4)));
-        } while ($db->table('payments')->where('attempt_ref', $attemptRef)->countAllResults() > 0);
-
-        // Standards URI: pa (payee address), pn (payee name), tr (txn ref),
-        // tn (note), am (amount), cu (currency). Everything encoded.
-        $upiUri = 'upi://pay'
-            . '?pa=' . rawurlencode($restaurant['upi_vpa'])
-            . '&pn=' . rawurlencode($restaurant['upi_payee_name'])
-            . '&tr=' . rawurlencode($attemptRef)
-            . '&tn=' . rawurlencode('Order ' . $order['order_number'])
-            . '&am=' . rawurlencode($attemptAmount)
-            . '&cu=INR';
-
-        $db->transStart();
-
-        $db->table('payments')->insert([
-            'order_id'            => $order['id'],
-            'branch_id'           => $order['branch_id'],
-            'user_id'             => (int)session('user_id'),
-            'amount'              => $attemptAmount,
-            'payment_method'      => 'upi',
-            'payment_gateway'     => 'upi_qr',
-            'payment_reference'   => $attemptRef,
-            'attempt_ref'         => $attemptRef,
-            'verify_status'       => 'pending',
-            'status'              => 'pending',
-            'gateway_response'    => json_encode(['uri' => $upiUri, 'vpa' => $restaurant['upi_vpa'], 'payee' => $restaurant['upi_payee_name']]),
-            'expires_at'          => date('Y-m-d H:i:s', time() + self::QR_LIFETIME_MIN * 60),
-            'created_at'          => date('Y-m-d H:i:s'),
-        ]);
-        $paymentId = $db->insertID();
-
-        $this->audit($db, $paymentId, (int)$order['restaurant_id'], (int)$order['branch_id'],
-            'verification', null, 'pending', (int)session('user_id'),
-            $attemptRef, 'UPI QR generated for ₹' . $attemptAmount . ' (' . $order['order_number'] . ')');
-
-        $db->transComplete();
-        if ($db->transStatus() === false) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Could not start a payment attempt — please try again']);
-        }
-
-        $qrDataUri = $this->encodeQr($upiUri, $attemptRef);
+        $restaurant = $db->table('restaurants')
+            ->select('name, upi_enabled, upi_vpa, upi_payee_name')
+            ->where('id', $rid)->get()->getRowArray();
+        $qrDataUri = $this->encodeQr($res['uri'], $res['ref']);
 
         return $this->response->setJSON([
             'success'      => true,
-            'attempt_ref'  => $attemptRef,
-            'payment_id'   => $paymentId,
-            'amount'       => $attemptAmount,
+            'attempt_ref'  => $res['ref'],
+            'payment_id'   => (int)$db->query('SELECT id FROM payments WHERE attempt_ref = ?', [$res['ref']])->getRowArray()['id'],
+            'amount'       => $res['amount'],
             'vpa'          => $restaurant['upi_vpa'],
             'payee'        => $restaurant['upi_payee_name'],
-            'upi_uri'      => $upiUri,
+            'upi_uri'      => $res['uri'],
             'qr'           => $qrDataUri,
-            'expires_at'   => date('d M h:i A', strtotime(date('Y-m-d H:i:s', time() + self::QR_LIFETIME_MIN * 60))),
-            'customer_url' => base_url('upi/pay/' . $attemptRef),
-            'status_url'   => base_url('pos/upi/status/' . $attemptRef),
+            'expires_at'   => date('d M h:i A', strtotime($res['expires_at'])),
+            'customer_url' => base_url('upi/pay/' . $res['ref']),
+            'status_url'   => base_url('pos/upi/status/' . $res['ref']),
         ]);
     }
 
@@ -359,11 +291,21 @@ class UpiController extends BaseController
         $db  = \Config\Database::connect();
         $rid = (int)session('restaurant_id');
 
-        if ($attemptRef === '' || $txnRef === '') {
-            return $this->response->setJSON(['success' => false, 'message' => 'Enter the bank/UPI transaction reference to confirm']);
+        if ($attemptRef === '') {
+            return $this->response->setJSON(['success' => false, 'message' => 'Payment attempt reference missing']);
         }
-        if (!preg_match('/^[A-Za-z0-9\-\._\/]{4,64}$/', $txnRef)) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Transaction reference format looks invalid']);
+        if ($txnRef !== '' && !preg_match('/^[A-Za-z0-9\-\._\/]{4,64}$/', $txnRef)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Transaction reference format looks invalid — leave it empty if your app doesn\'t show one']);
+        }
+
+        // UTR is optional: staff may just confirm after checking the bank app.
+        // Blank ref records a unique automatic reference so the audit trail
+        // and duplicate guard still work (real UTRs dedupe; AUTO refs never collide).
+        if ($txnRef === '') {
+            $txnRef = 'AUTO-' . $attemptRef;
+            if ($note === '') {
+                $note = 'Verified in the bank/merchant app without entering a reference';
+            }
         }
 
         // Row-locked read: payment, order, tenant/branch access

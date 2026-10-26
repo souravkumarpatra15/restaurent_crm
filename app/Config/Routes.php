@@ -288,6 +288,14 @@ $routes->get('admin/feedback',              'Manager\FeedbackController::index',
 $routes->get('admin/owner-feedback',              'Manager\OwnerFeedbackController::index',  ['filter'=>'auth:restaurant_admin,branch_manager,super_admin']);
 $routes->post('admin/owner-feedback/submit',      'Manager\OwnerFeedbackController::submit', ['filter'=>'auth:restaurant_admin,branch_manager,super_admin']);
 
+// Stock requisitions — staff create, admin/manager approve & issue
+$routes->get('admin/requisitions',                'Manager\RequisitionController::index',  ['filter'=>'auth:restaurant_admin,branch_manager,cashier,waiter,kitchen']);
+$routes->post('admin/requisitions/store',         'Manager\RequisitionController::store',  ['filter'=>'auth:restaurant_admin,branch_manager,cashier,waiter,kitchen']);
+$routes->post('admin/requisitions/approve/(:num)','Manager\RequisitionController::approve/$1', ['filter'=>'auth:restaurant_admin,branch_manager']);
+$routes->post('admin/requisitions/reject/(:num)', 'Manager\RequisitionController::reject/$1',  ['filter'=>'auth:restaurant_admin,branch_manager']);
+$routes->post('admin/requisitions/issue/(:num)',  'Manager\RequisitionController::issue/$1',   ['filter'=>'auth:restaurant_admin,branch_manager']);
+$routes->post('admin/requisitions/cancel/(:num)', 'Manager\RequisitionController::cancel/$1',  ['filter'=>'auth:restaurant_admin,branch_manager,cashier,waiter,kitchen']);
+
 // Customer Feedback (public — no auth)
 $routes->get('feedback/(:segment)',         'Public\FeedbackController::index/$1');
 $routes->post('feedback/(:segment)/submit', 'Public\FeedbackController::store/$1');
@@ -295,6 +303,7 @@ $routes->post('feedback/(:segment)/submit', 'Public\FeedbackController::store/$1
 // Customer live tracking (from bill-slip link/QR) — takeaway, delivery, any order
 $routes->get('track/(:segment)',            'Public\TrackController::index/$1');
 $routes->get('track/(:segment)/poll',       'Public\TrackController::poll/$1');
+$routes->get('track/(:segment)/pay',        'Public\TrackController::pay/$1');
 
 // ── PUBLIC TABLE BOOKING (DinoviX) ────────────────────────
 $routes->get('book',                          'Booking\DiscoverController::index');

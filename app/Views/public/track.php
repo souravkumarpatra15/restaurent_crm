@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <style>
 :root {
-  --p: <?= esc($theme) ?>;
+  --p: <?= esc($theme ?? '#FF6B35') ?>;
   --pg: linear-gradient(135deg, #0B132B 0%, #17244A 100%);
   --card: #1C2A4A;
   --card2: rgba(255,255,255,.06);
@@ -114,9 +114,15 @@ body { background: var(--pg); color: var(--ink); min-height: 100vh; padding-bott
 
     <div class="chips">
       <span class="chip chip-type"><?= $order['order_type'] === 'delivery' ? '🛵 Delivery' : '🥡 Takeaway' ?></span>
+      <?php if ($upiEnabled && $order['payment_status'] !== 'paid' && !$cancelled): ?>
+      <a class="chip chip-pay-unpaid" id="payChip" href="<?= esc($payUrl) ?>" style="text-decoration:none">
+        ⚡ Pay ₹<?= number_format($payAmount, 2) ?> by UPI
+      </a>
+      <?php else: ?>
       <span class="chip <?= $order['payment_status'] === 'paid' ? 'chip-pay-paid' : 'chip-pay-unpaid' ?>" id="payChip">
         <?= $order['payment_status'] === 'paid' ? '✔ Paid' : '● Payment pending' ?>
       </span>
+      <?php endif; ?>
     </div>
 
     <!-- Animated icon -->
@@ -211,6 +217,17 @@ function apply(data) {
   const pulse = document.getElementById('pulse');
   document.getElementById('sLabel').textContent = data.label;
   document.getElementById('sMsg').textContent = data.message;
+
+  // payment chip: becomes a plain "Paid" when the poll sees payment
+  const chip = document.getElementById('payChip');
+  if (chip && data.payment_status) {
+    const paid = data.payment_status === 'paid';
+    if (chip.tagName === 'A' && paid) {
+      chip.replaceWith(Object.assign(document.createElement('span'), {
+        className: 'chip chip-pay-paid', id: 'payChip', textContent: '✔ Paid'
+      }));
+    }
+  }
 
   if (data.cancelled) {
     pulse.className = 'pulse cancel';

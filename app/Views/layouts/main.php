@@ -157,6 +157,9 @@
     <a href="<?= base_url('admin/inventory') ?>" class="nav-item <?= active('admin/inventory*') ?>">
       <i class="fa fa-boxes-stacked"></i><span>Inventory</span>
     </a>
+    <a href="<?= base_url('admin/requisitions') ?>" class="nav-item <?= active('admin/requisitions*') ?>">
+      <i class="fa fa-clipboard-check"></i><span>Requisitions</span>
+    </a>
     <a href="<?= base_url('admin/coupons') ?>" class="nav-item <?= active('admin/coupons*') ?>">
       <i class="fa fa-ticket"></i><span>Coupons</span>
     </a>

@@ -26,6 +26,7 @@ class TrackController extends BaseController
             ->select('o.id, o.order_number, o.order_type, o.status, o.payment_status,
                       o.delivery_status, o.rider_name, o.customer_phone, o.delivery_address,
                       o.estimated_mins, o.created_at, o.total_amount, o.table_id,
+                      o.restaurant_id, o.branch_id, o.user_id,
                       o.cancelled_reason, o.completed_at, o.balance_amount,
                       r.name AS restaurant_name, r.theme_color, r.id as rid,
                       b.name AS branch_name, b.printer_type')
@@ -91,6 +92,37 @@ class TrackController extends BaseController
         return \App\Libraries\OrderTrack::itemProgress($items);
     }
 
+    // ── Public: customer taps "Pay by UPI" on their tracking page ──
+    public function pay($token)
+    {
+        $order = $this->load($token);
+        if (!$order) {
+            return view('public/track', ['order' => null]);
+        }
+        if ($order['payment_status'] === 'paid' || in_array($order['status'], ['completed', 'cancelled'], true)) {
+            return redirect()->to(base_url('track/' . $token));
+        }
+
+        $db = \Config\Database::connect();
+        $res = \App\Libraries\UpiAttempts::create($db, $order, 0, 'customer_tracking');
+        if (!$res['ok']) {
+            // A pending attempt (even expired) already holds the amount —
+            // send the customer to that screen so they can pay it.
+            $open = $db->query(
+                "SELECT attempt_ref FROM payments
+                  WHERE order_id = ? AND verify_status = 'pending'
+                  ORDER BY id DESC LIMIT 1",
+                [$order['id']]
+            )->getRowArray();
+            if ($open) {
+                return redirect()->to(base_url('upi/pay/' . $open['attempt_ref']));
+            }
+            return view('public/track', ['order' => null]);
+        }
+
+        return redirect()->to(base_url('upi/pay/' . $res['ref']));
+    }
+
     // ── Page ────────────────────────────────────────────────────
     public function index($token)
     {
@@ -106,6 +138,16 @@ class TrackController extends BaseController
         $elapsedMins = (time() - $created) / 60;
         $etaMins     = (int)($order['estimated_mins'] ?? 15);
 
+        // Order snapshot for the pay entry point (upi enabled / amount)
+        $db = \Config\Database::connect();
+        $upiEnabled = false;
+        if ($order['payment_status'] !== 'paid' && !empty($order['rid'])) {
+            $r2 = $db->table('restaurants')
+                ->select('upi_enabled, upi_vpa')->where('id', (int)$order['rid'])->get()->getRowArray();
+            $upiEnabled = $r2 && (int)$r2['upi_enabled'] === 1 && !empty($r2['upi_vpa']);
+        }
+        $payAmount = (float)$order['balance_amount'] ?: (float)$order['total_amount'];
+
         return view('public/track', [
             'order'     => $order,
             'token'     => $token,
@@ -116,6 +158,9 @@ class TrackController extends BaseController
             'progress'  => $progress,
             'etaMins'   => (int)max(1, round($etaMins - $elapsedMins)),
             'theme'     => $order['theme_color'] ?: '#FF6B35',
+            'upiEnabled' => $upiEnabled,
+            'payUrl'    => base_url('track/' . $token . '/pay'),
+            'payAmount' => (float)$order['balance_amount'] ?: (float)$order['total_amount'],
         ]);
     }
 

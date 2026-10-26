@@ -1321,6 +1321,7 @@ class PosController extends BaseController
             'restaurant' => $restaurant ?? [],
             'branch'     => $branch ?? [],
             'whitelabel' => $this->getPlanFeature('allow_whitelabel'),
+            'printAuto'  => (string)($this->request->getGet('print') ?? ''),
         ]);
     }
 

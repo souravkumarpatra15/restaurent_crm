@@ -331,6 +331,13 @@ body {
     <div style="color:#aaa;font-size:10px;margin-top:.2rem">Printed: <?= date('d M Y h:i:s A') ?></div>
   </div>
 
+  <?php if ((string)($printAuto ?? '') === '1'): ?>
+  <script>
+    // Auto-trigger the print dialog after the QRs render (opened via reprint)
+    window.addEventListener('load', () => setTimeout(() => window.print(), 450));
+  </script>
+  <?php endif; ?>
+
 </div>
 
 <script>

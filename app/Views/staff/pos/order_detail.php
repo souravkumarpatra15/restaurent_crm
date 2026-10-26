@@ -195,6 +195,7 @@ $this->section('content'); ?>
       <button class="modal-close" onclick="closeUpiQr()"><i class="fa fa-times"></i></button>
     </div>
     <div class="modal-body" style="text-align:center;max-height:calc(100vh - 210px);overflow-y:auto">
+      <a id="qrCustomerLink" href="#" style="display:none"></a>
       <div style="padding:.875rem;background:var(--primary-light,#FFF1E8);border-radius:10px;margin-bottom:.875rem">
         <div style="font-size:.78rem;color:var(--text-muted)">Total Amount</div>
         <div style="font-size:2rem;font-weight:800;color:var(--primary)">₹<span id="qrAmt">—</span></div>
@@ -213,25 +214,46 @@ $this->section('content'); ?>
       <div id="qrStatusBox" style="background:#F5F7FA;border-radius:10px;padding:.65rem;font-size:.8rem;margin-bottom:.35rem">
         ⏳ Waiting for payment — this updates automatically…
       </div>
-      <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:.5rem">
-        Ref <span id="qrRef" style="font-family:'JetBrains Mono',monospace"></span> · valid until <span id="qrExpiry"></span>
-        · <a id="qrCustomerLink" href="#" target="_blank" style="color:var(--primary);font-weight:700">show customer screen</a>
+      <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:.5rem;display:flex;justify-content:center;gap:.5rem;flex-wrap:wrap">
+        <span>Ref <span id="qrRef" style="font-family:'JetBrains Mono',monospace"></span></span>
+        <span>· valid until <span id="qrExpiry"></span></span>
+      </div>
+
+      <!-- customer screen helper -->
+      <div style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:10px;padding:.55rem .65rem;margin-bottom:.55rem;text-align:left">
+        <div style="font-size:.72rem;color:#0369A1;line-height:1.5">
+          <b>How the customer pays:</b> they scan the QR above with any UPI app (GPay/PhonePe/Paytm).
+          It already contains the exact amount — no typing, no wrong amounts.
+        </div>
+        <div style="display:flex;gap:.4rem;margin-top:.45rem">
+          <button class="btn btn-sm" style="background:#0284C7;color:#fff;flex:1" onclick="window.open(document.getElementById('qrCustomerLink').href,'_blank')">
+            <i class="fa fa-mobile"></i> Open customer screen
+          </button>
+          <button class="btn btn-outline btn-sm" style="flex:1" onclick="copyCustomerLink()"><i class="fa fa-copy"></i> Copy link</button>
+        </div>
+        <div style="font-size:.66rem;color:rgba(0,0,0,.45);margin-top:.35rem;line-height:1.4">
+          The customer screen is a mobile page with this same QR + live status — use it on the counter tablet, or send the link to the customer's phone (WhatsApp).
+        </div>
       </div>
 
       <!-- verify mini-form (slides in under the QR, QR stays visible) -->
-      <div id="qrVerifyPane" style="display:none;text-align:left;background:#FFF7ED;border:1px solid #FDBA74;border-radius:10px;padding:.65rem">
-        <b style="font-size:.78rem">Confirm after checking YOUR bank/merchant app</b>
-        <div class="form-group" style="margin:.5rem 0 .4rem">
-          <label class="form-label" style="font-size:.72rem">Bank / UPI transaction reference (UTR)</label>
-          <input type="text" id="qrTxnRef" class="form-input" maxlength="64" placeholder="e.g. 405123456789" style="font-family:'JetBrains Mono',monospace">
+      <div id="qrVerifyPane" style="display:none;text-align:left;background:#F0FFF4;border:1px solid #86EFAC;border-radius:10px;padding:.7rem">
+        <div style="font-size:.76rem;color:#166534;line-height:1.45">
+          <b>✅ Money received? Confirm it here.</b> Check your bank/merchant app first.
+          Only confirm what you actually see credited.
+        </div>
+        <div class="form-group" style="margin:.55rem 0 .45rem">
+          <label class="form-label" style="font-size:.72rem">Bank / UPI reference (UTR) — <span style="color:var(--text-muted)">optional</span></label>
+          <input type="text" id="qrTxnRef" class="form-input" maxlength="64" placeholder="Not mandatory — auto-recorded if blank" style="font-family:'JetBrains Mono',monospace">
+          <div style="font-size:.66rem;color:var(--text-muted);margin-top:.2rem">Most banks/apps show a 12-digit reference. Leave it blank if you can't find it — we record one automatically.</div>
         </div>
         <div class="form-group" style="margin:0 0 .5rem">
-          <label class="form-label" style="font-size:.72rem">Note (optional)</label>
-          <input type="text" id="qrVerifyNote" class="form-input" maxlength="200">
+          <label class="form-label" style="font-size:.72rem">Note for your records (optional)</label>
+          <input type="text" id="qrVerifyNote" class="form-input" maxlength="200" placeholder="e.g. Salary-day rush, checked by Ramesh">
         </div>
         <div style="display:flex;gap:.4rem">
           <button class="btn btn-outline btn-sm" onclick="toggleVerifyPane(false)">Back</button>
-          <button class="btn btn-primary btn-sm" id="qrVerifyBtn" style="flex:1" onclick="verifyUpiNow()">Confirm receipt — ₹<span id="qrVerifyAmt">—</span></button>
+          <button class="btn btn-success btn-sm" id="qrVerifyBtn" style="flex:2" onclick="verifyUpiNow()"><i class="fa fa-check"></i> Confirm receipt — ₹<span id="qrVerifyAmt">—</span></button>
         </div>
       </div>
     </div>
@@ -399,43 +421,14 @@ function openBillSlip() {
   }
 
   function printBillAction() {
-    fetch('<?= base_url('pos/order/print-bill') ?>', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: new URLSearchParams({
-          [CSRF_NAME]: CSRF_TOKEN,
-          order_id: ORDER_ID
-        })
-      }).then(r => {
-        if (r.redirected) {
-          throw new Error('Redirected to: ' + r.url);
-        }
-        return r.json();
-      }).then(d => handlePrintResult(d, 'Bill printed!'))
-      .catch(e => showToast(e.message || 'Network error', 'error'));
+    // Bill print = the same printable web slip everywhere (PDF-like),
+    // so reprint is identical to the original and works without a thermal printer
+    window.open('<?= base_url('pos/slip/bill/') ?>' + ORDER_ID + '?print=1', '_blank');
+    showToast('Opening the printable bill…', 'info');
   }
 
   function reprintBill() {
-    fetch('<?= base_url('pos/order/print-bill') ?>', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: new URLSearchParams({
-          [CSRF_NAME]: CSRF_TOKEN,
-          order_id: ORDER_ID
-        })
-      }).then(r => {
-        if (r.redirected) {
-          throw new Error('Redirected to: ' + r.url);
-        }
-        return r.json();
-      }).then(d => handlePrintResult(d, 'Reprinted!'))
-      .catch(e => showToast(e.message || 'Network error', 'error'));
+    printBillAction();
   }
 
   // ── UPI QR payment flow (mock-style: Total → fixed QR → live status → verify) ──
@@ -529,6 +522,19 @@ function openBillSlip() {
     closeModal('upiQrModal');
   }
 
+  function copyCustomerLink() {
+    const url = document.getElementById('qrCustomerLink').href;
+    if (!url || url === '#') return;
+    (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject())
+      .then(() => showToast('Customer link copied — send it on WhatsApp or open on any phone', 'success'))
+      .catch(() => {
+        const i = document.createElement('input');
+        i.value = url; document.body.appendChild(i); i.select();
+        document.execCommand('copy'); i.remove();
+        showToast('Customer link copied', 'success');
+      });
+  }
+
   function toggleVerifyPane(show) {
     const pane = document.getElementById('qrVerifyPane');
     if (show) {
@@ -542,8 +548,8 @@ function openBillSlip() {
   }
 
   function verifyUpiNow() {
-    const ref = document.getElementById('qrTxnRef').value.trim();
-    if (!ref) { showToast('Enter the bank/UPI transaction reference (UTR)', 'error'); setTimeout(() => document.getElementById('qrTxnRef').focus(), 100); return; }
+    const ref = document.getElementById('qrTxnRef').value.trim(); // optional — server auto-records when blank
+    const note = document.getElementById('qrVerifyNote').value.trim();
     const btn = document.getElementById('qrVerifyBtn');
     btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Verifying…';
     fetch('<?= base_url('pos/upi/verify') ?>', {
@@ -553,7 +559,7 @@ function openBillSlip() {
           [CSRF_NAME]: CSRF_TOKEN,
           attempt_ref: UPI_REF,
           txn_ref: ref,
-          note: document.getElementById('qrVerifyNote').value.trim()
+          note: note
         })
       }).then(r => r.json()).then(d => {
         if (d.success) {
