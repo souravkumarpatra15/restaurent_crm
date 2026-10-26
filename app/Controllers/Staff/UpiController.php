@@ -153,6 +153,42 @@ class UpiController extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Order not found']);
         }
 
+        // One active QR per order. Tapping again RESUMES the existing
+        // attempt — same reference, same fixed amount — instead of
+        // blocking the cashier with "amount already held". The QR is
+        // always safe to re-show: it can only collect that amount once.
+        $open = $db->query(
+            "SELECT p.id, p.attempt_ref, p.amount, p.expires_at, p.gateway_response
+             FROM payments p
+             WHERE p.order_id = ? AND p.verify_status = 'pending'
+             ORDER BY p.id DESC LIMIT 1",
+            [$orderId]
+        )->getRowArray();
+
+        if ($open) {
+            $resp  = json_decode((string)$open['gateway_response'], true);
+            $upiUri = (string)($resp['uri'] ?? '');
+            if ($upiUri !== '') {
+                $restaurant = $db->table('restaurants')
+                    ->select('name, upi_enabled, upi_vpa, upi_payee_name')
+                    ->where('id', $rid)->get()->getRowArray();
+                return $this->response->setJSON([
+                    'success'      => true,
+                    'resumed'      => true,
+                    'attempt_ref'  => $open['attempt_ref'],
+                    'payment_id'   => (int)$open['id'],
+                    'amount'       => $open['amount'],
+                    'vpa'          => $restaurant['upi_vpa'],
+                    'payee'        => $restaurant['upi_payee_name'],
+                    'upi_uri'      => $upiUri,
+                    'qr'           => $this->encodeQr($upiUri, $open['attempt_ref']),
+                    'expires_at'   => date('d M h:i A', strtotime($open['expires_at'])),
+                    'customer_url' => base_url('upi/pay/' . $open['attempt_ref']),
+                    'status_url'   => base_url('pos/upi/status/' . $open['attempt_ref']),
+                ]);
+            }
+        }
+
         $res = \App\Libraries\UpiAttempts::create($db, $order, (int)session('user_id'), 'pos');
         if (!$res['ok']) {
             $msg = $res['message'];

@@ -108,6 +108,10 @@ class KitchenController extends BaseController
             }
         }
 
+        // Kitchen activity moves the ORDER itself along (customer's live
+        // timeline + POS stay in sync without anyone tapping the order page)
+        $this->syncOrderStatus($db, (int)$kot['order_id']);
+
         $db->transComplete();
 
         if ($db->transStatus() === false) {
@@ -163,7 +167,35 @@ class KitchenController extends BaseController
             }
         }
 
+        // Every dish of the ORDER ready (across KOTs)? → order goes Ready too
+        $this->syncOrderStatus($db, (int)$item['order_id']);
+
         return $this->response->setJSON(['success' => true, 'kot_auto_ready' => !empty($allReady)]);
+    }
+
+    /**
+     * Auto-advance the order status from kitchen signals (never regress):
+     *  - any KOT cooking & order still confirmed → preparing
+     *  - all KOTs ready/served & order not beyond → ready
+     * "Served" stays a staff decision (handover at the table).
+     */
+    private function syncOrderStatus($db, int $orderId): void
+    {
+        $order = $db->table('orders')->select('status')->where('id', $orderId)->get()->getRowArray();
+        if (!$order || in_array($order['status'], ['cancelled', 'completed', 'served'], true)) return;
+
+        $kots = $db->table('kots')->select('status')->where('order_id', $orderId)
+            ->where('status !=', 'cancelled')->get()->getResultArray();
+        if (!$kots) return;
+        $statuses = array_column($kots, 'status');
+
+        if (in_array('in_progress', $statuses, true) && $order['status'] === 'confirmed') {
+            $db->table('orders')->where('id', $orderId)->update(['status' => 'preparing', 'updated_at' => date('Y-m-d H:i:s')]);
+        } elseif (!in_array('in_progress', $statuses, true)
+            && !in_array('pending', $statuses, true)
+            && in_array($order['status'], ['confirmed', 'preparing'], true)) {
+            $db->table('orders')->where('id', $orderId)->update(['status' => 'ready', 'updated_at' => date('Y-m-d H:i:s')]);
+        }
     }
 
     public function summary()

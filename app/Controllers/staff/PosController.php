@@ -927,6 +927,17 @@ class PosController extends BaseController
         return $this->response->setJSON(['success' => true, 'message' => $label, 'status' => $next]);
     }
 
+    // ── Lightweight status probe for the order page's live sync ──
+    public function orderState($orderId)
+    {
+        $o = $this->db->table('orders')
+            ->select('status, payment_status')
+            ->where('id', (int)$orderId)
+            ->where('branch_id', $this->session->get('branch_id'))
+            ->get()->getRowArray();
+        return $this->response->setJSON(['success' => (bool)$o, 'order' => $o ?: null]);
+    }
+
     // ── Reject a customer QR order ────────────────────────────
     public function rejectCustomerOrder($orderId)
     {

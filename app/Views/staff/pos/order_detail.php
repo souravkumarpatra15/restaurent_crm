@@ -400,6 +400,24 @@ $this->section('content'); ?>
     }).catch(() => showToast('Network error', 'error'));
   }
 
+  // ── Live status sync: kitchen/delivery updates appear here on their own ──
+  let POS_STATUS = '<?= $order['status'] ?>';
+  setInterval(async () => {
+    if (!document.body || document.body.dataset.posPoll === 'off') return;
+    try {
+      const d = await (await fetch('<?= base_url('pos/order/state/' . $order['id']) ?>')).json();
+      if (d.success && d.order && d.order.status && d.order.status !== POS_STATUS) {
+        POS_STATUS = d.order.status;
+        if (document.querySelectorAll('.modal-overlay.open').length === 0) {
+          location.reload();
+        } else {
+          showToast('Order status changed — the page will refresh', 'warning');
+          setTimeout(() => location.reload(), 2500);
+        }
+      }
+    } catch (e) { /* ignore transient errors */ }
+  }, 10000);
+
   function processCheckout() {
     // UPI is NEVER instantly recorded — the money must land on the
     // restaurant's own QR and be verified against the bank app.
@@ -572,7 +590,9 @@ function openBillSlip() {
           ? '<img src="' + d.qr + '" style="width:100%;height:100%;object-fit:contain" alt="UPI QR">'
           : '<div style="font-size:.78rem;color:var(--danger);padding:.6rem">QR image unavailable — open the customer link below</div>';
         document.getElementById('qrCustomerLink').href = d.customer_url;
-        document.getElementById('qrStatusBox').innerHTML = '⏳ Waiting for payment — this updates automatically…';
+        document.getElementById('qrStatusBox').innerHTML = d.resumed
+          ? '⏳ Same QR reopened — still waiting for this payment…'
+          : '⏳ Waiting for payment — this updates automatically…';
         startUpiPoll(d.status_url);
       }).catch(e => {
         closeUpiQr();

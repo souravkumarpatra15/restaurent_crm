@@ -204,6 +204,7 @@ $routes->get('landing', 'Public\LandingController::index');
 // Public customer menu (QR code scan — no auth)
 $routes->get('menu/table/(:segment)/status/(:num)', 'Public\CustomerMenuController::orderStatus/$1/$2');
 $routes->get('menu/table/(:segment)/poll/(:num)',   'Public\CustomerMenuController::pollStatus/$1/$2');
+$routes->get('menu/table/(:segment)/pay/(:num)',    'Public\CustomerMenuController::orderPay/$1/$2');
 $routes->post('menu/table/(:segment)/order',         'Public\CustomerMenuController::placeOrder/$1');
 $routes->get('menu/table/(:any)',                    'Public\CustomerMenuController::index/$1');
 
@@ -234,6 +235,7 @@ $routes->group('pos', ['filter' => 'auth:cashier,waiter,branch_manager,restauran
     $routes->post('order/confirm-customer/(:num)',        'Staff\PosController::confirmCustomerOrder/$1');
     $routes->post('order/reject-customer/(:num)',         'Staff\PosController::rejectCustomerOrder/$1');
     $routes->post('order/set-status',               'Staff\PosController::setOrderStatus');
+    $routes->get('order/state/(:num)',              'Staff\PosController::orderState/$1');
     $routes->post('order/cancel/(:num)',            'Staff\PosController::cancelOrder/$1');
     $routes->post('order/cancel-bulk',               'Staff\PosController::cancelBulk');
     $routes->post('order/bill-bulk',                 'Staff\PosController::billBulk');

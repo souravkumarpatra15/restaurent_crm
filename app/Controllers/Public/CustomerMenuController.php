@@ -377,8 +377,8 @@ class CustomerMenuController extends BaseController
 
         $db    = \Config\Database::connect();
         $order = $db->table('orders o')
-            ->select('o.id, o.order_number, o.status, o.payment_status, o.total_amount,
-                      o.customer_name, o.estimated_mins, o.created_at, o.source')
+            ->select('o.id, o.order_number, o.restaurant_id, o.status, o.payment_status, o.total_amount,
+                      o.balance_amount, o.customer_name, o.estimated_mins, o.created_at, o.source')
             ->where('o.id', $orderId)
             ->where('o.table_id', $table['id'])
             ->get()->getRowArray();
@@ -391,12 +391,71 @@ class CustomerMenuController extends BaseController
             ->where("COALESCE(status, '') !=", 'cancelled')
             ->get()->getResultArray();
 
+        [$upiEnabled, $payUrl] = $this->payContext($db, $order, $token);
+
         return view('public/order_status', [
-            'table'  => $table,
-            'order'  => $order,
-            'items'  => $items,
-            'token'  => $token,
+            'table'      => $table,
+            'order'      => $order,
+            'items'      => $items,
+            'token'      => $token,
+            'upiEnabled' => $upiEnabled,
+            'payUrl'     => $payUrl,
         ]);
+    }
+
+    // ── Customer taps "Pay by UPI" on their dine-in status page ──
+    public function orderPay($token, $orderId)
+    {
+        $table = $this->getTableByToken($token);
+        if (!$table) return view('public/menu_error', ['message' => 'Invalid QR code.']);
+
+        $db = \Config\Database::connect();
+
+        $order = $db->table('orders')
+            ->where('id', (int)$orderId)
+            ->where('table_id', $table['id'])
+            ->get()->getRowArray();
+        if (!$order) return view('public/menu_error', ['message' => 'Order not found.']);
+
+        if ($order['payment_status'] === 'paid' || in_array($order['status'], ['completed', 'cancelled'], true)) {
+            return redirect()->to(base_url('menu/table/' . $token . '/status/' . $orderId));
+        }
+
+        $res = \App\Libraries\UpiAttempts::create($db, $order, 0, 'customer_qr');
+        if (!$res['ok']) {
+            // An attempt may already hold the amount — resume that screen
+            $open = $db->query(
+                "SELECT attempt_ref FROM payments
+                  WHERE order_id = ? AND verify_status = 'pending'
+                  ORDER BY id DESC LIMIT 1",
+                [$order['id']]
+            )->getRowArray();
+            if ($open) {
+                return redirect()->to(base_url('upi/pay/' . $open['attempt_ref']));
+            }
+            return redirect()->to(base_url('menu/table/' . $token . '/status/' . $orderId));
+        }
+
+        return redirect()->to(base_url('upi/pay/' . $res['ref']));
+    }
+
+    /**
+     * Payment call-to-action context for customer pages: can they pay by
+     * UPI right now, and where does the button lead?
+     * Returns [bool enabled, string url].
+     */
+    private function payContext($db, array $order, string $token): array
+    {
+        if ($order['payment_status'] === 'paid'
+            || in_array($order['status'] ?? '', ['completed', 'cancelled'], true)) {
+            return [false, ''];
+        }
+        $r2 = $db->table('restaurants')
+            ->select('upi_enabled, upi_vpa')
+            ->where('id', (int)$order['restaurant_id'])
+            ->get()->getRowArray();
+        $enabled = $r2 && (int)$r2['upi_enabled'] === 1 && !empty($r2['upi_vpa']);
+        return $enabled ? [true, base_url('menu/table/' . $token . '/pay/' . $order['id'])] : [false, ''];
     }
 
     // ── AJAX: poll order status (called by customer status page) ─
@@ -407,7 +466,7 @@ class CustomerMenuController extends BaseController
 
         $db    = \Config\Database::connect();
         $order = $db->table('orders')
-            ->select('id, status, payment_status, estimated_mins, created_at')
+            ->select('id, restaurant_id, status, payment_status, total_amount, balance_amount, estimated_mins, created_at')
             ->where('id', $orderId)
             ->where('table_id', $table['id'])
             ->get()->getRowArray();
@@ -422,9 +481,10 @@ class CustomerMenuController extends BaseController
             ->get()->getResultArray();
         $progress = \App\Libraries\OrderTrack::itemProgress($items);
 
+        [$upiEnabled, $payUrl] = $this->payContext($db, $order, $token);
+
         // Database clock, not PHP time() — the two differ (PHP UTC vs MySQL
         // IST) and the ETA would read hours off
-        $db = \Config\Database::connect();
         $elapsedMins = (int)$db->query(
             "SELECT TIMESTAMPDIFF(MINUTE, ?, NOW()) AS m", [$order['created_at']]
         )->getRowArray()['m'];
@@ -451,6 +511,9 @@ class CustomerMenuController extends BaseController
             'remain_mins' => (int)$remainMins,
             'elapsed_mins'=> (int)$elapsedMins,
             'payment_status' => $order['payment_status'],
+            'pay_enabled' => $upiEnabled,
+            'pay_url'     => $payUrl,
+            'balance'     => (float)($order['balance_amount'] ?? 0),
             'items'       => array_map(fn($i) => [
                 'name'    => $i['name'],
                 'qty'     => (int)$i['quantity'],

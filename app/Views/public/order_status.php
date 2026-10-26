@@ -488,9 +488,15 @@
 
     <!-- Status chips -->
     <div style="display:flex;gap:.4rem;justify-content:center;margin-top:.65rem;flex-wrap:wrap">
-      <span class="chip chip-pay <?= $order['payment_status'] === 'paid' ? 'chip-pay-paid' : 'chip-pay-unpaid' ?>" id="payChip">
-        <?= $order['payment_status'] === 'paid' ? '✔ Paid' : '● Payment pending' ?>
-      </span>
+      <?php if ($order['payment_status'] === 'paid'): ?>
+      <span class="chip chip-pay chip-pay-paid" id="payChip">✔ Paid</span>
+      <?php elseif (!empty($upiEnabled)): ?>
+      <a class="chip chip-pay chip-pay-unpaid" id="payChip" href="<?= esc($payUrl) ?>" style="text-decoration:none;border-color:var(--primary);background:var(--primary-light)">
+        ⚡ Pay ₹<?= number_format((float)$order['balance_amount'] ?: (float)$order['total_amount'], 2) ?> by UPI
+      </a>
+      <?php else: ?>
+      <span class="chip chip-pay chip-pay-unpaid" id="payChip">● Payment pending</span>
+      <?php endif; ?>
     </div>
 
     <!-- Animated icon -->
@@ -611,8 +617,23 @@
       if (document.getElementById('payChip') && data.payment_status) {
         const chip = document.getElementById('payChip');
         const paid = data.payment_status === 'paid';
-        chip.className = 'chip chip-pay ' + (paid ? 'chip-pay-paid' : 'chip-pay-unpaid');
-        chip.textContent = paid ? '✔ Paid' : '● Payment pending';
+        if (chip.tagName === 'A' && paid) {
+          chip.replaceWith(Object.assign(document.createElement('span'), {
+            className: 'chip chip-pay chip-pay-paid', id: 'payChip', textContent: '✔ Paid'
+          }));
+        } else if (chip.tagName === 'SPAN' && paid) {
+          chip.className = 'chip chip-pay chip-pay-paid';
+          chip.textContent = '✔ Paid';
+        } else if (!paid && chip.tagName === 'SPAN' && data.pay_enabled) {
+          // becomes clickable as soon as UPI is open for this table
+          const a = document.createElement('a');
+          a.className = 'chip chip-pay chip-pay-unpaid';
+          a.id = 'payChip';
+          a.href = data.pay_url;
+          a.style.cssText = 'text-decoration:none;border-color:var(--primary);background:var(--primary-light)';
+          a.textContent = '⚡ Pay ₹' + Number(data.balance || 0).toFixed(2) + ' by UPI';
+          chip.replaceWith(a);
+        }
       }
       if (Array.isArray(data.items)) {
         const badges = document.querySelectorAll('.oitem .item-st');
