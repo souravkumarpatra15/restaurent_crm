@@ -103,7 +103,10 @@ abstract class BaseController extends Controller
         if (!$rid) return ['state' => 'active', 'plan' => '', 'trial_ends_at' => null, 'subscription_ends_at' => null, 'days_left' => null];
 
         $r = $db->table('restaurants r')
-            ->select('r.subscription_status, r.trial_ends_at, r.subscription_ends_at, p.name as plan_name')
+            ->select("r.subscription_status, r.trial_ends_at, r.subscription_ends_at, p.name as plan_name,
+                      COALESCE(CASE WHEN r.subscription_status = 'trial'
+                                    THEN DATEDIFF(r.trial_ends_at, CURDATE())
+                                    ELSE DATEDIFF(r.subscription_ends_at, CURDATE()) END, 9999) AS days_left")
             ->join('saas_plans p', 'p.id = r.plan_id', 'left')
             ->where('r.id', $rid)->get()->getRowArray();
 
@@ -121,14 +124,20 @@ abstract class BaseController extends Controller
             $db->table('restaurants')->where('id', $rid)->update(['subscription_status' => $state]);
         }
 
-        $anchor   = $r['subscription_ends_at'] ?? $r['trial_ends_at'] ?? null;
-        $daysLeft = $anchor ? max(0, (int)ceil((strtotime($anchor) - time()) / 86400)) : null;
+        // Anchor must match the LIVE state: trial watches the trial date,
+        // paid tenants watch subscription_ends_at (trial_ends_at is history
+        // and never moves on renewal). Days come from the DB clock: the
+        // DATEDIFF in the select is positive for a future anchor.
+        $anchor = $state === 'trial' ? ($r['trial_ends_at'] ?? null) : ($r['subscription_ends_at'] ?? null);
+        $daysLeft = ($r['days_left'] !== null && $r['days_left'] !== '' && (int)$r['days_left'] !== 9999)
+            ? max(0, (int)$r['days_left']) : null;
 
         return [
             'state'                => $state,
             'plan'                 => $r['plan_name'] ?? '',
             'trial_ends_at'        => $r['trial_ends_at'] ?? null,
             'subscription_ends_at' => $r['subscription_ends_at'] ?? null,
+            'sub_anchor_at'        => $anchor,
             'days_left'            => $daysLeft,
         ];
     }

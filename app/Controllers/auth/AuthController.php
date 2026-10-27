@@ -72,8 +72,41 @@ class AuthController extends BaseController
             return redirect()->back()->withInput()->with('error', 'Invalid email/mobile or password');
         }
 
-        if ($user['restaurant_name'] && in_array($user['subscription_status'] ?? '', ['suspended', 'cancelled', 'expired'])) {
-            return redirect()->back()->with('error', 'Account suspended. Please contact support.');
+        // ── Subscription gate at LOGIN TIME ────────────────────────
+        // The stored status can lie (a trial that already ended still says
+        // 'trial' until someone loads a page). Fold the real dates in using
+        // the DB clock, self-correct the row, and refuse expired accounts.
+        if ($user['restaurant_name']) {
+            $db2 = \Config\Database::connect();
+            $sub = $db2->table('restaurants')
+                ->select("subscription_status,
+                          (trial_ends_at IS NOT NULL AND trial_ends_at < NOW())        AS trial_over,
+                          (subscription_ends_at IS NOT NULL AND subscription_ends_at < NOW()) AS sub_over,
+                          trial_ends_at, subscription_ends_at")
+                ->where('id', $user['restaurant_id'])
+                ->get()->getRowArray();
+            if ($sub) {
+                $state = $sub['subscription_status'] ?? 'active';
+                if ($state === 'trial' && $sub['trial_over'])          $state = 'expired';
+                elseif ($state === 'active' && $sub['sub_over'])       $state = 'expired';
+                if ($state !== $sub['subscription_status']) {
+                    $db2->table('restaurants')->where('id', $user['restaurant_id'])
+                        ->update(['subscription_status' => $state, 'updated_at' => date('Y-m-d H:i:s')]);
+                }
+                if ($state === 'expired') {
+                    $when = $sub['subscription_status'] === 'trial'
+                        ? ($sub['trial_ends_at'] ?? null) : ($sub['subscription_ends_at'] ?? null);
+                    $msg = 'Your ' . ($sub['subscription_status'] === 'trial' ? 'free trial' : 'subscription')
+                         . ((int)$sub['trial_over'] === 0 && (int)$sub['sub_over'] === 0
+                              ? ' is not active.'
+                              : ' ended on ' . date('d M Y', strtotime((string)$when)))
+                         . '. Please renew from your payment link or contact support.';
+                    return redirect()->back()->with('error', $msg);
+                }
+                if (in_array($state, ['suspended', 'cancelled'])) {
+                    return redirect()->back()->with('error', 'Account suspended. Please contact support.');
+                }
+            }
         }
 
         // If branch_id is empty, get the restaurant's main (first) branch

@@ -263,14 +263,18 @@
   <!-- Subscription banner (every tenant sees plan state) -->
   <?php
     $subState  = session('subscription_state');
-    $trialEnd  = session('trial_ends_at');
-    $daysLeft  = $trialEnd ? (int)ceil((strtotime($trialEnd) - time()) / 86400) : null;
+    // Anchor + countdown come from AuthFilter: trial tenants watch the trial
+    // date, paid tenants watch subscription_ends_at, days computed on the DB
+    // clock (DATEDIFF) so a PHP-UTC clock can't skew the IST dates.
+    $anchorEnd = session('sub_anchor_at');
+    $daysLeft  = session('sub_days_left');
+    $daysLeft  = $daysLeft !== null && $daysLeft !== '' ? (int)$daysLeft : null;
   ?>
-  <?php if (in_array($subState, ['trial', 'active']) && !empty($trialEnd) && $daysLeft !== null && $daysLeft <= 7): ?>
+  <?php if (in_array($subState, ['trial', 'active']) && $anchorEnd && $daysLeft !== null && $daysLeft <= 7): ?>
   <div style="padding:.5rem 1rem 0">
     <div style="background:<?= $daysLeft <= 3 ? '#FEF2F2' : '#FFFBEB' ?>;border:1px solid <?= $daysLeft <= 3 ? '#FECACA' : '#FDE68A' ?>;color:<?= $daysLeft <= 3 ? '#B91C1C' : '#92400E' ?>;border-radius:10px;padding:.5rem .9rem;font-size:.78rem;font-weight:700;display:flex;gap:.6rem;align-items:center">
       <i class="fa fa-hourglass-half"></i>
-      <?= $subState === 'trial' ? 'Free trial' : 'Subscription' ?> expires in <strong><?= max(0, $daysLeft) ?> day(s)</strong> (<?= date('d M Y', strtotime($trialEnd)) ?>) — renew to avoid interruption.
+      <?= $subState === 'trial' ? 'Free trial' : 'Subscription' ?> expires in <strong><?= max(0, $daysLeft) ?> day(s)</strong> (<?= date('d M Y', strtotime($anchorEnd)) ?>) — renew to avoid interruption.
     </div>
   </div>
   <?php endif; ?>

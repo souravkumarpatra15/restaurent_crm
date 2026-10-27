@@ -85,7 +85,9 @@ class AuthFilter implements FilterInterface
                 $db = \Config\Database::connect();
                 $restaurant = $db->table('restaurants r')
                     ->select('r.id, r.subscription_status, r.trial_ends_at, r.subscription_ends_at,
-                              p.name as plan_name, p.max_branches, p.max_users, p.max_menu_items, p.max_tables')
+                              p.name as plan_name, p.max_branches, p.max_users, p.max_menu_items, p.max_tables,
+                              DATEDIFF(r.trial_ends_at, CURDATE())        AS trial_days_left,
+                              DATEDIFF(r.subscription_ends_at, CURDATE()) AS sub_days_left')
                     ->join('saas_plans p', 'p.id = r.plan_id', 'left')
                     ->where('r.id', $session->get('restaurant_id'))
                     ->get()->getRowArray();
@@ -105,11 +107,22 @@ class AuthFilter implements FilterInterface
                     $db->table('restaurants')->where('id', $restaurant['id'])->update(['subscription_status' => $state]);
                 }
 
-                // Publish to the session for layout banners / dashboards
+                // Publish to the session for layout banners / dashboards.
+                // The banner anchor must match the LIVE state: trial tenants
+                // watch trial_ends_at, paid tenants watch subscription_ends_at.
+                // (trial_ends_at never changes on renewal — it is history)
+                if ($state === 'trial') {
+                    $anchor     = $restaurant['trial_ends_at'] ?? null;
+                    $anchorDays = $restaurant['trial_days_left'] ?? null;
+                } else {
+                    $anchor     = $restaurant['subscription_ends_at'] ?? null;
+                    $anchorDays = $restaurant['sub_days_left'] ?? null;
+                }
                 $session->set([
                     'subscription_state' => $state,
                     'plan_name'          => $restaurant['plan_name'] ?? '',
-                    'trial_ends_at'      => $restaurant['trial_ends_at'],
+                    'sub_anchor_at'      => $anchor,
+                    'sub_days_left'      => $anchorDays,
                     'plan_max_branches'   => $restaurant['max_branches'] ?? -1,
                     'plan_max_users'      => $restaurant['max_users'] ?? -1,
                     'plan_max_menu_items' => $restaurant['max_menu_items'] ?? -1,
