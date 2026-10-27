@@ -133,6 +133,7 @@
 </div>
 <?php endforeach; ?>
 
+<script>
 function copyApply(btn) {
   const inp = document.getElementById('applyLink');
   inp.select && inp.select();
@@ -142,5 +143,6 @@ function copyApply(btn) {
     setTimeout(() => { btn.innerHTML = '<i class="fa fa-copy"></i> Copy link'; btn.disabled = false; }, 1800);
   });
 }
+</script>
 
 <?php $this->endSection(); ?>
