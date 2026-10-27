@@ -55,6 +55,9 @@ $routes->group('super', ['filter' => 'auth:super_admin'], function ($routes) {
 
     // Reports
     $routes->get('reports/revenue',                 'Admin\ReportController::revenue');
+
+    // One-click DB migration for hosts without SSH (super admin only)
+    $routes->get('migrate',                         'Admin\MigrateController::run');
     $routes->get('reports/subscriptions',           'Admin\ReportController::subscriptions');
 
     // Settings
