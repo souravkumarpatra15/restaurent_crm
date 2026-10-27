@@ -133,6 +133,7 @@ class AuthController extends BaseController
             'restaurant_admin', 'branch_manager'   => redirect()->to(base_url('admin/dashboard')),
             'cashier', 'waiter'                    => redirect()->to(base_url('pos')),
             'kitchen'                              => redirect()->to(base_url('pos/kitchen')),
+            'delivery'                             => redirect()->to(base_url('driver')),
             default                                => redirect()->to(base_url('pos')),
         };
     }

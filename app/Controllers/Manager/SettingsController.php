@@ -16,11 +16,17 @@ class SettingsController extends BaseController
             ->where('`key`','auto_print_kot')
             ->get()->getRowArray();
 
+        $fleet  = \App\Libraries\FleetSettings::get($db, $rid);
+        $freeKm = $db->table('settings')->where('restaurant_id',$rid)->where('`key`','delivery_auto_distance')->get()->getRowArray();
+        $freeKm = !$freeKm || $freeKm['value'] === '1';   // absent row → ON
+
         return view('admin/settings/index', [
             'pageTitle'  => 'Settings',
             'restaurant' => $restaurant,
             'branches'   => $branches,
             'autoKot'    => $autoKot ? $autoKot['value'] === '1' : false,
+            'fleet'      => $fleet,
+            'freeKm'     => $freeKm,
             'userName'   => session('user_name'),
             'userRole'   => session('role_slug'),
             'restaurantName' => session('restaurant_name'),
@@ -67,6 +73,44 @@ class SettingsController extends BaseController
             ]);
         }
 
+        // ── Delivery & DinoviX fleet pricing (all owner-adjustable) ──
+        $modes = ['self', 'dinovix', 'auto'];
+        $this->upsertSetting($db, $rid, 'delivery_mode', in_array($pMode = $this->request->getPost('delivery_mode'), $modes, true) ? $pMode : 'auto', 'text');
+        foreach ([
+            'delivery_fleet_commission_pct',
+            'delivery_fleet_commission_min',
+            'delivery_fee_base',
+            'delivery_fee_free_km',
+            'delivery_fee_per_km',
+            'delivery_payout_base',
+            'delivery_payout_per_km',
+            'delivery_own_platform_fee',
+        ] as $numKey) {
+            $this->upsertSetting($db, $rid, $numKey, max(0, (float)($this->request->getPost($numKey) ?? 0)), 'number');
+        }
+        // Auto distance geocoding: absent row means ON (default), so always write a value
+        $db->table('settings')
+            ->where('restaurant_id',$rid)->where('`key`','delivery_auto_distance')
+            ->update(['value' => $this->request->getPost('delivery_free_km_enabled') ? '1' : '0', 'updated_at' => date('Y-m-d H:i:s')]);
+        if (!$db->table('settings')->where('restaurant_id',$rid)->where('`key`','delivery_auto_distance')->countAllResults()) {
+            $this->upsertSetting($db, $rid, 'delivery_auto_distance', $this->request->getPost('delivery_free_km_enabled') ? '1' : '0', 'boolean');
+        }
+
         return redirect()->to(base_url('admin/settings'))->with('success','Settings saved');
+    }
+
+    /** Insert-or-update one settings row. */
+    private function upsertSetting($db, int $rid, string $key, $value, string $type): void
+    {
+        $exists = $db->table('settings')->where('restaurant_id',$rid)->where('`key`',$key)->countAllResults();
+        if ($exists) {
+            $db->table('settings')->where('restaurant_id',$rid)->where('`key`',$key)
+               ->update(['value' => (string)$value, 'updated_at' => date('Y-m-d H:i:s')]);
+        } else {
+            $db->table('settings')->insert([
+                'restaurant_id' => $rid, 'branch_id' => null, 'key' => $key,
+                'value' => (string)$value, 'type' => $type, 'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
     }
 }

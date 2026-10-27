@@ -9,6 +9,9 @@ $routes->get('login',                   'Auth\AuthController::login');
 $routes->post('login',                  'Auth\AuthController::doLogin');
 $routes->get('signup',                  'Auth\SignupController::form');
 $routes->post('signup',                 'Auth\SignupController::submit');
+// Driver self-signup (public link a restaurant shares) — pending until approved
+$routes->get('rider-apply/(:num)',      'Public\RiderApplyController::form/$1');
+$routes->post('rider-apply/(:num)',     'Public\RiderApplyController::submit/$1');
 $routes->get('logout',                  'Auth\AuthController::logout');
 $routes->get('forgot-password',         'Auth\AuthController::forgotPassword');
 $routes->post('forgot-password',        'Auth\AuthController::doForgotPassword');
@@ -46,6 +49,9 @@ $routes->group('super', ['filter' => 'auth:super_admin'], function ($routes) {
     $routes->post('subscriptions/record-payment/(:num)', 'Admin\SubscriptionController::recordPayment/$1');
     $routes->post('subscriptions/generate-link/(:num)',  'Admin\SubscriptionController::generatePaymentLink/$1');
     $routes->get('subscriptions/payments/(:num)',         'Admin\SubscriptionController::payments/$1');
+
+    // DinoviX-platform income (delivery fees booked on every driver run)
+    $routes->get('fleet-income',                    'Admin\FleetIncomeController::index');
 
     // Reports
     $routes->get('reports/revenue',                 'Admin\ReportController::revenue');
@@ -222,6 +228,7 @@ $routes->group('pos', ['filter' => 'auth:cashier,waiter,branch_manager,restauran
     $routes->get('order/(:num)',                    'Staff\PosController::orderDetail/$1');
     $routes->post('order/create',                   'Staff\PosController::createOrder');
     $routes->post('order/checkout',                 'Staff\PosController::checkout');
+    $routes->get('order/app-print',                 'Staff\PosController::appPrint');
     // UPI QR payments (restaurant-owned account, staff-verified)
     $routes->post('upi/qr',                         'Staff\UpiController::qr');
     $routes->get('upi/status/(:segment)',           'Staff\UpiController::status/$1');
@@ -261,6 +268,28 @@ $routes->post('kitchen/item-status',            'Staff\KitchenController::itemSt
     $routes->get('shift/handover-slip/(:num)',      'Staff\ShiftController::handoverSlip/$1');
 $routes->get('shift/z-slip/(:num)',             'Staff\ShiftController::zSlip/$1');
 });
+
+// ── DinoviX mobile app (Android WebView suite) ─────────────
+// App handshake: after login the APK fetches this and builds its
+// role-specific bottom navigation.
+$routes->get('mobile/bootstrap', 'Staff\MobileController::bootstrap', ['filter' => 'auth']);
+
+// Driver pocket — Delivery Staff (riders) run their assigned orders
+// here; managers/admins can open it for live support.
+$routes->get('driver',       'Staff\DriverAppController::home', ['filter' => 'auth:delivery,branch_manager,restaurant_admin']);
+$routes->post('driver/act',  'Staff\DriverAppController::act',  ['filter' => 'auth:delivery,branch_manager,restaurant_admin']);
+$routes->post('driver/ping', 'Staff\DriverAppController::ping', ['filter' => 'auth:delivery,branch_manager,restaurant_admin,waiter,kitchen']);
+$routes->post('driver/duty', 'Staff\DriverAppController::duty', ['filter' => 'auth:delivery,branch_manager,restaurant_admin']);
+$routes->get('driver/feed',  'Staff\DriverAppController::feed', ['filter' => 'auth:delivery,branch_manager,restaurant_admin']);
+
+// ── Rider onboarding & driver wallet (commission + COD tracking) ──
+$routes->get('admin/riders',                     'Manager\RiderController::index',        ['filter' => 'auth:restaurant_admin,branch_manager']);
+$routes->post('admin/riders/store',              'Manager\RiderController::store',        ['filter' => 'auth:restaurant_admin,branch_manager']);
+$routes->post('admin/riders/toggle/(:num)',      'Manager\RiderController::toggle/$1',    ['filter' => 'auth:restaurant_admin,branch_manager']);
+$routes->get('admin/riders/wallet/(:num)',       'Manager\RiderController::wallet/$1',    ['filter' => 'auth:restaurant_admin,branch_manager']);
+$routes->post('admin/riders/wallet-action/(:num)', 'Manager\RiderController::walletAction/$1', ['filter' => 'auth:restaurant_admin,branch_manager']);
+$routes->post('admin/riders/approve/(:num)',     'Manager\RiderController::approve/$1',   ['filter' => 'auth:restaurant_admin,branch_manager']);
+$routes->post('admin/riders/reject/(:num)',      'Manager\RiderController::reject/$1',    ['filter' => 'auth:restaurant_admin,branch_manager']);
 
 // Slip print routes (web-based fallback when no thermal printer)
 $routes->get('pos/slip/kot/(:num)',  'Staff\PosController::kotSlip/$1',  ['filter'=>'auth:cashier,waiter,branch_manager,restaurant_admin,super_admin']);

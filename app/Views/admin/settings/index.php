@@ -170,6 +170,48 @@
       </div>
     </div>
 
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-header"><span class="card-title"><i class="fa fa-motorcycle" style="color:var(--primary)"></i> Delivery &amp; DinoviX Fleet</span></div>
+      <div class="card-body">
+        <?php $f = $fleet; ?>
+        <div style="margin-bottom:.9rem">
+          <label style="font-size:.75rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em">Who delivers your orders</label>
+          <select name="delivery_mode" class="form-control" style="max-width:420px">
+            <option value="self" <?= $f['delivery_mode'] === 'self' ? 'selected' : '' ?>>🧑‍🍳 Own riders only — fastest for them, you set their commission</option>
+            <option value="dinovix" <?= $f['delivery_mode'] === 'dinovix' ? 'selected' : '' ?>>🛵 DinoviX fleet only — we dispatch, you pay our low fee</option>
+            <option value="auto" <?= $f['delivery_mode'] === 'auto' ? 'selected' : '' ?>>⚡ Auto — own riders first, DinoviX fleet when everyone is busy (recommended)</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.7rem">
+          <div><div style="font-size:.75rem;font-weight:800;color:var(--text-muted)">FLEET COMMISSION %</div>
+            <div style="display:flex;gap:.4rem"><input type="number" step="0.5" min="0" name="delivery_fleet_commission_pct" value="<?= $f['delivery_fleet_commission_pct'] ?>" class="form-control"><input type="number" step="1" min="0" name="delivery_fleet_commission_min" title="Minimum ₹" placeholder="min ₹" value="<?= $f['delivery_fleet_commission_min'] ?>" class="form-control" style="max-width:110px"></div>
+            <div style="font-size:.68rem;color:var(--text-muted)">we keep on fleet runs (min ₹ applied)</div></div>
+          <div><div style="font-size:.75rem;font-weight:800;color:var(--text-muted)">CUSTOMER DELIVERY FEE</div>
+            <div style="display:flex;gap:.4rem"><input type="number" step="1" min="0" name="delivery_fee_base" value="<?= $f['delivery_fee_base'] ?>" class="form-control"><input type="number" step="0.5" min="0" name="delivery_fee_free_km" title="Free distance km" placeholder="free km" value="<?= $f['delivery_fee_free_km'] ?>" class="form-control" style="max-width:110px"></div>
+            <div style="font-size:.68rem;color:var(--text-muted)">₹ base + free distance km</div></div>
+          <div><div style="font-size:.75rem;font-weight:800;color:var(--text-muted)">FEE PER EXTRA KM</div>
+            <input type="number" step="1" min="0" name="delivery_fee_per_km" value="<?= $f['delivery_fee_per_km'] ?>" class="form-control"></div>
+          <div><div style="font-size:.75rem;font-weight:800;color:var(--text-muted)">FLEET DRIVER PAYOUT</div>
+            <input type="number" step="1" min="0" name="delivery_payout_base" value="<?= $f['delivery_payout_base'] ?>" class="form-control">
+            <div style="font-size:.68rem;color:var(--text-muted)">₹ base + per km</div></div>
+          <div><div style="font-size:.75rem;font-weight:800;color:var(--text-muted)">PAYOUT PER EXTRA KM</div>
+            <input type="number" step="1" min="0" name="delivery_payout_per_km" value="<?= $f['delivery_payout_per_km'] ?>" class="form-control"></div>
+          <div><div style="font-size:.75rem;font-weight:800;color:var(--text-muted)">FEE ON OWN-RIDER DELIVERIES</div>
+            <input type="number" step="1" min="0" name="delivery_own_platform_fee" value="<?= $f['delivery_own_platform_fee'] ?>" class="form-control">
+            <div style="font-size:.68rem;color:var(--text-muted)">₹ per order we take</div></div>
+        </div>
+        <div style="margin-top:.6rem">
+          <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;font-size:.9rem">
+            <input type="checkbox" name="delivery_free_km_enabled" value="1" <?= $freeKm ? 'checked' : '' ?>>
+            <span>
+              <strong>Auto distance &amp; fees</strong>
+              <span style="display:block;font-size:.75rem;color:var(--text-muted)">We geocode the delivery address (free OpenStreetMap) and price by road km automatically. Untick to keep manual flat delivery charges.</span>
+            </span>
+          </label>
+        </div>
+      </div>
+    </div>
+
     <div style="display:flex;gap:.5rem;padding-bottom:2rem">
       <button type="submit" class="btn btn-primary btn-lg" style="flex:1"><i class="fa fa-save"></i> Save Settings</button>
     </div>

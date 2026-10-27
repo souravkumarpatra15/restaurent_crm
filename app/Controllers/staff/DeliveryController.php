@@ -98,10 +98,14 @@ class DeliveryController extends BaseController
             'rider_id'        => $rider['id'],
             'rider_name'      => $rider['name'],
             'delivery_status' => 'assigned',
+            'delivery_mode'   => $db->table('riders')->where('user_id', $rider['id'])->get()->getRowArray()['employer_type'] ?? 'restaurant',
             'updated_at'      => date('Y-m-d H:i:s'),
         ]);
 
-        return $this->response->setJSON(['success' => true, 'message' => 'Assigned to ' . $rider['name']]);
+        $fresh = $db->table('orders')->where('id', $orderId)->get()->getRowArray();
+        \App\Libraries\RiderAssign::notifyRider($db, $rid, (int)$rider['id'], $fresh, $fresh['delivery_km'] ?: null);
+
+        return $this->response->setJSON(['success' => true, 'message' => 'Assigned to ' . $rider['name'] . ' — they have been notified']);
     }
 
     // ── Move delivery status along ────────────────────────────

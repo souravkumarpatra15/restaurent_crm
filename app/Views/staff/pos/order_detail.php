@@ -566,6 +566,12 @@ function openBillSlip() {
   }
 
   function printKotAction() {
+    if (inDinoviXApp()) {
+      // Phone-side (USB / Bluetooth) KOT — server records the number if new
+      window.AndroidDinoVIX.print('' + ORDER_ID, 'kot');
+      showToast('Sending KOT to printer…', 'info');
+      return;
+    }
     fetch('<?= base_url('pos/order/print-kot') ?>', {
         method: 'POST',
         headers: {
@@ -585,7 +591,13 @@ function openBillSlip() {
       .catch(e => showToast(e.message || 'Network error', 'error'));
   }
 
+  // In the DINOVIX APP the printer hangs off the phone (USB / Bluetooth).
+  // The native bridge fetches the exact same bytes the server would send.
+  function inDinoviXApp() {
+    return /DinoviXCrm/i.test(navigator.userAgent) && (typeof window.AndroidDinoVIX !== 'undefined');
+  }
   function printBillAction() {
+    if (inDinoviXApp()) { window.AndroidDinoVIX.print('' + ORDER_ID, 'bill'); return; }
     // Bill print = the same printable web slip everywhere (PDF-like),
     // so reprint is identical to the original and works without a thermal printer
     window.open('<?= base_url('pos/slip/bill/') ?>' + ORDER_ID + '?print=1', '_blank');

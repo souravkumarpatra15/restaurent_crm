@@ -97,6 +97,9 @@
       <i class="fa fa-credit-card"></i><span>Subscriptions</span>
     </a>
     <div class="nav-section">ANALYTICS</div>
+    <a href="<?= base_url('super/fleet-income') ?>" class="nav-item <?= active('super/fleet-income*') ?>">
+      <i class="fa fa-wallet"></i><span>DinoviX Income</span>
+    </a>
     <a href="<?= base_url('super/reports/revenue') ?>" class="nav-item <?= active('super/reports*') ?>">
       <i class="fa fa-chart-line"></i><span>Revenue</span>
     </a>
@@ -159,6 +162,9 @@
     </a>
     <a href="<?= base_url('admin/requisitions') ?>" class="nav-item <?= active('admin/requisitions*') ?>">
       <i class="fa fa-clipboard-check"></i><span>Requisitions</span>
+    </a>
+    <a href="<?= base_url('admin/riders') ?>" class="nav-item <?= active('admin/riders*') ?>">
+      <i class="fa fa-motorcycle"></i><span>Delivery Riders</span>
     </a>
     <a href="<?= base_url('admin/coupons') ?>" class="nav-item <?= active('admin/coupons*') ?>">
       <i class="fa fa-ticket"></i><span>Coupons</span>

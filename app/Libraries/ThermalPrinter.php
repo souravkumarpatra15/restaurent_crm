@@ -53,11 +53,21 @@ class ThermalPrinter
     // ----------------------------------------------------------------
     public function printBill($order, $restaurant, $branch)
     {
+        return $this->send($this->buildBill($order, $restaurant, $branch));
+    }
+
+    /**
+     * Build the raw ESC/POS byte document for a bill WITHOUT sending it —
+     * this is what the mobile app fetches for USB / Bluetooth (RawBT)
+     * printing, and it guarantees the in-app receipt is byte-identical to
+     * the network-printed one.
+     */
+    public function buildBill($order, $restaurant, $branch): string
+    {
         if (!$order) {
-            return ['success' => false, 'error' => 'Order not found — nothing to print'];
+            return '';
         }
-        $data = '';
-        $data .= self::INIT;
+        $data = self::INIT;
         $data .= self::ALIGN_CENTER;
 
         // Logo text (if no image printer)
@@ -213,7 +223,7 @@ class ThermalPrinter
         $data .= self::LF . self::LF . self::LF;
         $data .= self::CUT_PAPER;
 
-        return $this->send($data);
+        return $data;
     }
 
     /**
@@ -247,6 +257,15 @@ class ThermalPrinter
         $kotIp   = $this->branch['kot_printer_ip']   ?: $this->printerIp;
         $kotPort = $this->branch['kot_printer_port']  ?: $this->printerPort;
 
+        return $this->sendTo($kotIp, $kotPort, $this->buildKOT($order, $kotNumber));
+    }
+
+    /**
+     * Raw ESC/POS bytes for a KOT — the app-print path reuses the LAST
+     * kot_number recorded for the order so reprints never burn a new number.
+     */
+    public function buildKOT($order, $kotNumber): string
+    {
         $data  = self::INIT;
         $data .= self::ALIGN_CENTER;
         $data .= self::FONT_DOUBLE . self::BOLD_ON;
@@ -293,7 +312,7 @@ class ThermalPrinter
         $data .= self::LF . self::LF . self::LF;
         $data .= self::CUT_PAPER;
 
-        return $this->sendTo($kotIp, $kotPort, $data);
+        return $data;
     }
 
     // ----------------------------------------------------------------

@@ -776,6 +776,9 @@ function showSuccess(data,paid,total){
 function newOrder(){ document.getElementById('posSuccess').classList.remove('on'); cust={id:null,name:'',phone:''}; guests=1; note=''; updateCustChip(); }
 async function reprintBill(){
   if(!lastOid) return;
+  if (/DinoviXCrm/i.test(navigator.userAgent) && (typeof window.AndroidDinoVIX !== 'undefined')) {
+    window.AndroidDinoVIX.print(''+lastOid,'bill'); return;
+  }
   // Try thermal printer first
   try {
     const d = await postF(BASE+'pos/order/print-bill',{order_id:lastOid});
@@ -791,6 +794,10 @@ async function doKot(){
   showLoader('Sending to Kitchen...');
   try{
     if(!lastOid){const r=await createOrder();if(!r.success)throw new Error(r.message);lastOid=r.order_id;}
+    if (/DinoviXCrm/i.test(navigator.userAgent) && (typeof window.AndroidDinoVIX !== 'undefined')) {
+      window.AndroidDinoVIX.print(''+lastOid,'kot');
+      hideLoader(); showKotAlert('✅ KOT sent to printer','success'); return;
+    }
     const d=await postF(BASE+'pos/order/print-kot',{order_id:lastOid});
     hideLoader();
     showKotAlert(d.success?'✅ KOT sent to kitchen!':'⚠️ Saved (printer offline)',d.success?'success':'warning');

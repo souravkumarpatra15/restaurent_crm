@@ -115,7 +115,7 @@ class PosController extends BaseController
             if (!$menuItem) continue;
 
             $variantPrice = null;
-            if ($item['variant_id']) {
+            if ($item['variant_id'] ?? null) {
                 $variant = $this->menuModel->db->table('menu_variants')
                     ->where('id', $item['variant_id'])
                     ->where('menu_item_id', $menuItem['id'])
@@ -309,6 +309,13 @@ class PosController extends BaseController
         // Auto-print KOT if enabled (never blocks order creation)
         $kotPrintResult = ($this->settingOn('auto_print_kot') && $this->getPlanFeature('allow_kot_print')) ? $this->_printKot($orderId) : null;
 
+        // Delivery orders: auto-assign a driver (own staff or DinoviX fleet)
+        // based on the restaurant's delivery_mode setting — never blocks.
+        $autoAssign = null;
+        if ($orderType === 'delivery') {
+            $autoAssign = \App\Libraries\RiderAssign::autoAssign($db, (int)$orderId);
+        }
+
         return $this->response->setJSON([
             'success'      => true,
             'order_id'     => $orderId,
@@ -316,6 +323,7 @@ class PosController extends BaseController
             'redeemed_points' => $redeemedPoints,
             'total'        => $totals['total_amount'],
             'kot_print'    => $kotPrintResult,
+            'auto_assign'  => $autoAssign[0] ? $autoAssign[1] : null,
             'redirect'     => base_url('pos/order/' . $orderId),
         ]);
     }
@@ -519,6 +527,72 @@ class PosController extends BaseController
         return $result;
     }
 
+    // ----------------------------------------------------------------
+    // App print: raw ESC/POS bytes for the DINOVIX APP to hand to the
+    // phone-side printer — USB (phone cable), Bluetooth (RawBT) or
+    // direct phone→printer WiFi. WiFi printing from the SERVER is the
+    // existing _printBill/_printKOT; this endpoint is for when the
+    // printer hangs off the phone itself.
+    // GET (not POST) so the WebView session cookie is enough auth.
+    // ----------------------------------------------------------------
+    public function appPrint()
+    {
+        $orderId = (string)$this->request->getGet('order_id');
+        $type    = $this->request->getGet('type') === 'kot' ? 'kot' : 'bill';
+
+        $order = $this->orderModel->getOrderWithDetails((int)$orderId);
+        if (!$order || $order['branch_id'] != $this->session->get('branch_id')) {
+            return $this->response->setJSON(['success' => false, 'error' => 'Order not found']);
+        }
+
+        $printer = new ThermalPrinter($this->branch);
+
+        if ($type === 'kot') {
+            // Reprint semantics — reuse the LAST kot number of this order,
+            // never burn a fresh KOT number from the phone. If NO KOT was
+            // recorded yet (a phone-only counter), issue the record here;
+            // the server never prints — the phone will.
+            $kot = $this->db->table('kots')->where('order_id', (int)$orderId)
+                ->orderBy('id', 'DESC')->get()->getRowArray();
+            if (!$kot) {
+                $this->db->query('UPDATE branches SET kot_counter = LAST_INSERT_ID(kot_counter) + 1 WHERE id = ?', [$this->branch['id']]);
+                $kotCounter = (int)$this->db->query('SELECT LAST_INSERT_ID() AS n')->getRowArray()['n'];
+                $kotNumber  = (($this->branch['kot_prefix'] ?? null) ?: 'KOT') . str_pad($kotCounter, 4, '0', STR_PAD_LEFT);
+                $this->db->table('kots')->insert([
+                    'order_id'     => (int)$orderId,
+                    'branch_id'    => $this->branch['id'],
+                    'kot_number'   => $kotNumber,
+                    'table_number' => $order['table']['table_number'] ?? 'Takeaway',
+                    'order_type'   => $order['order_type'],
+                    'status'       => 'pending',
+                    'printed_by'   => $this->session->get('user_id'),
+                    'printed_at'   => date('Y-m-d H:i:s'),
+                ]);
+            } else {
+                $kotNumber = $kot['kot_number'];
+            }
+            $bytes = $printer->buildKOT($order, $kotNumber);
+        } else {
+            $bytes = $printer->buildBill($order, $this->restaurant, $this->branch);
+            if ($bytes === '') {
+                return $this->response->setJSON(['success' => false, 'error' => 'Nothing to print on this order']);
+            }
+        }
+
+        return $this->response->setJSON([
+            'success' => true,
+            'type'    => $type,
+            'data'    => base64_encode($bytes),
+            'bytes'   => strlen($bytes),
+            'width'   => ($this->branch['printer_type'] ?? 'thermal_80mm') === 'thermal_57mm' ? 32 : 48,
+            // printer target for phone-side adaptive printing (WiFi direct)
+            'ip'      => $type === 'kot' && !empty($this->branch['kot_printer_ip'])
+                           ? $this->branch['kot_printer_ip'] : ($this->branch['printer_ip'] ?? ''),
+            'port'    => (int)(($type === 'kot' && !empty($this->branch['kot_printer_port']))
+                           ? $this->branch['kot_printer_port'] : $this->branch['printer_port']),
+        ]);
+    }
+
     private function _generateInvoiceNumber($restaurantId, $branchId)
     {
         $restaurant = $this->restaurantModel->find($restaurantId);
@@ -642,7 +716,7 @@ class PosController extends BaseController
             if (!$menuItem) continue;
 
             $variantPrice = null;
-            if ($item['variant_id']) {
+            if ($item['variant_id'] ?? null) {
                 $variant = $this->menuModel->db->table('menu_variants')
                     ->where('id', $item['variant_id'])
                     ->where('menu_item_id', $menuItem['id'])

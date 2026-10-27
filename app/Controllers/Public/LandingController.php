@@ -17,7 +17,9 @@ class LandingController extends BaseController
                 'branch_manager'   => 'admin/dashboard',
                 'cashier',
                 'waiter'           => 'pos',
+                'kitchen',
                 'kitchen_staff'    => 'pos/kitchen',
+                'delivery'         => 'driver',
                 default            => 'login',
             }));
         }
