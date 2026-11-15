@@ -52,6 +52,19 @@ class AuthFilter implements FilterInterface
             return redirect()->to(base_url('login'))->with('error', 'Please login to continue');
         }
 
+        // ── Publish the role's effective permission set every request ──
+        // The sidebar hides what the role can't use; controllers re-check
+        // server-side with the same keys (never trust the hidden menu).
+        // Re-read each request (one PK lookup) so matrix edits apply
+        // instantly without forcing re-login.
+        $db = \Config\Database::connect();
+        $role = $db->table('roles')->where('id', $session->get('role_id'))->get()->getRowArray();
+        $perms = \App\Libraries\Permissions::effective(
+            $session->get('role_slug'),
+            $role['permissions_json'] ?? null
+        );
+        $session->set(['user_perms' => $perms]);
+
         $userRole = $session->get('role_slug');
 
         // Super admin can access everything except POS

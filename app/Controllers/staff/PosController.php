@@ -337,6 +337,7 @@ class PosController extends BaseController
     // ----------------------------------------------------------------
     public function checkout()
     {
+        if ($g = $this->requirePermission('billing.checkout', 'Collect Payment')) return $g;
         $orderId    = (int)$this->request->getPost('order_id');
         $order      = $this->orderModel->find($orderId);
         if (!$order || $order['branch_id'] != $this->session->get('branch_id')) {
@@ -1058,6 +1059,46 @@ class PosController extends BaseController
         return $this->response->setJSON(['success' => true]);
     }
 
+    // ── Manager PIN override ─────────────────────────────────
+    // A staff member without a permission can still complete a sensitive
+    // action when a manager taps their PIN — the approval is audited.
+    // Permission holders skip the PIN entirely.
+    private function overrideApproved(string $permission, string $action, string $context = ''): bool
+    {
+        if ($this->can($permission)) return true;
+
+        $pin = trim((string)$this->request->getPost('mgr_pin'));
+        if ($pin === '') return false;
+
+        $db  = \Config\Database::connect();
+        $rid = (int)session('restaurant_id');
+        $managers = $db->table('users u')
+            ->join('roles r', 'r.id = u.role_id')
+            ->select('u.id, u.name, u.pin')
+            ->where('u.restaurant_id', $rid)
+            ->where('u.is_active', 1)
+            ->whereIn('r.slug', ['restaurant_admin', 'branch_manager'])
+            ->get()->getResultArray();
+
+        foreach ($managers as $m) {
+            if (!empty($m['pin']) && hash_equals((string)$m['pin'], $pin)) {
+                $db->table('override_audit')->insert([
+                    'restaurant_id' => $rid,
+                    'branch_id'     => session('branch_id'),
+                    'user_id'       => session('user_id'),
+                    'user_name'     => session('user_name'),
+                    'manager_id'    => $m['id'],
+                    'manager_name'  => $m['name'],
+                    'action'        => $action,
+                    'context'       => $context,
+                    'created_at'    => date('Y-m-d H:i:s'),
+                ]);
+                return true;
+            }
+        }
+        return false;
+    }
+
     public function cancelOrder($id)
     {
         $order = $this->orderModel->find($id);
@@ -1065,6 +1106,15 @@ class PosController extends BaseController
         // Ownership: only orders of the cashier's own branch can be cancelled
         if (!$order || $order['branch_id'] != $this->session->get('branch_id')) {
             return $this->response->setJSON(['success' => false, 'message' => 'Order not found']);
+        }
+        if (!$this->overrideApproved('pos.cancel_order', 'cancel_order', 'Order #' . ($order['order_number'] ?? $id))) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'success' => false,
+                'needs_override' => !$this->can('pos.cancel_order'),
+                'message' => $this->can('pos.cancel_order')
+                    ? 'Manager PIN was not accepted'
+                    : 'Cancelling orders needs manager approval — ask a manager to enter their PIN',
+            ]);
         }
         return $this->response->setJSON($this->doCancel($order, $this->request->getPost('reason') ?: 'Cancelled at POS'));
     }
@@ -1253,6 +1303,15 @@ class PosController extends BaseController
     public function applyCoupon()
     {        $code     = $this->request->getPost('coupon_code');
         $subtotal = (float)$this->request->getPost('subtotal');
+        if (!$this->overrideApproved('pos.discount', 'apply_coupon', 'Coupon ' . $code)) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'success' => false,
+                'needs_override' => !$this->can('pos.discount'),
+                'message' => $this->can('pos.discount')
+                    ? 'Manager PIN was not accepted'
+                    : 'Applying discounts needs manager approval — ask a manager to enter their PIN',
+            ]);
+        }
         $coupon   = $this->db->table('coupons')
             ->where('code', $code)
             ->where('restaurant_id', $this->session->get('restaurant_id'))

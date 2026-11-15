@@ -323,6 +323,7 @@ class UpiController extends BaseController
 
     public function verify()
     {
+        if ($g = $this->requirePermission('upi.verify', 'UPI Payment Verification')) return $g;
         if (!$this->canVerify()) {
             return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'You are not allowed to verify payments']);
         }
@@ -482,6 +483,7 @@ class UpiController extends BaseController
 
     public function reject()
     {
+        if ($g = $this->requirePermission('upi.verify', 'UPI Payment Verification')) return $g;
         if (!$this->canVerify()) {
             return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'You are not allowed to verify payments']);
         }

@@ -529,21 +529,23 @@ function openBillSlip() {
     setTimeout(() => document.getElementById('cancelReason').focus(), 80);
   }
 
-  function processCancel() {
+  function processCancel(mgrPin) {
     const reason = document.getElementById('cancelReason').value.trim() || 'Walk-in cancelled';
     const btn = document.getElementById('cancelBtn');
     btn.disabled = true;
     btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Cancelling…';
+    const body = new URLSearchParams({
+      [CSRF_NAME]: CSRF_TOKEN,
+      reason: reason
+    });
+    if (mgrPin) body.append('mgr_pin', mgrPin);
     fetch('<?= base_url('pos/order/cancel/' . $order['id']) ?>', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'X-Requested-With': 'XMLHttpRequest'
         },
-        body: new URLSearchParams({
-          [CSRF_NAME]: CSRF_TOKEN,
-          reason: reason
-        })
+        body: body
       })
       .then(r => r.ok ? r.json() : r.text().then(t => { throw new Error('Session expired — reloading'); } ))
       .then(d => {
@@ -551,6 +553,8 @@ function openBillSlip() {
           showToast(d.message || 'Order cancelled', 'warning');
           closeModal('cancelModal');
           setTimeout(() => location.reload(), 700);
+        } else if (d.needs_override) {
+          askManagerPin((pin) => { if (pin !== null) processCancel(pin); btn.disabled = false; btn.innerHTML = '<i class="fa fa-ban"></i> Cancel order'; });
         } else {
           showToast(d.message || 'Could not cancel order', 'error');
           btn.disabled = false;
@@ -563,6 +567,34 @@ function openBillSlip() {
         btn.innerHTML = '<i class="fa fa-ban"></i> Cancel order';
         setTimeout(() => location.reload(), 1500); // fresh session/token, try again
       });
+  }
+
+  // ── Manager PIN approval sheet (no native dialogs) ────────
+  function askManagerPin(onDone) {
+    const bg = document.createElement('div');
+    bg.id = 'mgrPinBg'; bg.style.cssText = 'position:fixed;inset:0;background:rgba(2,6,23,.6);z-index:9998;backdrop-filter:blur(2px)';
+    const sh = document.createElement('div');
+    sh.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:9999;width:min(340px,92vw);background:#fff;border-radius:18px;padding:1.4rem;box-shadow:0 24px 60px rgba(2,6,23,.4);font-family:var(--font,system-ui)';
+    sh.innerHTML = `
+      <div style="text-align:center;margin-bottom:.9rem">
+        <div style="width:52px;height:52px;margin:0 auto .6rem;border-radius:50%;background:#FEF3C7;display:flex;align-items:center;justify-content:center;font-size:1.4rem">🔐</div>
+        <div style="font-weight:900;font-size:1rem;color:#0F172A">Manager Approval</div>
+        <div style="font-size:.74rem;color:#64748B;margin-top:.25rem">Your role doesn't allow this action.<br>A manager can authorise it with their PIN.</div>
+      </div>
+      <input id="mgrPinInput" type="password" inputmode="numeric" maxlength="10" placeholder="Manager PIN"
+             style="width:100%;padding:.8rem;border:1.5px solid #E2E8F0;border-radius:12px;font-size:1.2rem;font-weight:800;text-align:center;letter-spacing:.4em;outline:none;box-sizing:border-box">
+      <div id="mgrPinErr" style="display:none;font-size:.74rem;font-weight:700;color:#B91C1C;text-align:center;margin-top:.4rem"></div>
+      <div style="display:flex;gap:.5rem;margin-top:.9rem">
+        <button id="mgrPinCancel" style="flex:1;padding:.75rem;border:1.5px solid #E2E8F0;border-radius:12px;background:#fff;font-weight:800;cursor:pointer;font-size:.85rem">Cancel</button>
+        <button id="mgrPinGo" style="flex:1.6;padding:.75rem;border:none;border-radius:12px;background:#0B1E3D;color:#fff;font-weight:900;cursor:pointer;font-size:.85rem">Authorise</button>
+      </div>`;
+    document.body.appendChild(bg); document.body.appendChild(sh);
+    const close = (result) => { bg.remove(); sh.remove(); onDone(result); };
+    document.getElementById('mgrPinInput').focus();
+    document.getElementById('mgrPinCancel').onclick = () => close(null);
+    document.getElementById('mgrPinGo').onclick = () => close(document.getElementById('mgrPinInput').value.trim());
+    document.getElementById('mgrPinInput').addEventListener('keydown', e => { if (e.key === 'Enter') close(e.target.value.trim()); });
+    bg.onclick = () => close(null);
   }
 
   function printKotAction() {

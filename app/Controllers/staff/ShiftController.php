@@ -49,6 +49,7 @@ class ShiftController extends BaseController
 
     public function summary()
     {
+        if ($g = $this->requirePermission('billing.day_close', 'Cash Counter')) return $g;
         if ($g = $this->gate()) return $g;
         $db  = \Config\Database::connect();
         $uid = session('user_id');

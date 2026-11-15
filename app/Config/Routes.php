@@ -108,6 +108,12 @@ $routes->group('admin', ['filter' => 'auth:restaurant_admin,branch_manager,super
     $routes->post('users/update/(:num)',            'Manager\UserController::update/$1');
     $routes->post('users/toggle/(:num)',            'Manager\UserController::toggle/$1');
 
+    // Roles & Access (permission matrix)
+    $routes->get('roles',                           'Admin\RoleController::index');
+    $routes->get('roles/(:num)/permissions',        'Admin\RoleController::matrix/$1');
+    $routes->post('roles/(:num)/permissions',       'Admin\RoleController::save/$1');
+    $routes->post('roles/(:num)/reset',             'Admin\RoleController::reset/$1');
+
     // Menu
     $routes->get('menu/items',                      'Manager\MenuController::index');
     $routes->get('menu/items/create',               'Manager\MenuController::createItem');

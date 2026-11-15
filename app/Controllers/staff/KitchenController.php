@@ -6,6 +6,7 @@ class KitchenController extends BaseController
 {
     public function index()
     {
+        if ($g = $this->requirePermission('kitchen.view', 'Kitchen Display')) return $g;
         if (!$this->getPlanFeature('allow_kitchen_display')) {
             return $this->featureLocked(
                 'Kitchen Display System',
@@ -44,6 +45,7 @@ class KitchenController extends BaseController
 
     public function updateStatus()
     {
+        if ($g = $this->requirePermission('kitchen.view', 'Kitchen Display')) return $g;
         if (!$this->getPlanFeature('allow_kitchen_display')) {
             return $this->response->setJSON(['success' => false, 'locked' => true, 'message' => 'Kitchen Display is not included in your plan — upgrade to use it']);
         }
@@ -135,6 +137,7 @@ class KitchenController extends BaseController
     // ── Per-item kitchen status (tap a dish to advance it) ────
     public function itemStatus()
     {
+        if ($g = $this->requirePermission('kitchen.view', 'Kitchen Display')) return $g;
         if (!$this->getPlanFeature('allow_kitchen_display')) {
             return $this->response->setJSON(['success' => false, 'locked' => true, 'message' => 'Kitchen Display is not included in your plan — upgrade to use it']);
         }

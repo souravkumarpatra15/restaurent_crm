@@ -21,11 +21,48 @@ use Psr\Log\LoggerInterface;
 abstract class BaseController extends Controller
 {
     /**
+     * Route-guard map: controller class => permission key. Enforced by
+     * _remap() before any method runs, so a hidden sidebar item is never
+     * the only protection — the server always re-checks.
+     */
+    protected const CONTROLLER_PERMS = [
+        \App\Controllers\Manager\MenuController::class       => 'menu.manage',
+        \App\Controllers\Manager\TableController::class      => 'tables.manage',
+        \App\Controllers\Manager\CustomerController::class   => 'customers.manage',
+        \App\Controllers\Manager\CouponController::class     => 'coupons.manage',
+        \App\Controllers\Manager\InventoryController::class  => 'inventory.manage',
+        \App\Controllers\Manager\ExpenseController::class    => 'expenses.manage',
+        \App\Controllers\Manager\ReservationController::class => 'reservations.manage',
+        \App\Controllers\Manager\OrderController::class      => 'orders.view',
+        \App\Controllers\Manager\ReportController::class     => 'reports.view',
+        \App\Controllers\Manager\SettingsController::class   => 'settings.manage',
+        \App\Controllers\Manager\BranchController::class     => 'branches.manage',
+        \App\Controllers\Manager\UserController::class       => 'staff.manage',
+        \App\Controllers\Admin\RoleController::class         => 'roles.manage',
+    ];
+    /**
      * Be sure to declare properties for any property fetch you initialized.
      * The creation of dynamic property is deprecated in PHP 8.2.
      */
 
     // protected $session;
+
+    /**
+     * Enforce the CONTROLLER_PERMS map before every method runs.
+     * Controllers not in the map are untouched.
+     */
+    public function _remap(string $method, ...$params)
+    {
+        if (!method_exists($this, $method)) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+        $perm = self::CONTROLLER_PERMS[static::class] ?? null;
+        if ($perm) {
+            $module = ucfirst(explode('.', $perm)[0]);
+            if ($g = $this->requirePermission($perm, $module . ' Management')) return $g;
+        }
+        return $this->{$method}(...$params);
+    }
 
     /**
      * @return void
@@ -90,6 +127,46 @@ abstract class BaseController extends Controller
             ->join('saas_plans p','p.id=r.plan_id','left')
             ->where('r.id',$rid)->get()->getRowArray();
         return !$plan || (bool)($plan[$feature] ?? false);
+    }
+
+    /**
+     * Role permission check — server-side twin of can_access().
+     * super_admin / '*' roles always pass; unknown keys deny.
+     */
+    protected function can(string $permission): bool
+    {
+        if (session('role_slug') === 'super_admin') return true;
+        $perms = session('user_perms');
+        if (!is_array($perms)) {
+            // Session predates the permission system — recompute from role
+            $db   = \Config\Database::connect();
+            $role = $db->table('roles')->where('id', session('role_id'))->get()->getRowArray();
+            $perms = \App\Libraries\Permissions::effective(session('role_slug'), $role['permissions_json'] ?? null);
+            session()->set(['user_perms' => $perms, 'user_perms_role' => session('role_id')]);
+        }
+        return \App\Libraries\Permissions::allows($perms, $permission);
+    }
+
+    /**
+     * Guard an action behind a role permission. Renders a friendly
+     * "no access" page for GETs; JSON denial for AJAX/POSTs.
+     */
+    protected function requirePermission(string $permission, string $moduleName = '')
+    {
+        if ($this->can($permission)) return null;
+        $wantsJson = $this->request->isAJAX()
+            || (strcasecmp($this->request->getMethod(), 'post') === 0 && str_starts_with($this->request->getUri()->getPath(), 'pos/'));
+        if ($wantsJson) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'success' => false,
+                'no_access' => true,
+                'message' => "You don't have permission to use {$moduleName} — ask your admin for access",
+            ]);
+        }
+        return $this->response->setBody(view('no_access', [
+            'moduleName' => $moduleName ?: ucwords(str_replace(['.', '_'], ' ', $permission)),
+            'backUrl'    => base_url(),
+        ]));
     }
 
     /**

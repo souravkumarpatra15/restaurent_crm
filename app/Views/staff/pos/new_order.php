@@ -666,21 +666,52 @@ function _applyDiscount(t,v){
   disc={type:t,val:v,amt:parseFloat(amt.toFixed(2)),coupon:disc.coupon};
   renderAll();
 }
-function applyCoupon(){
+function applyCoupon(mgrPin){
   const code=document.getElementById('couponCode').value.trim();
   if(!code)return;
   const sub=cart.reduce((s,i)=>s+(i.price+i.addons.reduce((a,b)=>a+b.price,0))*i.qty,0);
-  postF(BASE+'pos/order/apply-coupon',{coupon_code:code,subtotal:sub}).then(d=>{
+  const payload={coupon_code:code,subtotal:sub};
+  if(mgrPin)payload.mgr_pin=mgrPin;
+  postF(BASE+'pos/order/apply-coupon',payload).then(d=>{
     const el=document.getElementById('couponResult');
     if(d.success){
       disc={type:'coupon',val:d.discount,amt:d.discount,coupon:code};
       renderAll();
       el.innerHTML=`<div style="background:var(--success-l);border:1px solid #BBF7D0;padding:.75rem;border-radius:var(--radius);color:var(--success);font-weight:700"><i class="fa fa-check-circle"></i> Applied! Saving ${SYM}${d.discount.toFixed(2)}</div>`;
       setTimeout(()=>closeSheet('sCoupon','bgCoupon'),1600);
+    } else if(d.needs_override){
+      askManagerPin(pin=>{ if(pin!==null) applyCoupon(pin); });
     } else {
       el.innerHTML=`<div style="background:var(--danger-l);border:1px solid #FECACA;padding:.75rem;border-radius:var(--radius);color:var(--danger);font-weight:700"><i class="fa fa-circle-exclamation"></i> ${d.message||'Invalid coupon'}</div>`;
     }
   });
+}
+
+// ── Manager PIN approval sheet (no native dialogs) ────────
+function askManagerPin(onDone){
+  const bg=document.createElement('div');
+  bg.style.cssText='position:fixed;inset:0;background:rgba(2,6,23,.6);z-index:9998;backdrop-filter:blur(2px)';
+  const sh=document.createElement('div');
+  sh.style.cssText='position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:9999;width:min(340px,92vw);background:#fff;border-radius:18px;padding:1.4rem;box-shadow:0 24px 60px rgba(2,6,23,.4);font-family:var(--font,system-ui)';
+  sh.innerHTML=`
+    <div style="text-align:center;margin-bottom:.9rem">
+      <div style="width:52px;height:52px;margin:0 auto .6rem;border-radius:50%;background:#FEF3C7;display:flex;align-items:center;justify-content:center;font-size:1.4rem">🔐</div>
+      <div style="font-weight:900;font-size:1rem;color:#0F172A">Manager Approval</div>
+      <div style="font-size:.74rem;color:#64748B;margin-top:.25rem">Discounts need a manager's OK.<br>Ask a manager to enter their PIN.</div>
+    </div>
+    <input id="mgrPinInput" type="password" inputmode="numeric" maxlength="10" placeholder="Manager PIN" style="width:100%;padding:.8rem;border:1.5px solid #E2E8F0;border-radius:12px;font-size:1.2rem;font-weight:800;text-align:center;letter-spacing:.4em;outline:none;box-sizing:border-box">
+    <div id="mgrPinErr" style="display:none;font-size:.74rem;font-weight:700;color:#B91C1C;text-align:center;margin-top:.4rem"></div>
+    <div style="display:flex;gap:.5rem;margin-top:.9rem">
+      <button id="mgrPinCancel" style="flex:1;padding:.75rem;border:1.5px solid #E2E8F0;border-radius:12px;background:#fff;font-weight:800;cursor:pointer;font-size:.85rem">Cancel</button>
+      <button id="mgrPinGo" style="flex:1.6;padding:.75rem;border:none;border-radius:12px;background:var(--primary);color:#fff;font-weight:900;cursor:pointer;font-size:.85rem">Authorise</button>
+    </div>`;
+  document.body.appendChild(bg);document.body.appendChild(sh);
+  const close=(result)=>{bg.remove();sh.remove();onDone(result);};
+  document.getElementById('mgrPinInput').focus();
+  document.getElementById('mgrPinCancel').onclick=()=>close(null);
+  document.getElementById('mgrPinGo').onclick=()=>close(document.getElementById('mgrPinInput').value.trim());
+  document.getElementById('mgrPinInput').addEventListener('keydown',e=>{if(e.key==='Enter')close(e.target.value.trim());});
+  bg.onclick=()=>close(null);
 }
 
 // ── Customer ──────────────────────────────────────────────

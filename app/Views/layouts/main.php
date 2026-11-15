@@ -123,104 +123,182 @@
     <a href="<?= base_url('admin/dashboard') ?>" class="nav-item <?= active('admin/dashboard') ?>">
       <i class="fa fa-gauge-high"></i><span>Dashboard</span>
     </a>
+    <?php if (can_access('pos.use')): ?>
     <a href="<?= base_url('pos') ?>" class="nav-item nav-pos">
       <i class="fa fa-cash-register"></i><span>Open POS</span>
       <span class="nav-badge">LIVE</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('branches.manage') || can_access('staff.manage') || can_access('menu.manage') || can_access('tables.manage')): ?>
     <div class="nav-section">SETUP</div>
+    <?php endif; ?>
+    <?php if (can_access('branches.manage')): ?>
     <a href="<?= base_url('admin/branches') ?>" class="nav-item <?= active('admin/branches*') ?>">
       <i class="fa fa-code-branch"></i><span>Branches</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('staff.manage')): ?>
     <a href="<?= base_url('admin/users') ?>" class="nav-item <?= active('admin/users*') ?>">
       <i class="fa fa-users"></i><span>Staff</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('menu.manage')): ?>
     <a href="<?= base_url('admin/menu/items') ?>" class="nav-item <?= active('admin/menu*') ?>">
       <i class="fa fa-utensils"></i><span>Menu</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('tables.manage')): ?>
     <a href="<?= base_url('admin/tables') ?>" class="nav-item <?= active('admin/tables*') ?>">
       <i class="fa fa-chair"></i><span>Tables</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('orders.view') || can_access('customers.manage') || can_access('menu.manage') || can_access('reservations.manage')): ?>
     <div class="nav-section">SALES</div>
+    <?php endif; ?>
+    <?php if (can_access('orders.view')): ?>
     <a href="<?= base_url('admin/orders') ?>" class="nav-item <?= active('admin/orders*') ?>">
       <i class="fa fa-receipt"></i><span>Orders</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('customers.manage')): ?>
     <a href="<?= base_url('admin/customers') ?>" class="nav-item <?= active('admin/customers*') ?>">
       <i class="fa fa-person"></i><span>Customers</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('menu.manage')): ?>
     <a href="<?= base_url('admin/import') ?>" class="nav-item <?= active('admin/import*') ?>">
       <i class="fa fa-file-import"></i><span>Import Data</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('reservations.manage')): ?>
     <a href="<?= base_url('admin/reservations') ?>" class="nav-item <?= active('admin/reservations*') ?>">
       <i class="fa fa-calendar-check"></i><span>Reservations</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('expenses.manage') || can_access('inventory.manage') || can_access('delivery.manage') || can_access('coupons.manage') || can_access('upi.verify')): ?>
     <div class="nav-section">FINANCE</div>
+    <?php endif; ?>
+    <?php if (can_access('expenses.manage')): ?>
     <a href="<?= base_url('admin/expenses') ?>" class="nav-item <?= active('admin/expenses*') ?>">
       <i class="fa fa-wallet"></i><span>Expenses</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('inventory.manage')): ?>
     <a href="<?= base_url('admin/inventory') ?>" class="nav-item <?= active('admin/inventory*') ?>">
       <i class="fa fa-boxes-stacked"></i><span>Inventory</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('inventory.manage')): ?>
     <a href="<?= base_url('admin/requisitions') ?>" class="nav-item <?= active('admin/requisitions*') ?>">
       <i class="fa fa-clipboard-check"></i><span>Requisitions</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('delivery.manage')): ?>
     <a href="<?= base_url('admin/riders') ?>" class="nav-item <?= active('admin/riders*') ?>">
       <i class="fa fa-motorcycle"></i><span>Delivery Riders</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('coupons.manage')): ?>
     <a href="<?= base_url('admin/coupons') ?>" class="nav-item <?= active('admin/coupons*') ?>">
       <i class="fa fa-ticket"></i><span>Coupons</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('upi.verify')): ?>
     <a href="<?= base_url('pos/upi/pending') ?>" class="nav-item <?= active('pos/upi*') ?>">
       <i class="fa fa-qrcode"></i><span>UPI Payments</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('reports.view') || can_access('orders.view')): ?>
     <div class="nav-section">REPORTS</div>
+    <?php endif; ?>
+    <?php if (can_access('reports.view')): ?>
     <a href="<?= base_url('admin/reports/sales') ?>" class="nav-item <?= active('admin/reports*') ?>">
       <i class="fa fa-chart-bar"></i><span>Reports</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('reports.view')): ?>
     <a href="<?= base_url('admin/reports/consolidated') ?>" class="nav-item <?= active('admin/reports/consolidated*') ?>">
       <i class="fa fa-sitemap"></i><span>Consolidated</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('reports.view')): ?>
     <a href="<?= base_url('admin/reports/gst') ?>" class="nav-item <?= active('admin/reports/gst*') ?>">
       <i class="fa fa-file-invoice"></i><span>GSTR-1</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('orders.view')): ?>
     <a href="<?= base_url('admin/reports/incomplete') ?>" class="nav-item <?= active('admin/reports/incomplete*') ?>">
       <i class="fa fa-triangle-exclamation"></i><span>Incomplete Orders</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('reservations.manage') || can_access('settings.manage')): ?>
     <div class="nav-section">BOOKINGS</div>
+    <?php endif; ?>
+    <?php if (can_access('reservations.manage')): ?>
     <a href="<?= base_url('admin/booking') ?>" class="nav-item <?= active('admin/booking') ?>">
       <i class="fa fa-calendar-check"></i><span>Table Bookings</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('settings.manage')): ?>
     <a href="<?= base_url('admin/booking/settings') ?>" class="nav-item <?= active('admin/booking/settings*') ?>">
       <i class="fa fa-sliders"></i><span>Booking Settings</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('reports.advanced') || can_access('reports.view') || can_access('feedback.view') || can_access('expenses.manage') || can_access('billing.day_close')): ?>
     <div class="nav-section">INTELLIGENCE</div>
+    <?php endif; ?>
+    <?php if (can_access('reports.advanced')): ?>
     <a href="<?= base_url('admin/insights') ?>" class="nav-item <?= active('admin/insights') ?>">
       <i class="fa fa-brain"></i><span>Smart Insights</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('reports.view')): ?>
     <a href="<?= base_url('admin/staff-performance') ?>" class="nav-item <?= active('admin/staff-performance') ?>">
       <i class="fa fa-ranking-star"></i><span>Staff Performance</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('feedback.view')): ?>
     <a href="<?= base_url('admin/feedback') ?>" class="nav-item <?= active('admin/feedback*') ?>">
       <i class="fa fa-star"></i><span>Feedback</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('expenses.manage')): ?>
     <a href="<?= base_url('admin/waste') ?>" class="nav-item <?= active('admin/waste*') ?>">
       <i class="fa fa-trash-can-arrow-up"></i><span>Waste Tracker</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('billing.day_close')): ?>
     <a href="<?= base_url('admin/smart-close') ?>" class="nav-item <?= active('admin/smart-close*') ?>">
       <i class="fa fa-moon"></i><span>Day Close</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('settings.manage') || can_access('feedback.view') || can_access('roles.manage')): ?>
     <div class="nav-section">SETTINGS</div>
+    <?php endif; ?>
+    <?php if (can_access('settings.manage')): ?>
     <a href="<?= base_url('admin/settings') ?>" class="nav-item <?= active('admin/settings*') ?>">
       <i class="fa fa-gear"></i><span>Settings</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('feedback.view')): ?>
     <a href="<?= base_url('admin/owner-feedback') ?>" class="nav-item <?= active('admin/owner-feedback*') ?>">
       <i class="fa fa-comments"></i><span>Owner Feedback</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('settings.manage')): ?>
     <a href="<?= base_url('admin/upi-settings') ?>" class="nav-item <?= active('admin/upi-settings*') ?>">
       <i class="fa fa-qrcode"></i><span>UPI Payments</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('roles.manage')): ?>
+    <a href="<?= base_url('admin/roles') ?>" class="nav-item <?= active('admin/roles*') ?>">
+      <i class="fa fa-user-shield"></i><span>Roles &amp; Access</span>
+    </a>
+    <?php endif; ?>
 
     <?php else: ?>
     <!-- ── CASHIER / WAITER / KITCHEN ── -->
+    <?php if (can_access('pos.use')): ?>
     <div class="nav-section">POS</div>
     <a href="<?= base_url('pos') ?>" class="nav-item nav-pos <?= active('pos') ?>">
       <i class="fa fa-cash-register"></i><span>Table Map</span>
@@ -231,21 +309,30 @@
     <a href="<?= base_url('pos/new-order/delivery') ?>" class="nav-item">
       <i class="fa fa-motorcycle"></i><span>Delivery</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('upi.verify')): ?>
     <a href="<?= base_url('pos/upi/pending') ?>" class="nav-item <?= active('pos/upi*') ?>">
       <i class="fa fa-qrcode"></i><span>Pending UPI</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('kitchen.view')): ?>
     <div class="nav-section">KITCHEN</div>
     <a href="<?= base_url('pos/kitchen') ?>" class="nav-item <?= active('pos/kitchen') ?>">
       <i class="fa fa-fire-burner"></i><span>Kitchen Display</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('delivery.manage')): ?>
     <div class="nav-section">DELIVERY</div>
     <a href="<?= base_url('pos/delivery') ?>" class="nav-item <?= active('pos/delivery') ?>">
       <i class="fa fa-motorcycle"></i><span>Delivery Board</span>
     </a>
+    <?php endif; ?>
+    <?php if (can_access('billing.day_close')): ?>
     <div class="nav-section">SHIFT</div>
     <a href="<?= base_url('pos/shift/summary') ?>" class="nav-item <?= active('pos/shift/summary') ?>">
       <i class="fa fa-clock"></i><span>Shift Summary</span>
     </a>
+    <?php endif; ?>
     <?php endif; ?>
 
   </nav>
