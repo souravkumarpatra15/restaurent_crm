@@ -268,7 +268,10 @@ $routes->group('pos', ['filter' => 'auth:cashier,waiter,branch_manager,restauran
 $routes->post('kitchen/item-status',            'Staff\KitchenController::itemStatus');
     $routes->get('shift/summary',                   'Staff\ShiftController::summary');
     $routes->get('delivery',                        'Staff\DeliveryController::board');
+    $routes->get('delivery/riders',                 'Staff\DeliveryController::riders');
+    $routes->get('delivery/state/(:num)',           'Staff\DeliveryController::state/$1');
     $routes->post('delivery/assign',                'Staff\DeliveryController::assign');
+    $routes->post('delivery/auto/(:num)',           'Staff\DeliveryController::auto/$1');
     $routes->post('delivery/status',                'Staff\DeliveryController::status');
     $routes->post('shift/open',                     'Staff\ShiftController::open');
     $routes->post('shift/close',                    'Staff\ShiftController::close');

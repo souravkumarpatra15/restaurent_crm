@@ -85,7 +85,7 @@ class Permissions
         'cashier'          => [
             'pos.use', 'pos.discount', 'pos.split_bill',
             'billing.checkout', 'billing.day_close', 'upi.verify',
-            'orders.view', 'customers.manage',
+            'orders.view', 'customers.manage', 'delivery.manage',
         ],
         'waiter'           => [
             'pos.use', 'orders.view', 'reservations.manage',

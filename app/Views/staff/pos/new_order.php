@@ -7,6 +7,13 @@ $taxType = $restaurant['tax_type'] ?? 'exclusive';
 $svcPct  = (float)($restaurant['service_charge_percent'] ?? 0);
 $typeIcons = ['dine_in'=>'fa-chair','takeaway'=>'fa-bag-shopping','delivery'=>'fa-motorcycle'];
 ?>
+<style>
+/* Rider dispatch panel (delivery orders) */
+.success-card.disp{max-width:430px;text-align:left;padding:1.4rem 1.2rem}
+.success-card.disp .success-title,.success-card.disp .success-anim{text-align:center}
+.disp-status{border-radius:12px;padding:.75rem .85rem;font-size:.85rem;line-height:1.55;margin-bottom:.7rem}
+.disp-rider{display:flex;align-items:center;gap:.55rem;padding:.55rem .65rem;border:1.5px solid var(--border);border-radius:12px;margin-bottom:.45rem}
+</style>
 
 <!-- ═══ TOP BAR ═══ -->
 <div class="posbar">
@@ -404,14 +411,18 @@ $typeIcons = ['dine_in'=>'fa-chair','takeaway'=>'fa-bag-shopping','delivery'=>'f
 </div>
 
 <div class="pos-success" id="posSuccess">
-  <div class="success-card">
-    <span class="success-anim">✅</span>
-    <div class="success-title">Payment Done!</div>
+  <div class="success-card" id="successCard">
+    <span class="success-anim" id="successIcon">✅</span>
+    <div class="success-title" id="successTitle">Payment Done!</div>
     <div class="success-inv" id="successInv"></div>
     <div class="success-change" id="successChange" style="display:none"></div>
-    <div class="success-btns">
+    <div id="dispatchBox" style="display:none"></div>
+    <div class="success-btns" id="successBtns">
       <button class="success-btn-new" onclick="newOrder()"><i class="fa fa-plus"></i> New Order</button>
       <button class="success-btn-print" onclick="reprintBill()"><i class="fa fa-print"></i> Print Bill Again</button>
+    </div>
+    <div class="success-btns" id="dispatchBtns" style="display:none">
+      <button class="success-btn-new" onclick="closeDispatch()"><i class="fa fa-check"></i> Done</button>
     </div>
   </div>
 </div>
@@ -913,6 +924,8 @@ async function processPayment(){
         }, 800);
       }
       showSuccess(d, splitMode ? tot : paid, tot);
+      // Delivery: open the rider dispatch panel while everything is fresh
+      if(OMODE==='delivery'&&lastOid){ openDispatch(lastOid, d.delivery, null); }
       cart=[]; disc={type:'',val:0,amt:0,coupon:''}; lastOid=null; resetSplit(); renderAll();
     } else throw new Error(d.message||'Payment failed');
   } catch(e){ hideLoader(); toast(e.message,'error'); }
@@ -943,7 +956,113 @@ function showSuccess(data,paid,total){
   if(change>.009&&payMethod==='cash'){sc.style.display='';sc.textContent='💵 Change: '+SYM+change.toFixed(2);}else{sc.style.display='none';}
   document.getElementById('posSuccess').classList.add('on');
 }
-function newOrder(){ document.getElementById('posSuccess').classList.remove('on'); cust={id:null,name:'',phone:''}; guests=1; note=''; updateCustChip(); }
+
+// ── RIDER DISPATCH ENGINE (delivery orders) ──────────────
+// Runs right after the order is saved or billed: shows who is riding,
+// lets the till auto-dispatch or hand-pick a rider without leaving POS.
+let DISP=null, RIDERS=null, RIDERS_MODE='';
+const MODE_LABEL={auto:'Own + Fleet (smart pick)',self:'Own riders only',dinovix:'DinoviX fleet'};
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+function openDispatch(oid,pre,title){
+  if(OMODE!=='delivery'||!oid)return;
+  DISP={oid:oid,assigned:!!(pre&&pre.assigned),rider_name:(pre&&pre.rider_name)||'',km:(pre&&pre.km)??null,busy:false,err:''};
+  document.getElementById('successTitle').textContent=title||'Payment Done!';
+  document.getElementById('successIcon').textContent=title?'🛵':'✅';
+  document.getElementById('successCard').classList.add('disp');
+  document.getElementById('successInv').style.display=title?'none':'';
+  document.getElementById('posSuccess').classList.add('on');
+  document.getElementById('successBtns').style.display='none';
+  document.getElementById('dispatchBtns').style.display='';
+  renderDispatch();
+  // the server is the source of truth — reconcile (adds the km, catches
+  // races where the order was auto-assigned while we were rendering)
+  fetch(BASE+'pos/delivery/state/'+oid,{headers:{'X-Requested-With':'XMLHttpRequest'}}).then(r=>r.json()).then(s=>{
+    if(!s.success||!DISP||DISP.oid!==oid)return;
+    const nowAssigned=!['','unassigned'].includes(s.delivery_status);
+    if(nowAssigned!==DISP.assigned||(s.km!==null&&DISP.km===null)){
+      DISP.assigned=nowAssigned;DISP.rider_name=s.rider_name||'';DISP.km=s.km;DISP.err='';renderDispatch();
+    }
+  }).catch(()=>{});
+}
+function renderDispatch(){
+  const box=document.getElementById('dispatchBox');
+  if(!DISP){box.style.display='none';return;}
+  box.style.display='block';
+  let inner='';
+  if(DISP.busy){
+    inner=`<div class="disp-status" style="background:#EFF6FF;border:1.5px solid #BFDBFE;color:#1D4ED8"><i class="fa fa-spinner fa-spin"></i> Finding the best free rider…</div>`;
+  }else if(DISP.assigned){
+    inner=`<div class="disp-status" style="background:#F0FDF4;border:1.5px solid #BBF7D0;color:#15803D">🛵 <b style="font-size:.95rem">${DISP.rider_name}</b> is riding this order${DISP.km?' · ≈'+DISP.km+' km':''}<br><small style="color:#16A34A">📲 Notified on the rider app with sound</small></div>`;
+  }else{
+    inner=`<div class="disp-status" style="background:#FFFBEB;border:1.5px solid #FDE68A;color:#B45309">⚠️ <b>Waiting for a rider</b>${DISP.err?'<br><small>'+DISP.err+'</small>':''}</div>`
+      +`<div style="display:flex;gap:.5rem;margin-bottom:.6rem">
+          <button onclick="dispAuto()" style="flex:1;padding:.7rem;border:none;border-radius:var(--radius-sm);background:var(--primary);color:#fff;font-weight:900;font-family:var(--font);font-size:.88rem;cursor:pointer"><i class="fa fa-bolt"></i> Auto-assign</button>
+          <button onclick="dispChoose(this)" style="flex:1;padding:.7rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:#fff;color:var(--text);font-weight:900;font-family:var(--font);font-size:.88rem;cursor:pointer"><i class="fa fa-users"></i> Choose rider</button>
+        </div><div id="dispList"></div>`;
+  }
+  box.innerHTML=inner;
+}
+function dispAuto(){
+  DISP.busy=true;DISP.err='';renderDispatch();
+  postF(BASE+'pos/delivery/auto/'+DISP.oid).then(d=>{
+    DISP.busy=false;
+    if(d.success){DISP.assigned=true;DISP.rider_name=d.rider_name;DISP.km=d.km;RIDERS=null;}
+    else DISP.err=d.message||'Could not auto-assign';
+    renderDispatch();
+  }).catch(()=>{DISP.busy=false;DISP.err='Network error — try again';renderDispatch();});
+}
+function dispChoose(btn){
+  const list=document.getElementById('dispList');
+  if(!list)return;
+  if(list.style.display==='block'){list.style.display='none';return;}
+  list.style.display='block';
+  btn.innerHTML='<i class="fa fa-spinner fa-spin"></i> Loading…';
+  const draw=()=>{
+    btn.innerHTML='<i class="fa fa-users"></i> Choose rider';
+    if(!RIDERS){list.innerHTML='<div style="padding:.6rem;color:var(--text-m);font-size:.8rem">No riders yet — add them in Admin → Delivery Riders.</div>';return;}
+    list.innerHTML=`<div style="font-size:.66rem;color:var(--text-m);margin-bottom:.45rem">Dispatch mode: <b style="color:var(--text)">${MODE_LABEL[RIDERS_MODE]||RIDERS_MODE}</b> — auto-assign picks the nearest free rider.</div>`
+      +RIDERS.map(r=>{
+      const dist=r.km!==null?'· ≈'+r.km+' km':'';
+      const duty=r.duty?'🟢':'⚪';
+      const busyTag=r.busy?`<span style="color:#B45309">busy(${r.busy})</span>`:'<span style="color:#16A34A">free</span>';
+      const tag=r.employer==='dinovix'?'🛵 Fleet':'🏪 Own';
+      return `<div class="disp-rider">
+        <div style="min-width:0;flex:1"><b style="font-size:.85rem">${esc(r.name)}</b>
+          <div style="font-size:.68rem;color:var(--text-m)">${tag} ${duty} ${busyTag} ${dist}</div></div>
+        <button onclick="dispAssign(${r.id},'${esc(r.name).replace(/'/g,'&#39;')}')" style="padding:.45rem .7rem;border:none;border-radius:9px;background:var(--primary);color:#fff;font-weight:900;font-size:.75rem;cursor:pointer">Assign</button>
+      </div>`;
+    }).join('');
+  };
+  if(RIDERS){draw();return;}
+  fetch(BASE+'pos/delivery/riders',{headers:{'X-Requested-With':'XMLHttpRequest'}}).then(r=>r.json()).then(d=>{
+    if(d.success){RIDERS=d.riders;RIDERS_MODE=d.mode;}
+    draw();
+  }).catch(()=>{btn.innerHTML='<i class="fa fa-users"></i> Choose rider';list.innerHTML='<div style="padding:.6rem;color:var(--danger);font-size:.8rem">Could not load riders.</div>';});
+}
+function dispAssign(id,name){
+  DISP.busy=true;DISP.err='';renderDispatch();
+  postF(BASE+'pos/delivery/assign',{order_id:DISP.oid,rider_id:id}).then(d=>{
+    DISP.busy=false;
+    if(d.success){DISP.assigned=true;DISP.rider_name=d.rider_name||name;DISP.km=d.km;RIDERS=null;}
+    else DISP.err=d.message||'Could not assign';
+    renderDispatch();
+  }).catch(()=>{DISP.busy=false;DISP.err='Network error — try again';renderDispatch();});
+}
+function closeDispatch(){
+  document.getElementById('posSuccess').classList.remove('on');
+  DISP=null;
+  document.getElementById('successTitle').textContent='Payment Done!';
+  document.getElementById('successIcon').textContent='✅';
+  document.getElementById('successCard').classList.remove('disp');
+  document.getElementById('successInv').style.display='';
+  document.getElementById('successBtns').style.display='';
+  document.getElementById('dispatchBtns').style.display='none';
+  document.getElementById('dispatchBox').style.display='none';
+}
+function newOrder(){
+  closeDispatch(); cust={id:null,name:'',phone:''}; guests=1; note=''; updateCustChip();
+}
 async function reprintBill(){
   if(!lastOid) return;
   if (/DinoviXCrm/i.test(navigator.userAgent) && (typeof window.AndroidDinoVIX !== 'undefined')) {
@@ -963,7 +1082,10 @@ async function doKot(){
   if(cart.length===0)return;
   showLoader('Sending to Kitchen...');
   try{
-    if(!lastOid){const r=await createOrder();if(!r.success)throw new Error(r.message);lastOid=r.order_id;}
+    if(!lastOid){const r=await createOrder();if(!r.success)throw new Error(r.message);lastOid=r.order_id;
+      // COD flow: the till may not bill now — dispatch a rider right away
+      if(OMODE==='delivery'){ hideLoader(); openDispatch(lastOid, r.auto_assign?{assigned:true,rider_name:r.auto_assign}:null, 'Order saved — dispatch a rider'); autoKot(lastOid); return; }
+    }
     if (/DinoviXCrm/i.test(navigator.userAgent) && (typeof window.AndroidDinoVIX !== 'undefined')) {
       window.AndroidDinoVIX.print(''+lastOid,'kot');
       hideLoader(); showKotAlert('✅ KOT sent to printer','success'); return;

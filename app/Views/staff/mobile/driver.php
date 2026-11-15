@@ -198,13 +198,48 @@ setInterval(() => {
       const cur = document.getElementById('rideList');
       if (fresh && cur && fresh.innerHTML !== cur.innerHTML) {
         cur.innerHTML = fresh.innerHTML;
-        // beep for every order we just received that we had not seen
+        // takeover + beep for every order we just received that we had not seen
         fresh.querySelectorAll('.mcardx[data-oid]').forEach(c => {
-          if (!KNOWN_OIDS.has(c.dataset.oid)) { KNOWN_OIDS.add(c.dataset.oid); dingNewOrder(); mToast('🛵 New delivery assigned!', true); }
+          if (!KNOWN_OIDS.has(c.dataset.oid)) { KNOWN_OIDS.add(c.dataset.oid); newRunTakeover(c); }
         });
       }
     }).catch(() => {});
 }, 15000);
+
+// ── Full-screen takeover for a freshly assigned run ────────
+// Can't be missed even with the phone in a pocket: repeating chime,
+// vibration and a big card with the pickup details. Works in the APK
+// WebView and any browser; the native duty service also raises a
+// system notification in the background.
+let RING_TIMER = null;
+function newRunTakeover(card) {
+  dingNewOrder();
+  let n = 0;
+  clearInterval(RING_TIMER);
+  RING_TIMER = setInterval(() => { if (++n <= 10) dingNewOrder(); else clearInterval(RING_TIMER); }, 2600);
+
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.95);display:flex;align-items:center;justify-content:center;padding:1rem';
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:.8rem;max-height:94vh;max-width:400px;width:100%';
+  const head = document.createElement('div');
+  head.style.cssText = 'text-align:center';
+  head.innerHTML = '<div style="font-size:2.6rem;animation:bounceT .6s ease infinite alternate">🛵</div>' +
+    '<div style="font-weight:900;color:#fff;font-size:1.2rem;letter-spacing:.02em">NEW DELIVERY ASSIGNED!</div>' +
+    '<div style="color:#94A3B8;font-size:.72rem">details below — food is waiting</div>';
+  const clone = card.cloneNode(true);
+  clone.style.cssText = 'background:#fff;border-radius:16px;padding:1rem;width:100%;overflow:auto';
+  const btn = document.createElement('button');
+  btn.style.cssText = 'width:100%;padding:.9rem;border:none;border-radius:14px;background:#F59E0B;color:#0F172A;font-weight:900;font-size:.95rem;cursor:pointer';
+  btn.textContent = 'Got it — show my list';
+  btn.onclick = () => { clearInterval(RING_TIMER); ov.remove(); location.reload(); };
+  wrap.append(head, clone, btn); ov.append(wrap); document.body.append(ov);
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 400]);
+}
+// WebView audio needs one interaction to unlock — unlock on first touch
+document.addEventListener('touchstart', () => {
+  try { const c = new (window.AudioContext || window.webkitAudioContext)(); if (c.state === 'suspended') c.resume(); } catch (e) {}
+}, { once: true });
 
 // GPS breadcrumb — ping while the app is open (fine-grained, silent)
 const geoOpt = { enableHighAccuracy: true, timeout: 10000, maximumAge: 20000 };
@@ -227,4 +262,5 @@ if (typeof window.AndroidDinoVIX !== 'undefined' && window.AndroidDinoVIX.setDut
   try { window.AndroidDinoVIX.setDuty(<?= $dutyOn ? 'true' : 'false' ?>); } catch (e) {}
 }
 </script>
+<style>@keyframes bounceT{from{transform:translateY(0)}to{transform:translateY(-8px)}}</style>
 <?php $this->endSection(); ?>

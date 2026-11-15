@@ -413,10 +413,26 @@ class PosController extends BaseController
         // failure must never silently swallow the bill print)
         $printResult = $this->_printBill($orderId);
 
+        // Delivery orders: the till needs to see the dispatch state right
+        // after billing — rider assigned? auto or manual? how far?
+        $delivery = null;
+        if ($order['order_type'] === 'delivery') {
+            $fresh = $this->db->table('orders')
+                ->select('delivery_status, rider_id, rider_name, delivery_km')
+                ->where('id', $orderId)->get()->getRowArray();
+            $delivery = [
+                'assigned'   => !in_array(($fresh['delivery_status'] ?? 'unassigned'), ['', 'unassigned'], true),
+                'rider_id'   => $fresh['rider_id'] !== null ? (int)$fresh['rider_id'] : null,
+                'rider_name' => $fresh['rider_name'],
+                'km'         => $fresh['delivery_km'] !== null ? (float)$fresh['delivery_km'] : null,
+            ];
+        }
+
         return $this->response->setJSON([
             'success'        => true,
             'invoice_number' => $invoiceNumber,
             'change'         => $change,
+            'delivery'       => $delivery,
             'bill_slip_url'  => base_url('pos/slip/bill/' . $orderId),
             'kot_slip_url'   => base_url('pos/slip/kot/'  . $orderId),
             'print_url'      => base_url('pos/slip/bill/' . $orderId),
