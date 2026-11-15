@@ -323,7 +323,9 @@ class PosController extends BaseController
             'redeemed_points' => $redeemedPoints,
             'total'        => $totals['total_amount'],
             'kot_print'    => $kotPrintResult,
-            'auto_assign'  => $autoAssign[0] ? $autoAssign[1] : null,
+            // $autoAssign is [bool, string] on delivery, null otherwise —
+            // bare $autoAssign[0] crashed createOrder with "array offset on null"
+            'auto_assign' => ($autoAssign[0] ?? null) ? ($autoAssign[1] ?? null) : null,
             'redirect'     => base_url('pos/order/' . $orderId),
         ]);
     }
