@@ -78,6 +78,8 @@ class PosController extends BaseController
             'branch'          => $this->branch,
             'add_to_order_id' => $addToOrder ?: 0,
             'existing_order'  => $existingOrder,
+            'allow_split'     => $this->getPlanFeature('allow_advanced_billing'),
+            'upi_qr_enabled'  => $this->getPlanFeature('allow_upi_qr'),
         ];
         return view('staff/pos/new_order', $data);
     }

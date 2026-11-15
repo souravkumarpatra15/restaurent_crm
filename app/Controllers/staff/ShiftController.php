@@ -7,6 +7,18 @@ class ShiftController extends BaseController
     // Indian denominations, high → low (notes + coins)
     private const DENOMS = [2000, 500, 200, 100, 50, 20, 10, 5, 2, 1];
 
+    /** Advanced-billing gate: returns the upsell response when the plan lacks the module, null otherwise. */
+    private function gate()
+    {
+        if ($this->getPlanFeature('allow_advanced_billing')) return null;
+        return $this->featureLocked(
+            'Cash Counter & Day Close',
+            'fa-cash-register',
+            'Open a cash drawer with denomination counting, park cash with handovers and close the day with a Z-report — split payments included.',
+            base_url('pos')
+        );
+    }
+
     /**
      * Build a clean denominations array from posted counts.
      * Accepts counts[] parallel to denoms[] or a JSON string.
@@ -37,6 +49,7 @@ class ShiftController extends BaseController
 
     public function summary()
     {
+        if ($g = $this->gate()) return $g;
         $db  = \Config\Database::connect();
         $uid = session('user_id');
         $bid = session('branch_id');
@@ -116,6 +129,7 @@ class ShiftController extends BaseController
     // ── Open a cash drawer shift (denomination counting) ─────
     public function open()
     {
+        if ($g = $this->gate()) return $g;
         $db  = \Config\Database::connect();
         $uid = session('user_id');
         $bid = session('branch_id');
@@ -161,6 +175,7 @@ class ShiftController extends BaseController
     // ── Handover / bank deposit / safe drop ──────────────────
     public function handover()
     {
+        if ($g = $this->gate()) return $g;
         $db  = \Config\Database::connect();
         $uid = session('user_id');
         $bid = session('branch_id');
@@ -234,6 +249,7 @@ class ShiftController extends BaseController
     // ── Receiver confirms: handed / deposited / cancel ────────
     public function handoverReceive($id)
     {
+        if ($g = $this->gate()) return $g;
         $db  = \Config\Database::connect();
         $bid = session('branch_id');
 
@@ -260,6 +276,7 @@ class ShiftController extends BaseController
     // ── Printable slip (80mm style, browser print) ────────────
     public function handoverSlip($id)
     {
+        if ($g = $this->gate()) return $g;
         $db  = \Config\Database::connect();
         $h = $db->table('cash_handovers h')
             ->select('h.*, u.name as staff_name, b.name as branch_name, r.name as restaurant_name, r.currency_symbol')
@@ -283,6 +300,7 @@ class ShiftController extends BaseController
     // ── Close shift: closure vs denomination recount ──────────
     public function close()
     {
+        if ($g = $this->gate()) return $g;
         $db  = \Config\Database::connect();
         $uid = session('user_id');
         $bid = session('branch_id');
@@ -364,6 +382,7 @@ class ShiftController extends BaseController
     // ── Z-Report (end-of-shift summary slip, printable) ───────
     public function zSlip($shiftId)
     {
+        if ($g = $this->gate()) return $g;
         $db   = \Config\Database::connect();
         $bid  = session('branch_id');
         $rid  = session('restaurant_id');

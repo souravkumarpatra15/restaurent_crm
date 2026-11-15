@@ -25,7 +25,7 @@
             <?= $plan['max_users'] < 0 ? 'Unlimited' : $plan['max_users'] ?> users</div>
           <div><i class="fa fa-utensils" style="color:var(--primary);width:16px"></i>
             <?= $plan['max_menu_items'] < 0 ? 'Unlimited' : $plan['max_menu_items'] ?> items</div>
-          <?php foreach (['allow_online_ordering'=>'Online ordering','allow_loyalty'=>'Loyalty','allow_reports_advanced'=>'Advanced reports','allow_api_access'=>'API access'] as $k=>$v): ?>
+          <?php foreach (['allow_kitchen_display'=>'Kitchen display','allow_staff_mgmt'=>'Staff mgmt','allow_advanced_billing'=>'Advanced billing','allow_upi_qr'=>'UPI QR','allow_online_ordering'=>'Online ordering','allow_loyalty'=>'Loyalty','allow_reports_advanced'=>'Advanced reports','allow_api_access'=>'API access'] as $k=>$v): ?>
           <div><i class="fa fa-<?= $plan[$k]?'check" style="color:var(--success)':'times" style="color:var(--border)' ?>;width:16px"></i> <?= $v ?></div>
           <?php endforeach; ?>
         </div>

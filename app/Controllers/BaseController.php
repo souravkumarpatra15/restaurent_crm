@@ -92,6 +92,22 @@ abstract class BaseController extends Controller
         return !$plan || (bool)($plan[$feature] ?? false);
     }
 
+    /**
+     * Render the subscription upsell page for a plan-gated module.
+     * Modules stay shipped for everyone; the plan decides who sees them.
+     */
+    protected function featureLocked(string $featureName, string $icon = 'fa-lock', string $blurb = '', string $backUrl = '')
+    {
+        $st = $this->subscriptionState();
+        return $this->response->setBody(view('feature_locked', [
+            'featureName'  => $featureName,
+            'featureIcon'  => $icon,
+            'featureBlurb' => $blurb,
+            'planName'     => $st['plan'] ?? '',
+            'backUrl'      => $backUrl ?: base_url(),
+        ]));
+    }
+
     // ── Effective subscription status for the current tenant ──
     // Folds trial expiry and renewal-date expiry into the stored
     // status, self-correcting the row so every zone sees the truth.

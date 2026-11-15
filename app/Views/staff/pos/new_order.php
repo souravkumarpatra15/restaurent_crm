@@ -190,7 +190,7 @@ $typeIcons = ['dine_in'=>'fa-chair','takeaway'=>'fa-bag-shopping','delivery'=>'f
       <div class="checkout-amt-val" id="coTotal"><?= $sym ?>0</div>
     </div>
     <div style="font-size:.72rem;font-weight:800;color:var(--text-m);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.625rem">Payment Method</div>
-    <div class="pay-grid">
+    <div class="pay-grid" id="payGrid">
       <?php foreach(['cash'=>['💵','Cash'],'card'=>['💳','Card'],'upi'=>['📱','UPI'],'wallet'=>['👛','Wallet'],'online'=>['🌐','Online'],'credit'=>['📋','Credit']] as $k=>[$ic,$lb]): ?>
       <button class="pay-btn <?= $k==='cash'?'on':'' ?>" data-method="<?= $k ?>" onclick="selectPay(this)">
         <span class="pay-btn-icon"><?= $ic ?></span>
@@ -198,7 +198,7 @@ $typeIcons = ['dine_in'=>'fa-chair','takeaway'=>'fa-bag-shopping','delivery'=>'f
       </button>
       <?php endforeach; ?>
     </div>
-    <div class="amt-input-box">
+    <div class="amt-input-box" id="amtBox">
       <div class="amt-input-label">Amount Received</div>
       <input type="number" class="amt-input" id="payAmt" inputmode="decimal" oninput="calcChange()">
     </div>
@@ -209,6 +209,16 @@ $typeIcons = ['dine_in'=>'fa-chair','takeaway'=>'fa-bag-shopping','delivery'=>'f
       <button class="quick-btn" onclick="setAmt(2000)">₹2,000</button>
       <button class="quick-btn" onclick="setAmt(5000)">₹5,000</button>
     </div>
+    <?php if (!empty($allow_split)): ?>
+    <div style="text-align:center;margin-top:.625rem">
+      <button id="btnSplitToggle" onclick="toggleSplit()" style="padding:.45rem .9rem;border:1.5px dashed var(--border);border-radius:10px;background:#fff;font-family:var(--font);font-weight:800;font-size:.75rem;color:var(--text-m);cursor:pointer">➕ Split Payment</button>
+    </div>
+    <div id="splitPanel" style="display:none;margin-top:.625rem">
+      <div id="splitList" style="display:flex;flex-direction:column;gap:.4rem"></div>
+      <button onclick="addSplitRow()" style="width:100%;margin-top:.5rem;padding:.55rem;border:1.5px dashed var(--border);border-radius:10px;background:#fff;font-family:var(--font);font-weight:800;font-size:.75rem;color:var(--text-m);cursor:pointer">+ Add another payment</button>
+      <div id="splitRemain" style="margin-top:.5rem;font-size:.78rem;font-weight:800;text-align:center;color:var(--text-m)"></div>
+    </div>
+    <?php endif; ?>
     <div class="ref-box" id="refBox" style="display:none">
       <label>Reference / Transaction ID</label>
       <input type="text" id="payRef" placeholder="UPI ref · Card last 4 digits">
@@ -216,6 +226,26 @@ $typeIcons = ['dine_in'=>'fa-chair','takeaway'=>'fa-bag-shopping','delivery'=>'f
     <div class="change-row" id="changeRow" style="display:none">
       <span class="change-row-label"><i class="fa fa-rotate-left"></i> Change to Return</span>
       <span class="change-row-val" id="changeVal"><?= $sym ?>0</span>
+    </div>
+    <div id="upiQrEntry" style="display:none;margin-top:.625rem">
+      <?php if (!empty($upi_qr_enabled)): ?>
+      <button onclick="showUpiQr()" style="width:100%;padding:.7rem;border:1.5px dashed var(--primary);border-radius:var(--radius-sm);background:var(--primary)14;color:var(--primary);font-family:var(--font);font-weight:900;font-size:.82rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem">
+        <i class="fa fa-qrcode"></i> Show UPI QR to Customer
+      </button>
+      <?php endif; ?>
+    </div>
+    <div id="upiQrBox" style="display:none;margin-top:.625rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:1rem;display:none;flex-direction:column;align-items:center;gap:.5rem;background:#fff">
+      <img id="upiQrImg" alt="UPI QR" style="width:180px;height:180px;image-rendering:pixelated;border-radius:8px">
+      <div style="font-size:1.15rem;font-weight:900;color:var(--text)"><span id="upiQrAmt"></span></div>
+      <div style="font-size:.72rem;color:var(--text-m);text-align:center;line-height:1.5">
+        Scan with any UPI app<br><span id="upiQrVpa" style="font-weight:700"></span> · valid till <span id="upiQrExp"></span>
+      </div>
+      <div id="upiQrStatus" style="font-size:.78rem;font-weight:700;color:var(--text-m);text-align:center;min-height:1.1rem">⏳ Waiting for customer payment…</div>
+      <div style="display:flex;gap:.5rem;width:100%;margin-top:.25rem">
+        <button onclick="verifyUpi()" style="flex:1;padding:.6rem;border:1.5px solid var(--border);border-radius:10px;background:#fff;font-family:var(--font);font-weight:800;font-size:.78rem;cursor:pointer">✅ Verify Payment</button>
+        <button onclick="showUpiQr()" style="flex:1;padding:.6rem;border:1.5px solid var(--border);border-radius:10px;background:#fff;font-family:var(--font);font-weight:800;font-size:.78rem;cursor:pointer"><i class="fa fa-rotate-right"></i> New QR</button>
+      </div>
+      <div style="font-size:.66rem;color:var(--text-m);text-align:center;line-height:1.4">Verify in your bank/merchant app after the customer pays — this marks the order paid &amp; prints the invoice.</div>
     </div>
   </div>
   <div class="sheet-foot">
@@ -703,7 +733,55 @@ function selectPay(btn){
   btn.classList.add('on'); payMethod=btn.dataset.method;
   document.getElementById('refBox').style.display=['card','upi','online'].includes(payMethod)?'':'none';
   document.getElementById('quickBtns').style.display=payMethod==='cash'?'':'none';
+  const upiQr=payMethod==='upi';
+  const qrEntry=document.getElementById('upiQrEntry');
+  if(qrEntry) qrEntry.style.display=upiQr?'':'none';
+  if(!upiQr){ stopUpiPoll(); const qb=document.getElementById('upiQrBox'); if(qb) qb.style.display='none'; }
   calcChange();
+}
+
+// ── UPI QR inside the checkout sheet ──────────────────────
+let upiPollT=null, upiRef=null;
+function stopUpiPoll(){ if(upiPollT){clearInterval(upiPollT);upiPollT=null;} }
+function upiStatus(txt){ const el=document.getElementById('upiQrStatus'); if(el) el.textContent=txt; }
+async function showUpiQr(){
+  stopUpiPoll();
+  try{
+    showLoader('Preparing QR...');
+    if(!lastOid){ const r=await createOrder(); if(!r.success)throw new Error(r.message||'Order failed'); lastOid=r.order_id; }
+    const d=await postF(BASE+'pos/upi/qr',{order_id:lastOid});
+    hideLoader();
+    if(!d.success){ toast(d.message,'error'); return; }
+    upiRef=d.attempt_ref;
+    document.getElementById('upiQrImg').src=d.qr||'';
+    document.getElementById('upiQrAmt').textContent=SYM+(d.amount||'0');
+    document.getElementById('upiQrVpa').textContent=d.vpa||'';
+    document.getElementById('upiQrExp').textContent=d.expires_at||'';
+    document.getElementById('upiQrEntry').style.display='none';
+    const box=document.getElementById('upiQrBox');
+    box.style.display='flex';
+    upiStatus('⏳ Waiting for customer payment…');
+    pollUpi(d.status_url);
+  }catch(e){ hideLoader(); toast(e.message,'error'); }
+}
+function pollUpi(url){
+  upiPollT=setInterval(async()=>{
+    try{
+      const d=await (await fetch(url)).json();
+      if(!d.success) return;
+      if(d.state==='paid'){ stopUpiPoll(); upiStatus('✅ Payment received — order paid!'); setTimeout(()=>{ window.location=BASE+'pos/order/'+lastOid; },900); }
+      else if(d.claimed){ upiStatus('📩 Customer confirmed payment — verify in your bank app, then tap Verify'); }
+      else if(d.state==='expired'){ stopUpiPoll(); upiStatus('⏰ QR expired — tap New QR'); }
+      else upiStatus('⏳ Waiting for customer payment…');
+    }catch(e){}
+  },3000);
+}
+async function verifyUpi(){
+  const d=await postF(BASE+'pos/upi/verify',{attempt_ref:upiRef,txn_ref:document.getElementById('payRef')?.value||'',amount:''});
+  if(!d.success){ toast(d.message,'error'); return; }
+  stopUpiPoll();
+  if(d.fully_paid){ toast('Payment verified','success'); setTimeout(()=>{ window.location=BASE+'pos/order/'+lastOid; },700); }
+  else { upiStatus('₹'+d.paid+' collected — ₹'+d.balance+' outstanding'); toast(d.message,'info'); }
 }
 function setAmt(v){ const t=calcTotals().total; document.getElementById('payAmt').value=v==='exact'?t.toFixed(2):v; calcChange(); }
 function calcChange(){
@@ -714,18 +792,79 @@ function calcChange(){
   if(ch>.009&&payMethod==='cash'){cr.style.display='';cv.textContent=SYM+ch.toFixed(2);}else{cr.style.display='none';}
 }
 
+// ── Split payment (advanced billing plan feature) ─────────
+let splitMode=false;
+const SPLIT_METHODS=['cash','card','upi','wallet','online','credit'];
+function toggleSplit(){
+  splitMode=!splitMode;
+  document.getElementById('splitPanel').style.display=splitMode?'':'none';
+  document.getElementById('btnSplitToggle').textContent=splitMode?'✕ Use single payment':'➕ Split Payment';
+  if(splitMode){
+    ['payGrid','amtBox','quickBtns','refBox','changeRow','upiQrEntry','upiQrBox'].forEach(i=>{const e=document.getElementById(i); if(e)e.style.display='none';});
+    if(!document.querySelector('#splitList .split-row')) addSplitRow();
+    recalcSplit();
+  } else restoreSingle();
+}
+function restoreSingle(){
+  document.getElementById('payGrid').style.display='';
+  document.getElementById('amtBox').style.display='';
+  document.getElementById('quickBtns').style.display=payMethod==='cash'?'':'none';
+  document.getElementById('refBox').style.display=['card','upi','online'].includes(payMethod)?'':'none';
+  document.getElementById('upiQrEntry').style.display=payMethod==='upi'?'':'none';
+  document.getElementById('upiQrBox').style.display='none';
+  calcChange();
+}
+function addSplitRow(){
+  const div=document.createElement('div');
+  div.className='split-row';
+  div.style.cssText='display:flex;gap:.4rem;align-items:center';
+  div.innerHTML='<select style="flex:1;padding:.55rem;border:1.5px solid var(--border);border-radius:10px;font-family:var(--font);font-size:.8rem;font-weight:700;background:#fff" onchange="recalcSplit()">'
+    +SPLIT_METHODS.map(m=>'<option value="'+m+'">'+m.toUpperCase()+'</option>').join('')
+    +'</select><input type="number" inputmode="decimal" placeholder="0.00" style="flex:1;min-width:0;padding:.55rem;border:1.5px solid var(--border);border-radius:10px;font-size:.85rem;font-weight:800" oninput="recalcSplit()">'
+    +'<button onclick="this.parentElement.remove();recalcSplit()" style="padding:.55rem .6rem;border:1.5px solid var(--border);border-radius:10px;background:#fff;font-weight:900;cursor:pointer">✕</button>';
+  document.getElementById('splitList').appendChild(div);
+  recalcSplit();
+}
+function recalcSplit(){
+  const tot=calcTotals().total;
+  const sum=[...document.querySelectorAll('#splitList .split-row')].reduce((a,r)=>a+(parseFloat(r.querySelector('input').value)||0),0);
+  const rem=tot-sum;
+  const el=document.getElementById('splitRemain');
+  if(!el) return;
+  if(Math.abs(rem)<.01){ el.textContent='✅ Fully covered'; el.style.color='#15803D'; }
+  else { el.textContent=SYM+Math.abs(rem).toFixed(2)+(rem>0?' remaining of ':' extra over ')+SYM+tot.toFixed(2); el.style.color=rem<-.01?'#B91C1C':'var(--text-m)'; }
+}
+function resetSplit(){
+  splitMode=false;
+  const p=document.getElementById('splitPanel'); if(p) p.style.display='none';
+  const l=document.getElementById('splitList'); if(l) l.innerHTML='';
+  const t=document.getElementById('btnSplitToggle'); if(t) t.textContent='➕ Split Payment';
+  if(document.getElementById('payGrid')) restoreSingle();
+}
+
 async function processPayment(){
+  stopUpiPoll();
   const paid=parseFloat(document.getElementById('payAmt').value)||0;
   const tot=calcTotals().total;
-  if(paid<tot-.01){toast('Amount less than total!','error');return;}
+  let payments;
+  if(splitMode){
+    payments=[...document.querySelectorAll('#splitList .split-row')]
+      .map(r=>({method:r.querySelector('select').value,amount:parseFloat(r.querySelector('input').value)||0}))
+      .filter(p=>p.amount>0);
+    if(!payments.length){ toast('Add at least one payment','error'); return; }
+    const sum=payments.reduce((a,p)=>a+p.amount,0);
+    if(sum<tot-.01){ toast('Split payments are '+SYM+(tot-sum).toFixed(2)+' short of the total!','error'); return; }
+  } else {
+    if(paid<tot-.01){toast('Amount less than total!','error');return;}
+    payments=[{method:payMethod,amount:paid,reference:document.getElementById('payRef')?.value||''}];
+  }
   const btn=document.getElementById('btnConfirmPay');
   btn.disabled=true; btn.innerHTML='<div style="display:flex;align-items:center;justify-content:center;gap:.5rem"><div style="width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin 1s linear infinite"></div> Processing...</div>';
   try {
     showLoader('Creating order...');
     if(!lastOid){ const r=await createOrder(); if(!r.success)throw new Error(r.message||'Order failed'); lastOid=r.order_id; }
     showLoader('Processing payment...');
-    const payments=JSON.stringify([{method:payMethod,amount:paid,reference:document.getElementById('payRef')?.value||''}]);
-    const d=await postF(BASE+'pos/order/checkout',{order_id:lastOid,payments});
+    const d=await postF(BASE+'pos/order/checkout',{order_id:lastOid,payments:JSON.stringify(payments)});
     hideLoader();
     if(d.success){
       closeSheet('sCheckout','bgCheckout');
@@ -742,8 +881,8 @@ async function processPayment(){
           window.open(d.bill_slip_url + '?autoprint=1', 'bill_slip', 'width=380,height=750,scrollbars=yes');
         }, 800);
       }
-      showSuccess(d,paid,tot);
-      cart=[]; disc={type:'',val:0,amt:0,coupon:''}; lastOid=null; renderAll();
+      showSuccess(d, splitMode ? tot : paid, tot);
+      cart=[]; disc={type:'',val:0,amt:0,coupon:''}; lastOid=null; resetSplit(); renderAll();
     } else throw new Error(d.message||'Payment failed');
   } catch(e){ hideLoader(); toast(e.message,'error'); }
   finally{ btn.disabled=false; btn.innerHTML='<i class="fa fa-check"></i> Confirm Payment'; }

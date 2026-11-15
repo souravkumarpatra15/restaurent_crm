@@ -47,6 +47,10 @@
           $features = [
             'allow_thermal_print'    => 'Thermal Printing',
             'allow_kot_print'        => 'KOT Printing',
+            'allow_kitchen_display'  => 'Kitchen Display (KDS)',
+            'allow_staff_mgmt'       => 'Staff Management',
+            'allow_advanced_billing' => 'Advanced Billing (Split · Day Close)',
+            'allow_upi_qr'           => 'UPI QR Collect',
             'allow_online_ordering'  => 'Online Ordering',
             'allow_loyalty'          => 'Loyalty Program',
             'allow_reports_advanced' => 'Advanced Reports',

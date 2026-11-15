@@ -9,8 +9,21 @@ class UserController extends BaseController
     protected $model;
     public function __construct() { $this->model = new UserModel(); }
 
+    /** Staff-management gate: the upsell page when the plan lacks the module. */
+    private function gate()
+    {
+        if ($this->getPlanFeature('allow_staff_mgmt')) return null;
+        return $this->featureLocked(
+            'Staff Management',
+            'fa-users-gear',
+            'Add and manage unlimited staff — cashiers, waiters and kitchen staff with roles, PINs, branches and attendance.',
+            base_url()
+        );
+    }
+
     public function index()
     {
+        if ($g = $this->gate()) return $g;
         return view('admin/users/index', [
             'pageTitle' => 'Staff Management',
             'users'     => $this->model->getWithRole(session('restaurant_id')),
@@ -21,6 +34,7 @@ class UserController extends BaseController
 
     public function create()
     {
+        if ($g = $this->gate()) return $g;
         $db = \Config\Database::connect();
         return view('admin/users/form', [
             'pageTitle' => 'Add Staff', 'user' => null,
@@ -33,6 +47,7 @@ class UserController extends BaseController
 
     public function store()
     {
+        if ($g = $this->gate()) return $g;
         $rid   = session('restaurant_id');
         $count = \Config\Database::connect()->table('users')->where('restaurant_id',$rid)->where('is_active',1)->countAllResults();
         $check = $this->checkPlanLimit('users',$count);
@@ -54,6 +69,7 @@ class UserController extends BaseController
 
     public function edit($id)
     {
+        if ($g = $this->gate()) return $g;
         $db = \Config\Database::connect();
         $user = $db->table('users')
             ->where('id', $id)
@@ -73,6 +89,7 @@ class UserController extends BaseController
 
     public function update($id)
     {
+        if ($g = $this->gate()) return $g;
         // Tenant guard — do not touch another restaurant's staff
         $target = $this->model->where('id', $id)->where('restaurant_id', session('restaurant_id'))->first();
         if (!$target) {
@@ -95,6 +112,9 @@ class UserController extends BaseController
 
     public function toggle($id)
     {
+        if (!$this->getPlanFeature('allow_staff_mgmt')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Staff Management is not included in your plan — upgrade to use it']);
+        }
         // Tenant guard
         $u = $this->model->where('id', $id)->where('restaurant_id', session('restaurant_id'))->first();
         if (!$u) return $this->response->setJSON(['success' => false, 'message' => 'Staff member not found']);

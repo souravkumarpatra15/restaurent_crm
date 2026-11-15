@@ -137,6 +137,14 @@ class UpiController extends BaseController
 
     public function qr()
     {
+        // UPI QR collect is a subscription feature — deny attempts cleanly
+        if (!$this->getPlanFeature('allow_upi_qr')) {
+            return $this->response->setJSON([
+                'success'       => false,
+                'needs_upgrade' => true,
+                'message'       => 'UPI QR payments are not included in your plan — upgrade to collect payments via QR',
+            ]);
+        }
         $orderId = (int)$this->request->getPost('order_id');
         $db      = \Config\Database::connect();
         $rid     = (int)session('restaurant_id');

@@ -6,6 +6,14 @@ class KitchenController extends BaseController
 {
     public function index()
     {
+        if (!$this->getPlanFeature('allow_kitchen_display')) {
+            return $this->featureLocked(
+                'Kitchen Display System',
+                'fa-utensils',
+                'Send orders straight to a live kitchen screen — KOTs appear instantly with item status, timers and prep queue.',
+                base_url('pos')
+            );
+        }
         $db  = \Config\Database::connect();
         $bid = session('branch_id');
 
@@ -36,6 +44,9 @@ class KitchenController extends BaseController
 
     public function updateStatus()
     {
+        if (!$this->getPlanFeature('allow_kitchen_display')) {
+            return $this->response->setJSON(['success' => false, 'locked' => true, 'message' => 'Kitchen Display is not included in your plan — upgrade to use it']);
+        }
         $kotId  = $this->request->getPost('kot_id');
         $status = $this->request->getPost('status');
 
@@ -124,6 +135,9 @@ class KitchenController extends BaseController
     // ── Per-item kitchen status (tap a dish to advance it) ────
     public function itemStatus()
     {
+        if (!$this->getPlanFeature('allow_kitchen_display')) {
+            return $this->response->setJSON(['success' => false, 'locked' => true, 'message' => 'Kitchen Display is not included in your plan — upgrade to use it']);
+        }
         $itemId = (int)$this->request->getPost('item_id');
         $status = $this->request->getPost('status');
 
