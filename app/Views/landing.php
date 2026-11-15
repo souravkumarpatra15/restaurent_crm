@@ -1568,6 +1568,213 @@
     }
   </style>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    /* ═══ GRAPHICAL v2 — feature vignettes, showcases, extra motion ═══ */
+    /* ── shared keyframes ── */
+    @keyframes floaty {0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-16px) rotate(3deg)}}
+    @keyframes floaty2 {0%,100%{transform:translateY(0) rotate(4deg)}50%{transform:translateY(-12px) rotate(-4deg)}}
+    @keyframes marquee {from{transform:translateX(0)}to{transform:translateX(-50%)}}
+    @keyframes pulseDot {0%,100%{box-shadow:0 0 0 0 rgba(255,107,53,.55)}70%{box-shadow:0 0 0 9px rgba(255,107,53,0)}}
+    @keyframes greenPulse {0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.5)}70%{box-shadow:0 0 0 8px rgba(34,197,94,0)}}
+    @keyframes growBar {from{transform:scaleY(.05)}to{transform:scaleY(1)}}
+    @keyframes slideKot {0%{opacity:0;transform:translateY(16px) scale(.94)}12%,86%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-12px) scale(.97)}}
+    @keyframes hotTimer {0%,100%{color:#F59E0B}50%{color:#EF4444}}
+    @keyframes scanline {0%{top:10%}50%{top:78%}100%{top:10%}}
+    @keyframes dashFlow {to{stroke-dashoffset:-28}}
+    @keyframes linkFlow {to{background-position:8px 0}}
+    @keyframes shine {from{transform:translateX(-120%) rotate(18deg)}to{transform:translateX(240%) rotate(18deg)}}
+    @keyframes wiggle {0%,100%{transform:rotate(0)}25%{transform:rotate(-9deg)}75%{transform:rotate(9deg)}}
+    @keyframes stepFill {0%{width:0}100%{width:100%}}
+    @keyframes coinFlip {0%,100%{transform:rotateY(0)}50%{transform:rotateY(180deg)}}
+    @keyframes printOut {0%,100%{transform:translateY(6px);clip-path:inset(30% 0 0 0)}50%{transform:translateY(0);clip-path:inset(0 0 0 0)}}
+    @keyframes toggleFlip {0%,100%{left:2px;background:#64748B}50%{left:calc(100% - 16px);background:#22C55E}}
+    @keyframes starPop {0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
+
+    /* ── floating decorations in hero ── */
+    .float-deco{position:absolute;font-size:1.7rem;opacity:.16;pointer-events:none;filter:grayscale(.2);animation:floaty 7s ease-in-out infinite;z-index:0}
+    .float-deco.d2{animation:floaty2 9s ease-in-out infinite;animation-delay:-3s}
+    .float-deco.d3{animation:floaty 11s ease-in-out infinite;animation-delay:-5s}
+
+    /* ── capability marquee ── */
+    .marquee{overflow:hidden;border-top:1px solid var(--card-b);border-bottom:1px solid var(--card-b);background:var(--bg2);padding:.8rem 0;position:relative}
+    .marquee-track{display:flex;gap:2.5rem;width:max-content;animation:marquee 28s linear infinite;will-change:transform}
+    .marquee-item{font-family:var(--display);font-weight:800;font-size:.82rem;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);white-space:nowrap;display:flex;align-items:center;gap:2.5rem}
+    .marquee-item b{color:var(--p)}
+    .marquee:hover .marquee-track{animation-play-state:paused}
+
+    /* ── features v2 (point-wise bento) ── */
+    .feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-top:3.5rem}
+    .feat-card{display:flex;flex-direction:column;cursor:default;transform-style:preserve-3d;will-change:transform}
+    .feat-card.wide{grid-column:span 2}
+    .feat-vig{position:relative;height:132px;border-radius:14px;background:linear-gradient(160deg,rgba(255,255,255,.05),rgba(255,255,255,.015));border:1px solid var(--card-b);margin-bottom:1.15rem;overflow:hidden;display:flex;align-items:center;justify-content:center}
+    .feat-vig::after{content:'';position:absolute;top:-40%;left:-60%;width:45%;height:180%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.07),transparent);animation:shine 4.5s ease-in-out infinite;animation-delay:1.2s;pointer-events:none}
+    .feat-card:hover .feat-icon{animation:wiggle .5s ease}
+    .feat-points{list-style:none;margin:.65rem 0 .2rem;flex:1}
+    .feat-points li{font-size:.78rem;color:var(--t2);line-height:1.5;padding:.26rem 0 .26rem 1.35rem;position:relative}
+    .feat-points li::before{content:'✓';position:absolute;left:0;top:.28rem;font-weight:900;color:var(--g);font-size:.72rem}
+    /* vignette atoms */
+    .vig-row{display:flex;gap:8px;align-items:center;justify-content:center;width:100%;padding:0 14px}
+    .vig-phone{width:52px;height:96px;border-radius:10px;background:#0E1525;border:1.5px solid rgba(255,107,53,.4);position:relative;overflow:hidden;flex:none}
+    .vig-phone .scan{position:absolute;left:8%;right:8%;height:2px;background:linear-gradient(90deg,transparent,#FF6B35,transparent);animation:scanline 2.6s ease-in-out infinite;border-radius:2px}
+    .vig-phone .pl1,.vig-phone .pl2,.vig-phone .pl3{position:absolute;left:8px;right:8px;height:7px;border-radius:3px;background:rgba(255,255,255,.12)}
+    .vig-phone .pl1{top:18px;width:70%}.vig-phone .pl2{top:30px;width:55%}.vig-phone .pl3{top:44px;width:62%}
+    .vig-phone .pfb{position:absolute;bottom:8px;left:8px;right:8px;height:16px;border-radius:6px;background:var(--p);display:flex;align-items:center;justify-content:center;font-size:.5rem;font-weight:900;color:#fff}
+    .vig-chip{padding:.42rem .7rem;border-radius:10px;font-size:.66rem;font-weight:800;white-space:nowrap;background:rgba(255,255,255,.06);border:1px solid var(--card-b);color:var(--t2)}
+    .vig-chip.on{background:var(--p-l);border-color:rgba(255,107,53,.35);color:var(--p);animation:pulseDot 2.4s infinite}
+    .vig-chip.ok{background:var(--g-l);border-color:rgba(34,197,94,.3);color:var(--g)}
+    .vig-chip.wait{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:#F59E0B}
+    /* KOT vignette */
+    .vig-kot{display:flex;gap:9px}
+    .vig-kot .k{width:58px;border-radius:9px;background:#0E1525;border:1px solid var(--card-b);padding:7px 7px 8px;animation:slideKot 6s ease-in-out infinite}
+    .vig-kot .k:nth-child(2){animation-delay:1.1s;border-color:rgba(255,107,53,.35)}
+    .vig-kot .k:nth-child(3){animation-delay:2.2s}
+    .vig-kot .kt{font-size:.56rem;font-weight:900;color:#fff}
+    .vig-kot .ktb{font-size:.5rem;color:var(--t3);margin-top:2px}
+    .vig-kot .ktt{font-size:.56rem;font-weight:800;margin-top:5px;animation:hotTimer 2s infinite}
+    .vig-kot .kbar{height:3px;border-radius:2px;background:rgba(255,255,255,.1);margin-top:4px;overflow:hidden}
+    .vig-kot .kbar i{display:block;height:100%;background:var(--p);border-radius:2px;animation:stepFill 6s linear infinite}
+    .vig-kot .k:nth-child(2) .kbar i{animation-delay:-1.4s}
+    .vig-kot .k:nth-child(3) .kbar i{animation-delay:-2.8s}
+    /* table tiles vignette */
+    .vig-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;width:80%}
+    .vig-t{border-radius:8px;aspect-ratio:1.25;display:flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:900;color:#fff;background:rgba(34,197,94,.16);border:1px solid rgba(34,197,94,.35)}
+    .vig-t.o{background:rgba(255,107,53,.18);border-color:rgba(255,107,53,.4);animation:pulseDot 2.8s infinite}
+    .vig-t.b{background:rgba(139,92,246,.16);border-color:rgba(139,92,246,.4)}
+    /* map + rider vignette */
+    .vig-map{position:relative;width:100%;height:100%}
+    .vig-map svg{position:absolute;inset:0;width:100%;height:100%}
+    .vig-eta{position:absolute;top:10px;left:12px;display:flex;gap:6px}
+    /* UPI vignette */
+    .vig-upi{display:flex;gap:14px;align-items:center}
+    .vig-qr{width:64px;height:64px;border-radius:10px;background:#fff;padding:7px;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:2px;flex:none;position:relative}
+    .vig-qr i{background:#0F172A;border-radius:1px}
+    .vig-qr i:nth-child(3n){opacity:.45}
+    .vig-qr::after{content:'';position:absolute;inset:-5px;border:2px solid rgba(34,197,94,.55);border-radius:13px;animation:greenPulse 2.2s infinite}
+    .vig-split{display:flex;flex-direction:column;gap:5px}
+    .vig-split .sr{display:flex;align-items:center;gap:7px;font-size:.62rem;font-weight:700;color:var(--t2)}
+    .vig-split .sr b{color:#fff;font-weight:800}
+    .vig-split .dot{width:9px;height:9px;border-radius:50%;background:#22C55E;flex:none}
+    .vig-split .dot.o{background:#F59E0B;animation:pulseDot 2s infinite}
+    /* booking vignette */
+    .vig-cal{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;width:78%}
+    .vig-c{aspect-ratio:1.15;border-radius:8px;background:rgba(255,255,255,.05);border:1px solid var(--card-b);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+    .vig-c b{font-size:.6rem;color:var(--t2)}
+    .vig-c span{font-size:.48rem;color:var(--t3)}
+    .vig-c.hot{background:var(--p-l);border-color:rgba(255,107,53,.45);animation:pulseDot 2.6s infinite}
+    .vig-c.hot b{color:var(--p)}
+    /* loyalty vignette */
+    .vig-loy{display:flex;align-items:center;gap:14px}
+    .vig-coin{width:52px;height:52px;border-radius:50%;background:radial-gradient(circle at 32% 30%,#FBBF24,#B45309);display:flex;align-items:center;justify-content:center;font-size:1.2rem;animation:coinFlip 4s ease infinite;box-shadow:0 6px 18px rgba(251,191,36,.25)}
+    .vig-stamps{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+    .vig-stamps i{width:16px;height:16px;border-radius:50%;border:1.5px dashed rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:.5rem;color:var(--g)}
+    .vig-stamps i.on{background:var(--g-l);border:1.5px solid rgba(34,197,94,.5);animation:starPop 2.4s infinite}
+    /* branch vignette */
+    .vig-branch{display:flex;align-items:center;gap:10px}
+    .vig-b{width:44px;height:52px;border-radius:10px;background:#0E1525;border:1px solid var(--card-b);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+    .vig-b b{font-size:.55rem;color:#fff}.vig-b span{font-size:.44rem;color:var(--t3)}
+    .vig-b.hq{border-color:rgba(255,107,53,.45);animation:pulseDot 2.8s infinite}
+    .vig-link{width:22px;height:2px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.3) 0 4px,transparent 4px 8px);background-size:8px 2px;animation:linkFlow .7s linear infinite}
+    /* printer vignette */
+    .vig-print{display:flex;flex-direction:column;align-items:center;gap:0}
+    .vig-slot{width:120px;height:26px;border-radius:8px 8px 4px 4px;background:#1E293B;border:1px solid var(--card-b);position:relative;z-index:2}
+    .vig-slot::before{content:'';position:absolute;left:10px;right:10px;top:10px;height:3px;background:#0F172A;border-radius:2px}
+    .vig-slip{width:86px;background:#fff;border-radius:0 0 5px 5px;padding:6px 8px;margin-top:-2px;animation:printOut 3.4s ease-in-out infinite;z-index:1}
+    .vig-slip i{display:block;height:3px;border-radius:2px;background:#94A3B8;margin-bottom:4px}
+    .vig-slip i:nth-child(2){width:72%}.vig-slip i:nth-child(3){width:55%;margin-bottom:0}
+    .vig-slip b{display:block;font-size:.5rem;color:#0F172A;font-weight:900;text-align:center;margin-bottom:4px}
+    /* chart vignette */
+    .vig-chart{display:flex;align-items:flex-end;gap:8px;height:82px;width:64%}
+    .vig-chart i{flex:1;border-radius:5px 5px 0 0;background:linear-gradient(180deg,var(--p),rgba(255,107,53,.35));transform-origin:bottom;animation:growBar 1.6s cubic-bezier(.34,1.4,.64,1) both}
+    .vig-chart i:nth-child(2){animation-delay:.15s;height:55%;background:linear-gradient(180deg,#F59E0B,rgba(245,158,11,.3))}
+    .vig-chart i:nth-child(3){animation-delay:.3s;height:78%}
+    .vig-chart i:nth-child(4){animation-delay:.45s;height:46%;background:linear-gradient(180deg,#22C55E,rgba(34,197,94,.3))}
+    .vig-chart i:nth-child(5){animation-delay:.6s;height:92%}
+    .vig-chart i:nth-child(1){height:64%}
+    /* permissions matrix vignette */
+    .vig-matrix{display:flex;flex-direction:column;gap:6px;width:66%}
+    .vig-mrow{display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.04);border:1px solid var(--card-b);border-radius:8px;padding:5px 9px}
+    .vig-mrow span{font-size:.6rem;font-weight:700;color:var(--t2)}
+    .vig-mrow .tgl{width:26px;height:13px;border-radius:8px;background:#334155;position:relative}
+    .vig-mrow .tgl::after{content:'';position:absolute;top:2px;left:2px;width:9px;height:9px;border-radius:50%;background:#64748B}
+    .vig-mrow .tgl.on::after{left:15px;background:#22C55E}
+    .vig-mrow:nth-child(2) .tgl{animation:toggleFlip 3.6s ease infinite}
+    /* feedback stars vignette */
+    .vig-stars{display:flex;gap:8px;font-size:1.3rem}
+    .vig-stars i{font-style:normal;color:#334155;animation:starPop 2.8s infinite}
+    .vig-stars i.on{color:#FBBF24}
+    .vig-stars i:nth-child(2){animation-delay:.2s}.vig-stars i:nth-child(3){animation-delay:.4s}
+    .vig-stars i:nth-child(4){animation-delay:.6s}.vig-stars i:nth-child(5){animation-delay:.8s}
+    .vig-bubble{position:absolute;bottom:10px;left:14px;font-size:.6rem;font-weight:700;color:var(--t2);background:rgba(255,255,255,.06);border:1px solid var(--card-b);padding:.3rem .6rem;border-radius:10px 10px 10px 3px}
+
+    /* ── showcase: KITCHEN ── */
+    .kds-section{background:var(--bg2)}
+    .kds-grid{display:grid;grid-template-columns:1fr 1.15fr;gap:4rem;align-items:center}
+    .kds-screen{border-radius:20px;background:#0A0F1E;border:1px solid rgba(255,255,255,.08);padding:1rem;box-shadow:0 30px 80px rgba(0,0,0,.5);position:relative}
+    .kds-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:.9rem}
+    .kds-top b{color:#fff;font-size:.8rem;letter-spacing:.06em}
+    .kds-top span{font-size:.68rem;color:#22C55E;font-weight:700}
+    .kds-cards{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
+    .kds-card{border-radius:12px;padding:.7rem .75rem;border:1px solid rgba(255,255,255,.09);background:#111A2E;animation:slideKot 8s ease-in-out infinite}
+    .kds-card:nth-child(2){animation-delay:1.4s;border-color:rgba(255,107,53,.4)}
+    .kds-card:nth-child(3){animation-delay:2.8s}
+    .kds-card:nth-child(4){animation-delay:4.2s;animation-duration:9s}
+    .kds-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:.45rem}
+    .kds-hd b{color:#fff;font-size:.72rem}
+    .kds-timer{font-size:.68rem;font-weight:900;animation:hotTimer 2.4s infinite}
+    .kds-items{font-size:.66rem;color:#94A3B8;line-height:1.6}
+    .kds-items b{color:#E2E8F0}
+    .kds-foot{margin-top:.5rem;height:4px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+    .kds-foot i{display:block;height:100%;border-radius:3px;background:var(--p);animation:stepFill 8s linear infinite}
+    .kds-card:nth-child(2) .kds-foot i{animation-delay:-1.6s;background:#F59E0B}
+    .kds-card:nth-child(3) .kds-foot i{animation-delay:-3.2s;background:#22C55E}
+    .kds-card:nth-child(4) .kds-foot i{animation-delay:-4.8s}
+    .kds-blink{position:absolute;top:-10px;right:24px;display:flex;align-items:center;gap:.45rem;background:var(--g-l);border:1px solid rgba(34,197,94,.35);color:var(--g);font-size:.66rem;font-weight:800;padding:.4rem .7rem;border-radius:20px;animation:pulseDot 2.2s infinite}
+
+    /* ── showcase: DELIVERY ── */
+    .del-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:4rem;align-items:center}
+    .del-map{border-radius:20px;background:#0A0F1E;border:1px solid rgba(255,255,255,.08);padding:1rem;box-shadow:0 30px 80px rgba(0,0,0,.5);position:relative;overflow:hidden;min-height:340px}
+    .del-map svg{display:block;width:100%;height:300px}
+    .del-chip{position:absolute;display:flex;align-items:center;gap:.45rem;font-size:.66rem;font-weight:800;padding:.42rem .7rem;border-radius:20px}
+    .del-chip.auto{top:14px;left:14px;background:var(--p-l);border:1px solid rgba(255,107,53,.4);color:var(--p);animation:pulseDot 2.4s infinite}
+    .del-chip.eta{bottom:14px;right:14px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.35);color:#22C55E}
+    .del-steps{display:flex;flex-direction:column;gap:.7rem;margin-top:1.6rem}
+    .del-step{display:flex;gap:.85rem;align-items:flex-start;background:var(--card);border:1px solid var(--card-b);border-radius:14px;padding:.8rem .9rem;transition:border-color .3s}
+    .del-step .n{width:28px;height:28px;border-radius:50%;background:var(--p-l);color:var(--p);font-weight:900;font-size:.75rem;display:flex;align-items:center;justify-content:center;flex:none;border:1px solid rgba(255,107,53,.25)}
+    .del-step b{display:block;font-size:.85rem;margin-bottom:.15rem}
+    .del-step span{font-size:.74rem;color:var(--t2);line-height:1.5}
+    .del-step.hot{border-color:rgba(255,107,53,.45);animation:ridePulse 2.4s infinite}
+    @keyframes ridePulse{0%,100%{box-shadow:0 0 0 0 rgba(255,107,53,.28)}70%{box-shadow:0 0 0 7px rgba(255,107,53,0)}}
+
+    /* ── counters ── */
+    .stat-big-val{font-variant-numeric:tabular-nums}
+    /* stagger the feature card reveals */
+    .feat-grid .reveal:nth-child(2){transition-delay:.06s}
+    .feat-grid .reveal:nth-child(3){transition-delay:.12s}
+    .feat-grid .reveal:nth-child(4){transition-delay:.18s}
+    .feat-grid .reveal:nth-child(5){transition-delay:.24s}
+    .feat-grid .reveal:nth-child(6){transition-delay:.3s}
+    .feat-grid .reveal:nth-child(7){transition-delay:.05s}
+    .feat-grid .reveal:nth-child(8){transition-delay:.1s}
+    .feat-grid .reveal:nth-child(9){transition-delay:.15s}
+    .feat-grid .reveal:nth-child(10){transition-delay:.2s}
+    .feat-grid .reveal:nth-child(11){transition-delay:.25s}
+    .feat-grid .reveal:nth-child(12){transition-delay:.3s}
+    @media (prefers-reduced-motion:reduce){
+      .marquee-track,.float-deco,.vig-kot .k,.kds-card,.feat-vig::after{animation:none!important}
+    }
+
+    @media (max-width:980px){
+      .feat-grid{grid-template-columns:1fr 1fr}
+      .feat-card.wide{grid-column:span 2}
+      .kds-grid,.del-grid{grid-template-columns:1fr;gap:2.5rem}
+      .del-map{min-height:280px}
+    }
+    @media (max-width:640px){
+      .feat-grid{grid-template-columns:1fr}
+      .feat-card.wide{grid-column:span 1}
+      .vig-tiles{width:92%}
+    }
+  </style>
 </head>
 
 <body>
@@ -1581,6 +1788,8 @@
     <div class="nav-links">
       <a href="#features">Features</a>
       <a href="#qr">QR Ordering</a>
+      <a href="#kitchen">Kitchen</a>
+      <a href="#delivery">Delivery</a>
       <a href="#pricing">Pricing</a>
       <a href="#faq">FAQ</a>
       <a href="/book">Table Booking</a>
@@ -1602,6 +1811,8 @@
     <button class="mob-close" onclick="closeMob()"><i class="fa fa-times"></i></button>
     <a href="#features" onclick="closeMob()">Features</a>
     <a href="#qr" onclick="closeMob()">QR Ordering</a>
+    <a href="#kitchen" onclick="closeMob()">Kitchen</a>
+    <a href="#delivery" onclick="closeMob()">Delivery</a>
     <a href="#pricing" onclick="closeMob()">Pricing</a>
     <a href="#faq" onclick="closeMob()">FAQ</a>
     <a href="/book">Table Booking</a>
@@ -1613,6 +1824,12 @@
     <div class="hero-bg">
       <div class="hero-glow1"></div>
       <div class="hero-glow2"></div>
+      <span class="float-deco" style="top:12%;left:6%">🍛</span>
+      <span class="float-deco d2" style="top:68%;left:3%">🛵</span>
+      <span class="float-deco d3" style="top:20%;left:48%">🥘</span>
+      <span class="float-deco d2" style="top:80%;left:55%">☕</span>
+      <span class="float-deco" style="top:8%;left:78%">🍚</span>
+      <span class="float-deco d3" style="top:60%;left:92%">🌶️</span>
     </div>
     <div class="hero-grid">
       <!-- Left -->
@@ -1757,72 +1974,263 @@
   <div class="strip">
     <div class="strip-inner">
       <div class="stat-big">
-        <div class="stat-big-val">500+</div>
+        <div class="stat-big-val"><span data-count="500">0</span>+</div>
         <div class="stat-big-lbl">Restaurants Onboarded</div>
       </div>
       <div style="width:1px;height:40px;background:var(--card-b)"></div>
       <div class="stat-big">
-        <div class="stat-big-val">2.4L+</div>
+        <div class="stat-big-val"><span data-count="240">0</span>K+</div>
         <div class="stat-big-lbl">Orders Processed</div>
       </div>
       <div style="width:1px;height:40px;background:var(--card-b)"></div>
       <div class="stat-big">
-        <div class="stat-big-val">99.9%</div>
+        <div class="stat-big-val"><span data-count="99" data-dec="9">0</span>%</div>
         <div class="stat-big-lbl">Uptime</div>
       </div>
       <div style="width:1px;height:40px;background:var(--card-b)"></div>
       <div class="stat-big">
-        <div class="stat-big-val">8 sec</div>
+        <div class="stat-big-val"><span data-count="8">0</span> sec</div>
         <div class="stat-big-lbl">Avg. QR to Kitchen</div>
       </div>
     </div>
   </div>
 
-  <!-- ── FEATURES ───────────────────────────────────────── -->
+  <!-- ── FEATURE MARQUEE ─────────────────────────────────── -->
+  <div class="marquee">
+    <div class="marquee-track">
+      <?php for ($i = 0; $i < 2; $i++): ?>
+      <span class="marquee-item">QR Ordering <b>⚡</b> Kitchen Display <b>⚡</b> Smart POS <b>⚡</b> Rider Dispatch <b>⚡</b> UPI QR Payments <b>⚡</b> Split Bills <b>⚡</b> Table Bookings <b>⚡</b> Loyalty & Coupons <b>⚡</b> GST Reports <b>⚡</b> Multi-Branch <b>⚡</b> Thermal Printing <b>⚡</b> Staff Permissions <b>⚡</b></span>
+      <?php endfor; ?>
+    </div>
+  </div>
+
+  <!-- ── FEATURES (point-wise, all features) ─────────────── -->
   <section id="features">
     <div class="sec-inner">
       <div class="eyebrow">Everything you need</div>
       <h2 class="sec-h reveal">One platform.<br>Every role covered.</h2>
-      <p class="sec-sub reveal">From the customer's phone to the kitchen's screen — DinoviX handles every step so your
-        staff can focus on the food.</p>
+      <p class="sec-sub reveal">From the customer's phone to the rider's app — here is every feature, point by point.
+        Hover any card to see it move.</p>
       <div class="feat-grid">
+
         <div class="feat-card reveal">
+          <div class="feat-vig">
+            <div class="vig-row">
+              <div class="vig-phone"><div class="scan"></div><div class="pl1"></div><div class="pl2"></div><div class="pl3"></div><div class="pfb">2 items</div></div>
+              <div class="vig-row" style="flex-direction:column;gap:8px;align-items:flex-start">
+                <span class="vig-chip on">Scanning T06…</span>
+                <span class="vig-chip ok">Order sent</span>
+                <span class="vig-chip">No app needed</span>
+              </div>
+            </div>
+          </div>
           <div class="feat-icon">📱</div>
           <div class="feat-title">QR Self-Ordering</div>
-          <div class="feat-desc">Each table gets a unique QR code. Customers scan, browse your full menu, add to cart,
-            and place their order — from their own phone. No app download needed.</div>
+          <ul class="feat-points">
+            <li>Unique QR per table — menu opens in the browser, zero downloads</li>
+            <li>Full menu with photos, categories, bestseller badges & add-ons</li>
+            <li>Customer tracks live status: Received → Cooking → Ready</li>
+          </ul>
           <div class="feat-tag">⭐ Most loved feature</div>
         </div>
+
         <div class="feat-card reveal">
+          <div class="feat-vig">
+            <div class="vig-kot">
+              <div class="k"><div class="kt">T02 · #1041</div><div class="ktb">2 × Tikka, 1 × Naan</div><div class="ktt">06:12</div><div class="kbar"><i></i></div></div>
+              <div class="k"><div class="kt">T06 · #1042</div><div class="ktb">1 × Biryani</div><div class="ktt">03:41</div><div class="kbar"><i></i></div></div>
+              <div class="k"><div class="kt">T10 · #1043</div><div class="ktb">3 × Paneer</div><div class="ktt">01:05</div><div class="kbar"><i></i></div></div>
+            </div>
+          </div>
           <div class="feat-icon">👨‍🍳</div>
           <div class="feat-title">Live Kitchen Display</div>
-          <div class="feat-desc">Every confirmed order becomes a live KOT card in the kitchen — with a running timer,
-            table number, and item list. Kitchen staff always know what to cook next.</div>
+          <ul class="feat-points">
+            <li>Every confirmed order becomes a KOT card with a running timer</li>
+            <li>Colour-coded aging — late orders flash before you do</li>
+            <li>One tap to mark items cooking / ready — no paper slips</li>
+          </ul>
         </div>
+
         <div class="feat-card reveal">
+          <div class="feat-vig">
+            <div class="vig-tiles">
+              <div class="vig-t">T1</div><div class="vig-t o">T2</div><div class="vig-t">T3</div><div class="vig-t o">T4</div>
+              <div class="vig-t o">T5</div><div class="vig-t b">T6</div><div class="vig-t">T7</div><div class="vig-t">T8</div>
+            </div>
+          </div>
           <div class="feat-icon">🖥️</div>
-          <div class="feat-title">Smart POS</div>
-          <div class="feat-desc">A floor map POS that works on any screen. Take dine-in, takeaway, and delivery orders.
-            Handle split bills, discounts, multiple payment methods, and GST-compliant receipts.</div>
+          <div class="feat-title">Smart POS & Billing</div>
+          <ul class="feat-points">
+            <li>Floor-map POS on any screen — dine-in, takeaway & delivery</li>
+            <li>Split bills, discounts, coupons and multiple payment methods</li>
+            <li>GST-compliant receipts with CGST/SGST breakdowns</li>
+          </ul>
         </div>
+
+        <div class="feat-card reveal wide">
+          <div class="feat-vig" style="height:150px">
+            <div class="vig-map">
+              <svg viewBox="0 0 400 150" fill="none">
+                <path d="M40 120 C 120 40, 260 140, 360 40" stroke="rgba(255,255,255,.14)" stroke-width="3" stroke-linecap="round"/>
+                <path d="M40 120 C 120 40, 260 140, 360 40" stroke="#FF6B35" stroke-width="3" stroke-linecap="round" stroke-dasharray="10 18" style="animation:dashFlow 1.2s linear infinite"/>
+                <circle cx="40" cy="120" r="7" fill="#22C55E"/>
+                <circle cx="40" cy="120" r="13" fill="none" stroke="rgba(34,197,94,.4)" stroke-width="2" style="animation:greenPulse 2.2s infinite"/>
+                <circle cx="360" cy="40" r="7" fill="#FF6B35"/>
+                <g font-size="15"><text x="34" y="126">🏪</text><text x="352" y="46">🏠</text></g>
+                <g style="animation:slideKot 6s ease-in-out infinite">
+                  <circle cx="0" cy="0" r="0" fill="none"/>
+                  <text font-size="17" x="-9" y="-9">🛵<animateMotion dur="4s" repeatCount="indefinite" path="M40 120 C 120 40, 260 140, 360 40"/></text>
+                </g>
+              </svg>
+              <div class="vig-eta"><span class="vig-chip ok">Rahul · 2.1 km · 8 min</span></div>
+            </div>
+          </div>
+          <div class="feat-icon">🛵</div>
+          <div class="feat-title">Rider Dispatch & Delivery Fleet</div>
+          <ul class="feat-points">
+            <li>One-tap auto-assign picks the nearest free rider — or hand-pick from rider cards showing free/busy, on-duty & distance</li>
+            <li>Own riders or the DinoviX fleet — the dispatch mode shows exactly which is on</li>
+            <li>Assigned riders get a full-screen alert with a repeating chime on their app</li>
+            <li>Rider app: pickup → delivered with COD cash tracking & live GPS on the board</li>
+          </ul>
+          <div class="feat-tag">🆕 Just upgraded</div>
+        </div>
+
         <div class="feat-card reveal">
+          <div class="feat-vig">
+            <div class="vig-upi">
+              <div class="vig-qr"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+              <div class="vig-split">
+                <div class="sr"><span class="dot"></span>Cash <b>₹300</b></div>
+                <div class="sr"><span class="dot"></span>UPI <b>₹280</b></div>
+                <div class="sr"><span class="dot o"></span>Awaiting UTR…</div>
+              </div>
+            </div>
+          </div>
+          <div class="feat-icon">💸</div>
+          <div class="feat-title">UPI QR & Split Payments</div>
+          <ul class="feat-points">
+            <li>Scannable UPI QR on the checkout sheet — customer pays, cashier verifies the UTR</li>
+            <li>Split any bill across cash, card, UPI and more</li>
+            <li>Duplicate-UTR guard keeps every payment clean</li>
+          </ul>
+        </div>
+
+        <div class="feat-card reveal">
+          <div class="feat-vig">
+            <div class="vig-cal">
+              <div class="vig-c"><b>12</b><span>—</span></div>
+              <div class="vig-c"><b>13</b><span>—</span></div>
+              <div class="vig-c hot"><b>14</b><span>7 PM</span></div>
+              <div class="vig-c"><b>15</b><span>—</span></div>
+              <div class="vig-c"><b>16</b><span>—</span></div>
+            </div>
+          </div>
+          <div class="feat-icon">🪑</div>
+          <div class="feat-title">Table Bookings</div>
+          <ul class="feat-points">
+            <li>Public booking page per branch — customers reserve in seconds</li>
+            <li>Sets the table to "Booked" on your POS floor map automatically</li>
+            <li>Booking settings: slots, lead time and capacity per branch</li>
+          </ul>
+        </div>
+
+        <div class="feat-card reveal">
+          <div class="feat-vig">
+            <div class="vig-loy">
+              <div class="vig-coin">🪙</div>
+              <div>
+                <div class="vig-stamps"><i class="on">✓</i><i class="on">✓</i><i class="on">✓</i><i class="on">✓</i><i>·</i></div>
+                <div style="font-size:.6rem;color:var(--t3);margin-top:6px;font-weight:700">1 more visit → free dessert</div>
+              </div>
+            </div>
+          </div>
+          <div class="feat-icon">🎁</div>
+          <div class="feat-title">Loyalty & Coupons</div>
+          <ul class="feat-points">
+            <li>Earn & redeem points at checkout — flat, percentage or loyalty discounts</li>
+            <li>Auto-apply coupons with usage limits and expiry</li>
+            <li>Customer directory with visit history and spend</li>
+          </ul>
+        </div>
+
+        <div class="feat-card reveal">
+          <div class="feat-vig">
+            <div class="vig-branch">
+              <div class="vig-b hq"><b>🏢</b><span>Head</span></div>
+              <div class="vig-link"></div>
+              <div class="vig-b"><b>🍲</b><span>Br-1</span></div>
+              <div class="vig-link"></div>
+              <div class="vig-b"><b>🍜</b><span>Br-2</span></div>
+            </div>
+          </div>
           <div class="feat-icon">🏪</div>
           <div class="feat-title">Multi-Branch Support</div>
-          <div class="feat-desc">Manage every location from one dashboard. Each branch has its own staff, menu, tables,
-            and reports — but you see everything from the top.</div>
+          <ul class="feat-points">
+            <li>Every location from one dashboard — menus, staff, tables per branch</li>
+            <li>Consolidated cross-branch reports for the owner</li>
+            <li>Starter 1 branch · Growth 3 · Enterprise unlimited</li>
+          </ul>
         </div>
+
         <div class="feat-card reveal">
+          <div class="feat-vig">
+            <div class="vig-print">
+              <div class="vig-slot"></div>
+              <div class="vig-slip"><b>SPICE GARDEN</b><i></i><i></i><i></i></div>
+            </div>
+          </div>
           <div class="feat-icon">🖨️</div>
           <div class="feat-title">Thermal Printer Ready</div>
-          <div class="feat-desc">Connect your 80mm or 57mm thermal printer over WiFi. Print KOT slips and customer bills
-            automatically — no extra software required.</div>
+          <ul class="feat-points">
+            <li>80mm & 57mm ESC/POS printers over WiFi — no drivers</li>
+            <li>Auto-print KOT on order, bill on checkout — or print again anytime</li>
+            <li>Bluetooth printing via RawBT for Android phones</li>
+          </ul>
         </div>
+
         <div class="feat-card reveal">
+          <div class="feat-vig"><div class="vig-chart"><i></i><i></i><i></i><i></i><i></i></div></div>
           <div class="feat-icon">📊</div>
-          <div class="feat-title">Sales & Tax Reports</div>
-          <div class="feat-desc">Daily, weekly, and monthly sales reports with CGST/SGST breakdowns. Category-wise,
-            item-wise, and staff-wise performance — export-ready.</div>
+          <div class="feat-title">Sales, Tax & GST Reports</div>
+          <ul class="feat-points">
+            <li>Daily, weekly, monthly sales with CGST/SGST/IGST slabs</li>
+            <li>Category-wise, item-wise and staff-wise performance</li>
+            <li>GSTR-1 export ready, plus expenses & waste tracking</li>
+          </ul>
         </div>
+
+        <div class="feat-card reveal">
+          <div class="feat-vig">
+            <div class="vig-matrix">
+              <div class="vig-mrow"><span>Cashier · Discounts</span><div class="tgl on"></div></div>
+              <div class="vig-mrow"><span>Manager · Cancel order</span><div class="tgl"></div></div>
+              <div class="vig-mrow"><span>Waiter · POS access</span><div class="tgl on"></div></div>
+            </div>
+          </div>
+          <div class="feat-icon">🛡️</div>
+          <div class="feat-title">Roles, Permissions & PIN</div>
+          <ul class="feat-points">
+            <li>22-option permission matrix per role — tick exactly what each role can do</li>
+            <li>Manager PIN unlocks sensitive actions live — no re-login, every approval audited</li>
+            <li>Dashboards, sidebar and POS actions filter themselves per role</li>
+          </ul>
+        </div>
+
+        <div class="feat-card reveal">
+          <div class="feat-vig">
+            <div class="vig-stars"><i class="on">★</i><i class="on">★</i><i class="on">★</i><i class="on">★</i><i class="on">★</i></div>
+            <div class="vig-bubble">"Best biryani in town!" — verified visit</div>
+          </div>
+          <div class="feat-icon">💬</div>
+          <div class="feat-title">Customer Feedback Loop</div>
+          <ul class="feat-points">
+            <li>Post-bill feedback link — ratings land straight on your dashboard</li>
+            <li>Happy customers become public testimonials on your site</li>
+            <li>Low ratings flag issues before they hit Google reviews</li>
+          </ul>
+        </div>
+
       </div>
     </div>
   </section>
@@ -1925,6 +2333,124 @@
                 <div class="qr-step-desc">Their phone shows a live tracker: Received → Confirmed → Cooking → Ready. Zero
                   calls to the waiter.</div>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SHOWCASE: KITCHEN DISPLAY ───────────────────────── -->
+  <section id="kitchen" class="kds-section">
+    <div class="sec-inner">
+      <div class="kds-grid">
+        <!-- Kitchen screen mockup -->
+        <div class="kds-screen reveal">
+          <div class="kds-blink"><i class="fa fa-circle" style="font-size:.5rem"></i> 3 new KOTs today</div>
+          <div class="kds-top"><b>KITCHEN — LIVE</b><span id="kdsClock">--:--:--</span></div>
+          <div class="kds-cards">
+            <div class="kds-card">
+              <div class="kds-hd"><b>T02 · #1041</b><span class="kds-timer">06:12</span></div>
+              <div class="kds-items"><b>2 ×</b> Chicken Tikka<br><b>1 ×</b> Butter Naan</div>
+              <div class="kds-foot"><i></i></div>
+            </div>
+            <div class="kds-card">
+              <div class="kds-hd"><b>T06 · #1042</b><span class="kds-timer">03:41</span></div>
+              <div class="kds-items"><b>1 ×</b> Chicken Biryani<br><b>1 ×</b> Mango Lassi</div>
+              <div class="kds-foot"><i></i></div>
+            </div>
+            <div class="kds-card">
+              <div class="kds-hd"><b>T10 · #1043</b><span class="kds-timer">01:05</span></div>
+              <div class="kds-items"><b>3 ×</b> Paneer Tikka<br><b>1 ×</b> Dal Makhani</div>
+              <div class="kds-foot"><i></i></div>
+            </div>
+            <div class="kds-card">
+              <div class="kds-hd"><b>T01 · #1044</b><span class="kds-timer">00:18</span></div>
+              <div class="kds-items"><b>2 ×</b> Mutton Rogan<br><b>2 ×</b> Rumali Roti</div>
+              <div class="kds-foot"><i></i></div>
+            </div>
+          </div>
+        </div>
+        <!-- Text -->
+        <div class="reveal">
+          <div class="eyebrow">Kitchen Display</div>
+          <h2 class="sec-h">No paper slips.<br>No shouting.</h2>
+          <p class="sec-sub">Orders slide onto the kitchen screen the moment they're confirmed — with timers, table
+            numbers and the full item list. Chefs work the screen like a video game.</p>
+          <div class="del-steps">
+            <div class="del-step hot">
+              <div class="n"><i class="fa fa-fire" style="font-size:.7rem"></i></div>
+              <div><b>Colour-coded aging</b><span>Timers turn amber then red — the oldest order is always obvious, even across a hot kitchen.</span></div>
+            </div>
+            <div class="del-step">
+              <div class="n"><i class="fa fa-hand-pointer" style="font-size:.7rem"></i></div>
+              <div><b>Big touch targets</b><span>Tap to mark cooking, ready, or served — designed for greasy fingers and fast pace.</span></div>
+            </div>
+            <div class="del-step">
+              <div class="n"><i class="fa fa-bell" style="font-size:.7rem"></i></div>
+              <div><b>Instant sound alerts</b><span>A chime plays on every new KOT so the kitchen never misses a rush-hour order.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SHOWCASE: DELIVERY DISPATCH ─────────────────────── -->
+  <section id="delivery" class="qr-section">
+    <div class="sec-inner">
+      <div class="del-grid">
+        <!-- Animated map mockup -->
+        <div class="del-map reveal">
+          <div class="del-chip auto"><i class="fa fa-bolt"></i> Auto-dispatch: ON</div>
+          <div class="del-chip eta"><i class="fa fa-clock"></i> ETA 8 min · 2.1 km</div>
+          <svg viewBox="0 0 400 300" fill="none">
+            <!-- subtle city blocks -->
+            <g opacity=".25" fill="rgba(255,255,255,.05)">
+              <rect x="30" y="30" width="70" height="55" rx="6"/><rect x="130" y="60" width="60" height="45" rx="6"/>
+              <rect x="230" y="25" width="80" height="60" rx="6"/><rect x="60" y="170" width="80" height="60" rx="6"/>
+              <rect x="190" y="180" width="70" height="55" rx="6"/><rect x="300" y="130" width="70" height="65" rx="6"/>
+            </g>
+            <!-- roads -->
+            <g stroke="rgba(255,255,255,.07)" stroke-width="10">
+              <path d="M0 140 H400 M0 235 H400 M120 0 V300 M265 0 V300"/>
+            </g>
+            <!-- route -->
+            <path d="M55 255 C 110 190, 150 245, 195 195 C 245 140, 300 200, 340 95" stroke="rgba(255,255,255,.14)" stroke-width="3.5" stroke-linecap="round"/>
+            <path d="M55 255 C 110 190, 150 245, 195 195 C 245 140, 300 200, 340 95" stroke="#FF6B35" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="12 20" style="animation:dashFlow 1.1s linear infinite"/>
+            <!-- restaurant -->
+            <circle cx="55" cy="255" r="8" fill="#22C55E"/>
+            <circle cx="55" cy="255" r="15" fill="none" stroke="rgba(34,197,94,.4)" stroke-width="2" style="animation:greenPulse 2.2s infinite"/>
+            <text font-size="16" x="47" y="262">🏪</text>
+            <!-- customer -->
+            <circle cx="340" cy="95" r="8" fill="#FF6B35"/>
+            <text font-size="16" x="332" y="102">🏠</text>
+            <!-- rider moving along the route -->
+            <g>
+              <text font-size="19" x="-10" y="-10">🛵<animateMotion dur="5.5s" repeatCount="indefinite" rotate="auto-reverse" path="M55 255 C 110 190, 150 245, 195 195 C 245 140, 300 200, 340 95"/></text>
+            </g>
+            <!-- geofence ping at destination -->
+            <circle cx="340" cy="95" r="26" fill="none" stroke="rgba(34,197,94,.25)" stroke-width="2" style="animation:greenPulse 2.2s infinite"/>
+          </svg>
+        </div>
+        <!-- Text -->
+        <div class="reveal">
+          <div class="eyebrow">Delivery Dispatch</div>
+          <h2 class="sec-h">Billed → assigned<br>in one screen.</h2>
+          <p class="sec-sub">Right after billing a delivery order, the till shows a dispatch panel — auto-assign the
+            nearest free rider, or hand-pick one. The rider's phone rings instantly.</p>
+          <div class="del-steps">
+            <div class="del-step">
+              <div class="n">1</div>
+              <div><b>Order billed at POS</b><span>The dispatch panel opens right on the success screen — no jumping to other pages.</span></div>
+            </div>
+            <div class="del-step hot">
+              <div class="n">2</div>
+              <div><b>Auto or manual — you see which is on</b><span>One tap auto-dispatch picks the nearest free rider, or pick from cards showing free/busy, duty status and distance.</span></div>
+            </div>
+            <div class="del-step">
+              <div class="n">3</div>
+              <div><b>Rider alerted with sound</b><span>Full-screen takeover + repeating chime on the rider app. They tap pickup, deliver, or failed — COD tracked automatically.</span></div>
             </div>
           </div>
         </div>
@@ -2244,6 +2770,8 @@
         <h4>Product</h4>
         <a href="#features">Features</a>
         <a href="#qr">QR Ordering</a>
+        <a href="#kitchen">Kitchen Display</a>
+        <a href="#delivery">Delivery Dispatch</a>
         <a href="#pricing">Pricing</a>
         <a href="/login">Login</a>
         <a href="/book">Book a Table</a>
@@ -2373,6 +2901,51 @@
         return;
       }
       window.location.href = '/login?email=' + encodeURIComponent(e);
+    }
+  </script>
+
+  <script>
+    // ═══ v2 motion: counters, tilt, kitchen clock ═══
+    // Count-up on scroll
+    const cObs = new IntersectionObserver(entries => {
+      entries.forEach(en => {
+        if (!en.isIntersecting || en.target._done) return;
+        en.target._done = true;
+        const el = en.target, target = parseInt(el.dataset.count), dec = el.dataset.dec || '';
+        const t0 = performance.now(), dur = 1400;
+        (function step(t) {
+          const p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+          el.textContent = dec ? (Math.floor(e * target) + '.' + dec) : Math.floor(e * target);
+          if (p < 1) requestAnimationFrame(step);
+          else el.textContent = dec ? (target + '.' + dec) : target;
+        })(t0);
+      });
+    }, { threshold: .6 });
+    document.querySelectorAll('[data-count]').forEach(el => cObs.observe(el));
+
+    // 3D tilt on feature cards (skip on touch)
+    if (matchMedia('(pointer:fine)').matches) {
+      document.querySelectorAll('.feat-card').forEach(card => {
+        card.addEventListener('mousemove', e => {
+          const r = card.getBoundingClientRect();
+          const x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
+          card.style.transform = `translateY(-4px) rotateX(${-y * 5}deg) rotateY(${x * 5}deg)`;
+          card.style.transition = 'transform .08s';
+        });
+        card.addEventListener('mouseleave', () => {
+          card.style.transition = 'transform .4s';
+          card.style.transform = '';
+        });
+      });
+    }
+
+    // Kitchen showcase clock (skips ticks while the tab is hidden)
+    const kdsClockEl = document.getElementById('kdsClock');
+    if (kdsClockEl) {
+      setInterval(() => {
+        if (document.hidden) return;
+        kdsClockEl.textContent = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' IST';
+      }, 1000);
     }
   </script>
 </body>

@@ -118,6 +118,9 @@ CSS;
 
       <div class="hero-v2-visual">
         <div class="hero-v2-photo"><div class="hero-v2-photo-label"><b>Built for modern restaurants</b><span>Tables · Kitchen · POS · Orders</span></div></div>
+        <span class="float-deco" style="top:-6%;left:-4%;z-index:7">🍛</span>
+        <span class="float-deco d2" style="top:38%;right:-5%;z-index:7">🌶️</span>
+        <span class="float-deco d3" style="bottom:2%;left:-3%;z-index:7">🥘</span>
         <div class="hero-v2-food" aria-hidden="true"></div>
         <div class="hero-v2-revenue"><div class="label">Revenue today</div><div class="value">₹48,620</div><div class="up">↑ 18.4% vs yesterday</div></div>
         <div class="hero-v2-qr" id="heroQr"><div class="hero-v2-qr-icon"><i class="fa fa-qrcode"></i></div><div><b>QR order received</b><span>Table T06 · Just now</span></div></div>
